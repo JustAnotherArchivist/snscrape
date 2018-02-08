@@ -1,6 +1,7 @@
 import abc
 import logging
 import requests
+import time
 
 
 logger = logging.getLogger(__name__)
@@ -41,26 +42,32 @@ class Scraper:
 
 	def __init__(self, retries = 3):
 		self._retries = retries
+		self._session = requests.Session()
 
 	@abc.abstractmethod
 	def get_items(self):
 		'''Iterator yielding Items.'''
 		pass
 
-	def _get(self, url, params = None, headers = None, responseOkCallback = None):
+	def _get(self, url, params = None, headers = None, timeout = 10, responseOkCallback = None):
 		for attempt in range(self._retries + 1):
-			logger.info(f'Retrieving {url}')
-			logger.debug(f'... with parameters: {params!r}')
+			# The request is newly prepared on each retry because of potential cookie updates.
+			req = self._session.prepare_request(requests.Request('GET', url, params = params, headers = headers))
+			logger.info(f'Retrieving {req.url}')
 			logger.debug(f'... with headers: {headers!r}')
 			try:
-				r = requests.get(url, params = params, headers = headers)
+				r = self._session.send(req, timeout = timeout)
 				if responseOkCallback is None or responseOkCallback(r):
-					logger.debug(f'{r.request.url} retrieved successfully')
+					logger.debug(f'{req.url} retrieved successfully')
 					return r
 			except requests.exceptions.RequestException as exc:
 				logger.error(f'Error retrieving {url}: {exc!r}')
+			if attempt < self._retries:
+				sleepTime = 1.0 * 2**attempt # exponential backoff: sleep 1 second after first attempt, 2 after second, 4 after third, etc.
+				logger.info(f'Waiting {sleepTime:.0f} seconds')
+				time.sleep(sleepTime)
 		else:
-			msg = f'{self._retries + 1} requests to {url} failed, giving up.'
+			msg = f'{self._retries + 1} requests to {req.url} failed, giving up.'
 			logger.fatal(msg)
 			raise ScraperException(msg)
 		raise RuntimeError('Reached unreachable code')
