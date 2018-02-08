@@ -9,7 +9,7 @@ setuptools.setup(
 	install_requires = ['requests', 'lxml', 'beautifulsoup4'],
 	entry_points = {
 		'console_scripts': [
-			'smscrape = socialmediascraper:main',
+			'smscrape = socialmediascraper.cli:main',
 		],
 	},
 )
