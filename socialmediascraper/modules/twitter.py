@@ -7,12 +7,12 @@ import socialmediascraper.base
 logger = logging.getLogger(__name__)
 
 
-class TwitterHashtagTweetsScraper(socialmediascraper.base.Scraper):
-	name = 'twitter-hashtag-tweets'
+class TwitterSearchScraper(socialmediascraper.base.Scraper):
+	name = 'twitter-search'
 
-	def __init__(self, hashtag, **kwargs):
+	def __init__(self, query, **kwargs):
 		super().__init__(**kwargs)
-		self._hashtag = hashtag
+		self._query = query
 
 	def _get_feed_from_html(self, html):
 		soup = bs4.BeautifulSoup(html, 'lxml')
@@ -32,12 +32,11 @@ class TwitterHashtagTweetsScraper(socialmediascraper.base.Scraper):
 		return True
 
 	def get_items(self):
-		query = f'#{self._hashtag}'
 		headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
 
 		# First page
-		logger.info(f'Retrieving search page for {query}')
-		r = self._get('https://twitter.com/search', params = {'f': 'tweets', 'vertical': 'default', 'lang': 'en', 'q': query, 'src': 'typd'}, headers = headers)
+		logger.info(f'Retrieving search page for {self._query}')
+		r = self._get('https://twitter.com/search', params = {'f': 'tweets', 'vertical': 'default', 'lang': 'en', 'q': self._query, 'src': 'typd'}, headers = headers)
 
 		feed = self._get_feed_from_html(r.text)
 		if not feed:
@@ -53,7 +52,7 @@ class TwitterHashtagTweetsScraper(socialmediascraper.base.Scraper):
 					'f': 'tweets',
 					'vertical': 'default',
 					'lang': 'en',
-					'q': query,
+					'q': self._query,
 					'include_available_features': '1',
 					'include_entities': '1',
 					'reset_error_state': 'false',
@@ -68,6 +67,37 @@ class TwitterHashtagTweetsScraper(socialmediascraper.base.Scraper):
 				return
 			maxPosition = f'TWEET-{feed[-1]["data-item-id"]}-{newestID}'
 			yield from self._feed_to_items(feed)
+
+	@classmethod
+	def setup_parser(cls, subparser):
+		subparser.add_argument('query', help = 'A Twitter search string')
+
+	@classmethod
+	def from_args(cls, args):
+		return cls(args.query, retries = args.retries)
+
+
+class TwitterUserScraper(TwitterSearchScraper):
+	name = 'twitter-user'
+
+	def __init__(self, username, **kwargs):
+		super().__init__(f'from:{username}', **kwargs)
+		self._username = username
+
+	@classmethod
+	def setup_parser(cls, subparser):
+		subparser.add_argument('username', help = 'A Twitter username (without @)')
+
+	@classmethod
+	def from_args(cls, args):
+		return cls(args.username, retries = args.retries)
+
+class TwitterHashtagScraper(TwitterSearchScraper):
+	name = 'twitter-hashtag'
+
+	def __init__(self, hashtag, **kwargs):
+		super().__init__(f'#{hashtag}', **kwargs)
+		self._hashtag = hashtag
 
 	@classmethod
 	def setup_parser(cls, subparser):
