@@ -49,12 +49,14 @@ class Scraper:
 		'''Iterator yielding Items.'''
 		pass
 
-	def _get(self, url, params = None, headers = None, timeout = 10, responseOkCallback = None):
+	def _request(self, method, url, params = None, data = None, headers = None, timeout = 10, responseOkCallback = None):
 		for attempt in range(self._retries + 1):
 			# The request is newly prepared on each retry because of potential cookie updates.
-			req = self._session.prepare_request(requests.Request('GET', url, params = params, headers = headers))
+			req = self._session.prepare_request(requests.Request(method, url, params = params, data = data, headers = headers))
 			logger.info(f'Retrieving {req.url}')
 			logger.debug(f'... with headers: {headers!r}')
+			if data:
+				logger.debug(f'... with data: {data!r}')
 			try:
 				r = self._session.send(req, timeout = timeout)
 				if responseOkCallback is None or responseOkCallback(r):
@@ -71,6 +73,12 @@ class Scraper:
 			logger.fatal(msg)
 			raise ScraperException(msg)
 		raise RuntimeError('Reached unreachable code')
+
+	def _get(self, *args, **kwargs):
+		return self._request('GET', *args, **kwargs)
+
+	def _post(self, *args, **kwargs):
+		return self._request('POST', *args, **kwargs)
 
 	@classmethod
 	@abc.abstractmethod
