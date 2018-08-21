@@ -3,13 +3,13 @@ import itertools
 import json
 import logging
 import re
-import socialmediascraper.base
+import snscrape.base
 
 
 logger = logging.getLogger(__name__)
 
 
-class GooglePlusUserScraper(socialmediascraper.base.Scraper):
+class GooglePlusUserScraper(snscrape.base.Scraper):
 	name = 'googleplus-user'
 
 	def __init__(self, user, **kwargs):
@@ -48,7 +48,7 @@ class GooglePlusUserScraper(socialmediascraper.base.Scraper):
 			logger.info('User has no posts')
 			return
 		for postObj in response[0][7]:
-			yield socialmediascraper.base.URLItem(f'https://plus.google.com/{postObj[6]["33558957"][21]}')
+			yield snscrape.base.URLItem(f'https://plus.google.com/{postObj[6]["33558957"][21]}')
 		cursor = response[0][1] # 'ADSJ_x'
 		if cursor is None:
 			# No further pages
@@ -86,7 +86,7 @@ class GooglePlusUserScraper(socialmediascraper.base.Scraper):
 			response = json.JSONDecoder().raw_decode(''.join(garbage[pos:]))[0] # Parses only the first structure in the data stream without throwing an error about the extra data at the end
 
 			for postObj in response[0][2]['74333095'][0][7]:
-				yield socialmediascraper.base.URLItem(f'https://plus.google.com/{postObj[6]["33558957"][21]}')
+				yield snscrape.base.URLItem(f'https://plus.google.com/{postObj[6]["33558957"][21]}')
 
 			cursor = response[0][2]['74333095'][0][1]
 

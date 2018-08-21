@@ -2,14 +2,14 @@ import setuptools
 
 
 setuptools.setup(
-	name = 'socialmediascraper',
+	name = 'snscrape',
 	version = '0.0-dev',
-	description = 'A social media scraper',
-	packages = ['socialmediascraper'],
+	description = 'A social network service scraper',
+	packages = ['snscrape'],
 	install_requires = ['requests', 'lxml', 'beautifulsoup4'],
 	entry_points = {
 		'console_scripts': [
-			'smscrape = socialmediascraper.cli:main',
+			'snscrape = snscrape.cli:main',
 		],
 	},
 )

@@ -2,14 +2,14 @@ import bs4
 import json
 import logging
 import re
-import socialmediascraper.base
+import snscrape.base
 import urllib.parse
 
 
 logger = logging.getLogger(__name__)
 
 
-class FacebookUserScraper(socialmediascraper.base.Scraper):
+class FacebookUserScraper(snscrape.base.Scraper):
 	name = 'facebook-user'
 
 	def __init__(self, username, **kwargs):

@@ -1,7 +1,7 @@
 import argparse
 import logging
-import socialmediascraper.base
-import socialmediascraper.modules
+import snscrape.base
+import snscrape.modules
 
 
 logger = logging.getLogger(__name__)
@@ -15,7 +15,7 @@ def parse_args():
 	parser.add_argument('-n', '--max-results', dest = 'maxResults', type = int, metavar = 'N', help = 'Only return the first N results')
 
 	subparsers = parser.add_subparsers(dest = 'scraper', help = 'The scraper you want to use')
-	classes = socialmediascraper.base.Scraper.__subclasses__()
+	classes = snscrape.base.Scraper.__subclasses__()
 	for cls in classes:
 		subparser = subparsers.add_parser(cls.name, formatter_class = argparse.ArgumentDefaultsHelpFormatter)
 		cls.setup_parser(subparser)

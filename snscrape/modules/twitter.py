@@ -1,13 +1,13 @@
 import bs4
 import json
 import logging
-import socialmediascraper.base
+import snscrape.base
 
 
 logger = logging.getLogger(__name__)
 
 
-class TwitterSearchScraper(socialmediascraper.base.Scraper):
+class TwitterSearchScraper(snscrape.base.Scraper):
 	name = 'twitter-search'
 
 	def __init__(self, query, **kwargs):
@@ -23,7 +23,7 @@ class TwitterSearchScraper(socialmediascraper.base.Scraper):
 		for tweet in feed:
 			username = tweet.find('span', 'username').find('b').text
 			tweetID = tweet['data-item-id']
-			yield socialmediascraper.base.URLItem(f'https://twitter.com/{username}/status/{tweetID}')
+			yield snscrape.base.URLItem(f'https://twitter.com/{username}/status/{tweetID}')
 
 	def _check_json_callback(self, r):
 		if r.headers['content-type'] != 'application/json;charset=utf-8':

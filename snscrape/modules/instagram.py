@@ -1,13 +1,13 @@
 import hashlib
 import json
 import logging
-import socialmediascraper.base
+import snscrape.base
 
 
 logger = logging.getLogger(__name__)
 
 
-class InstagramUserScraper(socialmediascraper.base.Scraper):
+class InstagramUserScraper(snscrape.base.Scraper):
 	name = 'instagram-user'
 
 	def __init__(self, username, **kwargs):
@@ -17,7 +17,7 @@ class InstagramUserScraper(socialmediascraper.base.Scraper):
 	def _response_to_items(self, response, username):
 		for node in response['user']['edge_owner_to_timeline_media']['edges']:
 			code = node['node']['shortcode']
-			yield socialmediascraper.base.URLItem(f'https://www.instagram.com/p/{code}/?taken-by={username}') #TODO: Do we want the taken-by parameter in here?
+			yield snscrape.base.URLItem(f'https://www.instagram.com/p/{code}/?taken-by={username}') #TODO: Do we want the taken-by parameter in here?
 
 	def get_items(self):
 		headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}

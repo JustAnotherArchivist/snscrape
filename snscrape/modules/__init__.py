@@ -1,6 +1,6 @@
 import importlib
 import os
-import socialmediascraper.base
+import snscrape.base
 
 
 def _import_modules():
@@ -8,7 +8,7 @@ def _import_modules():
 	for fn in files:
 		if fn.endswith('.py') and fn != '__init__.py':
 			# Import module if not already imported
-			moduleName = f'socialmediascraper.modules.{fn[:-3]}'
+			moduleName = f'snscrape.modules.{fn[:-3]}'
 			module = importlib.import_module(moduleName)
 
 
