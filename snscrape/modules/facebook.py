@@ -23,7 +23,7 @@ class FacebookUserScraper(snscrape.base.Scraper):
 			if href.startswith(f'/{username}/'):
 				link = urllib.parse.urljoin(baseUrl, href)
 				if link not in yielded:
-					yield link
+					yield snscrape.base.URLItem(link)
 					yielded.add(link)
 
 	def get_items(self):
