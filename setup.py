@@ -12,7 +12,7 @@ setuptools.setup(
 		'License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)',
 		'Programming Language :: Python :: 3.6',
 	],
-	packages = ['snscrape'],
+	packages = ['snscrape', 'snscrape.modules'],
 	install_requires = ['requests', 'lxml', 'beautifulsoup4'],
 	entry_points = {
 		'console_scripts': [
