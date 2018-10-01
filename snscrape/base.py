@@ -59,11 +59,32 @@ class Scraper:
 				logger.debug(f'... with data: {data!r}')
 			try:
 				r = self._session.send(req, timeout = timeout)
-				if responseOkCallback is None or responseOkCallback(r):
-					logger.debug(f'{req.url} retrieved successfully')
-					return r
 			except requests.exceptions.RequestException as exc:
-				logger.error(f'Error retrieving {url}: {exc!r}')
+				if attempt < self._retries:
+					retrying = ', retrying'
+					level = logging.WARNING
+				else:
+					retrying = ''
+					level = logging.ERROR
+				logger.log(level, f'Error retrieving {req.url}: {exc!r}{retrying}')
+			else:
+				if responseOkCallback is not None:
+					success, msg = responseOkCallback(r)
+				else:
+					success, msg = (True, None)
+				msg = f': {msg}' if msg else ''
+
+				if success:
+					logger.debug(f'{req.url} retrieved successfully{msg}')
+					return r
+				else:
+					if attempt < self._retries:
+						retrying = ', retrying'
+						level = logging.WARNING
+					else:
+						retrying = ''
+						level = logging.ERROR
+					logger.log(level, f'Error retrieving {req.url}{msg}{retrying}')
 			if attempt < self._retries:
 				sleepTime = 1.0 * 2**attempt # exponential backoff: sleep 1 second after first attempt, 2 after second, 4 after third, etc.
 				logger.info(f'Waiting {sleepTime:.0f} seconds')

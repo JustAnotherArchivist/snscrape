@@ -27,9 +27,8 @@ class TwitterSearchScraper(snscrape.base.Scraper):
 
 	def _check_json_callback(self, r):
 		if r.headers['content-type'] != 'application/json;charset=utf-8':
-			logger.error(f'Content type of {r.url} is not JSON')
-			return False
-		return True
+			return False, f'content type is not JSON'
+		return True, None
 
 	def get_items(self):
 		headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
