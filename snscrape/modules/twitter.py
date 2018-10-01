@@ -36,7 +36,7 @@ class TwitterSearchScraper(snscrape.base.Scraper):
 
 		# First page
 		logger.info(f'Retrieving search page for {self._query}')
-		r = self._get('https://twitter.com/search', params = {'f': 'tweets', 'vertical': 'default', 'lang': 'en', 'q': self._query, 'src': 'typd'}, headers = headers)
+		r = self._get('https://twitter.com/search', params = {'f': 'tweets', 'vertical': 'default', 'lang': 'en', 'q': self._query, 'src': 'typd', 'qf': 'off'}, headers = headers)
 
 		feed = self._get_feed_from_html(r.text)
 		if not feed:
@@ -57,6 +57,7 @@ class TwitterSearchScraper(snscrape.base.Scraper):
 					'include_entities': '1',
 					'reset_error_state': 'false',
 					'src': 'typd',
+					'qf': 'off',
 					'max_position': maxPosition,
 				},
 				headers = headers,
