@@ -1,5 +1,6 @@
 import bs4
 import json
+import random
 import logging
 import snscrape.base
 
@@ -31,7 +32,7 @@ class TwitterSearchScraper(snscrape.base.Scraper):
 		return True, None
 
 	def get_items(self):
-		headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
+		headers = {'User-Agent': f'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.{random.randint(1, 3500)}.{random.randint(1, 160)} Safari/537.36'}
 
 		# First page
 		logger.info(f'Retrieving search page for {self._query}')
