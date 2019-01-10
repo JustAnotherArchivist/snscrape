@@ -13,7 +13,7 @@ setuptools.setup(
 		'Programming Language :: Python :: 3.6',
 	],
 	packages = ['snscrape', 'snscrape.modules'],
-	install_requires = ['requests', 'lxml', 'beautifulsoup4'],
+	install_requires = ['requests[socks]', 'lxml', 'beautifulsoup4'],
 	entry_points = {
 		'console_scripts': [
 			'snscrape = snscrape.cli:main',
