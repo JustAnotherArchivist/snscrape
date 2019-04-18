@@ -13,6 +13,7 @@ def parse_args():
 	parser.add_argument('--retry', '--retries', dest = 'retries', type = int, default = 3, metavar = 'N',
 		help = 'When the connection fails or the server returns an unexpected response, retry up to N times with an exponential backoff')
 	parser.add_argument('-n', '--max-results', dest = 'maxResults', type = int, metavar = 'N', help = 'Only return the first N results')
+	parser.add_argument('-f', '--format', dest = 'format', type = str, default = None, help = 'Output format')
 
 	subparsers = parser.add_subparsers(dest = 'scraper', help = 'The scraper you want to use')
 	classes = snscrape.base.Scraper.__subclasses__()
@@ -57,7 +58,10 @@ def main():
 
 	i = 0
 	for i, item in enumerate(scraper.get_items(), start = 1):
-		print(item)
+		if args.format is not None:
+			print(args.format.format(**item._asdict()))
+		else:
+			print(item)
 		if args.maxResults and i >= args.maxResults:
 			logger.info(f'Exiting after {i} results')
 			break

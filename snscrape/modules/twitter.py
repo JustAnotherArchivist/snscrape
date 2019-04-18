@@ -1,11 +1,22 @@
 import bs4
+import datetime
 import json
 import random
 import logging
 import snscrape.base
+import typing
 
 
 logger = logging.getLogger(__name__)
+
+
+class Tweet(typing.NamedTuple, snscrape.base.Item):
+	url: str
+	date: datetime.datetime
+	content: str
+
+	def __str__(self):
+		return self.url
 
 
 class TwitterSearchScraper(snscrape.base.Scraper):
@@ -24,7 +35,9 @@ class TwitterSearchScraper(snscrape.base.Scraper):
 		for tweet in feed:
 			username = tweet.find('span', 'username').find('b').text
 			tweetID = tweet['data-item-id']
-			yield snscrape.base.URLItem(f'https://twitter.com/{username}/status/{tweetID}')
+			date = datetime.datetime.fromtimestamp(int(tweet.find('a', 'tweet-timestamp').find('span', '_timestamp')['data-time']), datetime.timezone.utc)
+			content = tweet.find('p', 'tweet-text').text
+			yield Tweet(f'https://twitter.com/{username}/status/{tweetID}', date, content)
 
 	def _check_json_callback(self, r):
 		if r.headers.get('content-type') != 'application/json;charset=utf-8':

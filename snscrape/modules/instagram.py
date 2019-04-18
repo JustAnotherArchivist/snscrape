@@ -1,10 +1,24 @@
+import datetime
 import hashlib
 import json
 import logging
 import snscrape.base
+import typing
 
 
 logger = logging.getLogger(__name__)
+
+
+class InstagramPost(typing.NamedTuple, snscrape.base.Item):
+	cleanUrl: str
+	dirtyUrl: str
+	date: datetime.datetime
+	content: str
+	thumbnailUrl: str
+	displayUrl: str
+
+	def __str__(self):
+		return self.cleanUrl
 
 
 class InstagramUserScraper(snscrape.base.Scraper):
@@ -17,7 +31,15 @@ class InstagramUserScraper(snscrape.base.Scraper):
 	def _response_to_items(self, response, username):
 		for node in response['user']['edge_owner_to_timeline_media']['edges']:
 			code = node['node']['shortcode']
-			yield snscrape.base.URLItem(f'https://www.instagram.com/p/{code}/?taken-by={username}') #TODO: Do we want the taken-by parameter in here?
+			cleanUrl = f'https://www.instagram.com/p/{code}/'
+			yield InstagramPost(
+			  cleanUrl = cleanUrl,
+			  dirtyUrl = f'{cleanUrl}?taken-by={username}',
+			  date = datetime.datetime.fromtimestamp(node['node']['taken_at_timestamp'], datetime.timezone.utc),
+			  content = node['node']['edge_media_to_caption']['edges'][0]['node']['text'],
+			  thumbnailUrl = node['node']['thumbnail_src'],
+			  displayUrl = node['node']['display_url'],
+			 )
 
 	def get_items(self):
 		headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
