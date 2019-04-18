@@ -35,7 +35,7 @@ class InstagramCommonScraper(snscrape.base.Scraper):
 			self._responseContainer = 'user'
 			self._edgeXToMedia = 'edge_owner_to_timeline_media'
 			self._pageIDKey = 'id'
-			self._queryHash = '42323d64886122307be10013ad2dcc44'
+			self._queryHash = 'f2405b236d85e8296cf30347c9f08c2a'
 			self._variablesFormat = '{{"id":"{pageID}","first":50,"after":"{endCursor}"}}'
 		elif self._mode == 'Hashtag':
 			self._initialUrl = f'https://www.instagram.com/explore/tags/{self._name}/'
