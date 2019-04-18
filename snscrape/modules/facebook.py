@@ -22,8 +22,10 @@ class FacebookUserScraper(snscrape.base.Scraper):
 		for entry in soup.find_all('div', class_ = '_5pcr'): # also class 'fbUserContent' in 2017 and 'userContentWrapper' in 2019
 			entryA = entry.find('a', class_ = '_5pcq') # There can be more than one, e.g. when a post is shared by another user, but the first one is always the one of this entry.
 			href = entryA.get('href')
-			if not ('/posts/' in href or '/photos/' in href or '/videos/' in href):
-				logger.debug(f'Ignoring odd link: {href}')
+			if not any(x in href for x in ('/posts/', '/photos/', '/videos/', '/permalink.php?', '/events/', '/notes/')):
+				if href != '#' or 'new photo' not in entry.text or 'to the album' not in entry.text:
+					# Don't print a warning if it's a "User added 5 new photos to the album"-type entry, which doesn't have a permalink.
+					logger.warning(f'Ignoring odd link: {href}')
 				continue
 			link = urllib.parse.urljoin(baseUrl, href)
 			if link not in yielded:
