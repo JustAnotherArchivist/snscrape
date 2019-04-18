@@ -40,9 +40,10 @@ def parse_args():
 	subparsers = parser.add_subparsers(dest = 'scraper', help = 'The scraper you want to use')
 	classes = snscrape.base.Scraper.__subclasses__()
 	for cls in classes:
-		subparser = subparsers.add_parser(cls.name, formatter_class = argparse.ArgumentDefaultsHelpFormatter)
-		cls.setup_parser(subparser)
-		subparser.set_defaults(cls = cls)
+		if cls.name is not None:
+			subparser = subparsers.add_parser(cls.name, formatter_class = argparse.ArgumentDefaultsHelpFormatter)
+			cls.setup_parser(subparser)
+			subparser.set_defaults(cls = cls)
 		classes.extend(cls.__subclasses__())
 
 	args = parser.parse_args()
