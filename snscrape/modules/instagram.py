@@ -48,7 +48,6 @@ class InstagramCommonScraper(snscrape.base.Scraper):
 
 	def _response_to_items(self, response):
 		for node in response[self._responseContainer][self._edgeXToMedia]['edges']:
-			print(f'Processing: {node!r}')
 			code = node['node']['shortcode']
 			usernameQuery = '?taken-by=' + node['node']['owner']['username'] if 'username' in node['node']['owner'] else ''
 			cleanUrl = f'https://www.instagram.com/p/{code}/'
