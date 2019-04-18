@@ -31,7 +31,7 @@ class FacebookUserScraper(snscrape.base.Scraper):
 				yielded.add(link)
 
 	def get_items(self):
-		headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
+		headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36', 'Accept-Language': 'en-US,en;q=0.5'}
 
 		nextPageLinkPattern = re.compile(r'^/pages_reaction_units/more/\?page_id=')
 		spuriousForLoopPattern = re.compile(r'^for \(;;\);')
