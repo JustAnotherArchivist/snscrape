@@ -16,15 +16,19 @@ class FacebookUserScraper(snscrape.base.Scraper):
 		super().__init__(**kwargs)
 		self._username = username
 
-	def _soup_to_items(self, soup, username, baseUrl):
+	def _soup_to_items(self, soup, baseUrl):
 		yielded = set()
-		for a in soup.find_all('a', href = re.compile(r'^/[^/]+/(posts|photos|videos)/[^/]*\d')):
-			href = a.get('href')
-			if href.startswith(f'/{username}/'):
-				link = urllib.parse.urljoin(baseUrl, href)
-				if link not in yielded:
-					yield snscrape.base.URLItem(link)
-					yielded.add(link)
+
+		for entry in soup.find_all('div', class_ = '_5pcr'): # also class 'fbUserContent' in 2017 and 'userContentWrapper' in 2019
+			entryA = entry.find('a', class_ = '_5pcq') # There can be more than one, e.g. when a post is shared by another user, but the first one is always the one of this entry.
+			href = entryA.get('href')
+			if not ('/posts/' in href or '/photos/' in href or '/videos/' in href):
+				logger.debug(f'Ignoring odd link: {href}')
+				continue
+			link = urllib.parse.urljoin(baseUrl, href)
+			if link not in yielded:
+				yield snscrape.base.URLItem(link)
+				yielded.add(link)
 
 	def get_items(self):
 		headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
@@ -42,9 +46,7 @@ class FacebookUserScraper(snscrape.base.Scraper):
 			logger.error('Got status code {r.status_code}')
 			return
 		soup = bs4.BeautifulSoup(r.text, 'lxml')
-		username = re.sub(r'^https://www\.facebook\.com/([^/]+)/$', r'\1', soup.find('link').get('href')) # Canonical capitalisation
-		baseUrl = f'https://www.facebook.com/{username}/'
-		yield from self._soup_to_items(soup, username, baseUrl)
+		yield from self._soup_to_items(soup, baseUrl)
 		nextPageLink = soup.find('a', ajaxify = nextPageLinkPattern)
 
 		while nextPageLink:
@@ -65,7 +67,7 @@ class FacebookUserScraper(snscrape.base.Scraper):
 			assert response['domops'][0][2] == False
 			assert '__html' in response['domops'][0][3]
 			soup = bs4.BeautifulSoup(response['domops'][0][3]['__html'], 'lxml')
-			yield from self._soup_to_items(soup, username, baseUrl)
+			yield from self._soup_to_items(soup, baseUrl)
 			nextPageLink = soup.find('a', ajaxify = nextPageLinkPattern)
 
 	@classmethod
