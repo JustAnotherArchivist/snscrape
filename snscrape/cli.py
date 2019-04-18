@@ -1,10 +1,24 @@
 import argparse
+import datetime
 import logging
 import snscrape.base
 import snscrape.modules
 
 
 logger = logging.getLogger(__name__)
+
+
+def parse_datetime_arg(arg):
+	for format in ('%Y-%m-%d %H:%M:%S %z', '%Y-%m-%d %H:%M:%S', '%Y-%m-%d %z', '%Y-%m-%d'):
+		try:
+			d = datetime.datetime.strptime(arg, format)
+		except ValueError:
+			continue
+		else:
+			if d.tzinfo is None:
+				return d.replace(tzinfo = datetime.timezone.utc)
+			return d
+	raise argparse.ArgumentTypeError(f'Cannot parse {arg!r} into a datetime object')
 
 
 def parse_args():
@@ -14,6 +28,7 @@ def parse_args():
 		help = 'When the connection fails or the server returns an unexpected response, retry up to N times with an exponential backoff')
 	parser.add_argument('-n', '--max-results', dest = 'maxResults', type = int, metavar = 'N', help = 'Only return the first N results')
 	parser.add_argument('-f', '--format', dest = 'format', type = str, default = None, help = 'Output format')
+	parser.add_argument('--since', type = parse_datetime_arg, metavar = 'DATETIME', help = 'Only return results newer than DATETIME')
 
 	subparsers = parser.add_subparsers(dest = 'scraper', help = 'The scraper you want to use')
 	classes = snscrape.base.Scraper.__subclasses__()
@@ -58,6 +73,9 @@ def main():
 
 	i = 0
 	for i, item in enumerate(scraper.get_items(), start = 1):
+		if args.since is not None and item.date < args.since:
+			logger.info(f'Exiting due to reaching older results than {args.since}')
+			break
 		if args.format is not None:
 			print(args.format.format(**item._asdict()))
 		else:
