@@ -27,7 +27,7 @@ class TwitterSearchScraper(snscrape.base.Scraper):
 			yield snscrape.base.URLItem(f'https://twitter.com/{username}/status/{tweetID}')
 
 	def _check_json_callback(self, r):
-		if r.headers['content-type'] != 'application/json;charset=utf-8':
+		if r.headers.get('content-type') != 'application/json;charset=utf-8':
 			return False, f'content type is not JSON'
 		return True, None
 
