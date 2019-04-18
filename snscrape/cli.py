@@ -18,6 +18,13 @@ def parse_datetime_arg(arg):
 			if d.tzinfo is None:
 				return d.replace(tzinfo = datetime.timezone.utc)
 			return d
+	# Try treating it as a unix timestamp
+	try:
+		d = datetime.datetime.fromtimestamp(int(arg), datetime.timezone.utc)
+	except ValueError:
+		pass
+	else:
+		return d
 	raise argparse.ArgumentTypeError(f'Cannot parse {arg!r} into a datetime object')
 
 
