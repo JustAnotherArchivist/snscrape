@@ -3,7 +3,7 @@ import setuptools
 
 setuptools.setup(
 	name = 'snscrape',
-	version = '0.1.3',
+	version = '0.2.0',
 	description = 'A social networking service scraper',
 	author = 'JustAnotherArchivist',
 	url = 'https://github.com/JustAnotherArchivist/snscrape',
