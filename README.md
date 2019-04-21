@@ -3,9 +3,11 @@ snscrape is a scraper for social networking services (SNS). It scrapes things li
 
 The following services are currently supported:
 * Facebook: user profiles
-* Google Plus: user profiles
-* Instagram: user profiles
+* Gab: user profile posts, media, and comments
+* Google+: user profiles
+* Instagram: user profiles and hashtags
 * Twitter: user profiles, hashtags, and searches
+* VKontakte: user profiles
 
 ## Requirements
 snscrape requires Python 3.6 or higher. The Python package dependencies are installed automatically when you install snscrape.
@@ -26,7 +28,7 @@ To get all tweets by Jason Scott (@textfiles):
 
 It's usually useful to redirect the output to a file for further processing, e.g. in bash using the filename `@textfiles-tweets`:
 ```bash
-snscrape twitter-user textfiles >@textfiles-tweets
+snscrape twitter-user textfiles >twitter-@textfiles
 ```
 
 To get the latest 100 tweets with the hashtag #archiveteam:
