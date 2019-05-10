@@ -22,9 +22,10 @@ class Tweet(typing.NamedTuple, snscrape.base.Item):
 class TwitterSearchScraper(snscrape.base.Scraper):
 	name = 'twitter-search'
 
-	def __init__(self, query, **kwargs):
+	def __init__(self, query, maxPosition = None, **kwargs):
 		super().__init__(**kwargs)
 		self._query = query
+		self._maxPosition = maxPosition
 
 	def _get_feed_from_html(self, html):
 		soup = bs4.BeautifulSoup(html, 'lxml')
@@ -48,15 +49,19 @@ class TwitterSearchScraper(snscrape.base.Scraper):
 		headers = {'User-Agent': f'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.{random.randint(1, 3500)}.{random.randint(1, 160)} Safari/537.36'}
 
 		# First page
-		logger.info(f'Retrieving search page for {self._query}')
-		r = self._get('https://twitter.com/search', params = {'f': 'tweets', 'vertical': 'default', 'lang': 'en', 'q': self._query, 'src': 'spxr', 'qf': 'off'}, headers = headers)
+		if self._maxPosition is None:
+			logger.info(f'Retrieving search page for {self._query}')
+			r = self._get('https://twitter.com/search', params = {'f': 'tweets', 'vertical': 'default', 'lang': 'en', 'q': self._query, 'src': 'spxr', 'qf': 'off'}, headers = headers)
 
-		feed = self._get_feed_from_html(r.text)
-		if not feed:
-			return
-		newestID = feed[0]['data-item-id']
-		maxPosition = f'TWEET-{feed[-1]["data-item-id"]}-{newestID}'
-		yield from self._feed_to_items(feed)
+			feed = self._get_feed_from_html(r.text)
+			if not feed:
+				return
+			newestID = feed[0]['data-item-id']
+			maxPosition = f'TWEET-{feed[-1]["data-item-id"]}-{newestID}'
+			yield from self._feed_to_items(feed)
+		else:
+			_, _, newestID = self._maxPosition.split('-')
+			maxPosition = self._maxPosition
 
 		while True:
 			logger.info(f'Retrieving scroll page {maxPosition}')
@@ -84,11 +89,12 @@ class TwitterSearchScraper(snscrape.base.Scraper):
 
 	@classmethod
 	def setup_parser(cls, subparser):
+		subparser.add_argument('--max-position', metavar = 'POSITION', dest = 'maxPosition')
 		subparser.add_argument('query', help = 'A Twitter search string')
 
 	@classmethod
 	def from_args(cls, args):
-		return cls(args.query, retries = args.retries)
+		return cls(args.query, maxPosition = args.maxPosition, retries = args.retries)
 
 
 class TwitterUserScraper(TwitterSearchScraper):
