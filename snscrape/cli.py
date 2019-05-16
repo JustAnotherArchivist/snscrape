@@ -1,11 +1,33 @@
 import argparse
+import contextlib
 import datetime
+import inspect
 import logging
 import snscrape.base
 import snscrape.modules
+import tempfile
 
 
 logger = logging.getLogger(__name__)
+
+
+@contextlib.contextmanager
+def _dump_locals_on_exception():
+	try:
+		yield
+	except Exception as e:
+		trace = inspect.trace()
+		if len(trace) >= 3:
+			frameRecord = inspect.trace()[2]
+			locals_ = frameRecord[0].f_locals
+			with tempfile.NamedTemporaryFile('w', prefix = 'snscrape_locals_', delete = False) as fp:
+				fp.write(f'Locals from file "{frameRecord.filename}", line {frameRecord.lineno}, in {frameRecord.function}:\n')
+				fp.write(repr(locals_))
+				if 'self' in locals_ and hasattr(locals_['self'], '__dict__'):
+					fp.write(f'Object dict:\n')
+					fp.write(repr(locals_['self'].__dict__))
+				logger.fatal(f'Local variables logged to {fp.name}')
+		raise
 
 
 def parse_datetime_arg(arg):
@@ -80,16 +102,17 @@ def main():
 	scraper = args.cls.from_args(args)
 
 	i = 0
-	for i, item in enumerate(scraper.get_items(), start = 1):
-		if args.since is not None and item.date < args.since:
-			logger.info(f'Exiting due to reaching older results than {args.since}')
-			break
-		if args.format is not None:
-			print(args.format.format(**item._asdict()))
+	with _dump_locals_on_exception():
+		for i, item in enumerate(scraper.get_items(), start = 1):
+			if args.since is not None and item.date < args.since:
+				logger.info(f'Exiting due to reaching older results than {args.since}')
+				break
+			if args.format is not None:
+				print(args.format.format(**item._asdict()))
+			else:
+				print(item)
+			if args.maxResults and i >= args.maxResults:
+				logger.info(f'Exiting after {i} results')
+				break
 		else:
-			print(item)
-		if args.maxResults and i >= args.maxResults:
-			logger.info(f'Exiting after {i} results')
-			break
-	else:
-		logger.info(f'Done, found {i} results')
+			logger.info(f'Done, found {i} results')
