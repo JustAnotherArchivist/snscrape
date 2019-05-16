@@ -40,6 +40,7 @@ class TwitterSearchScraper(snscrape.base.Scraper):
 		for tweet in feed:
 			username = tweet.find('span', 'username').find('b').text
 			tweetID = tweet['data-item-id']
+			url = f'https://twitter.com/{username}/status/{tweetID}'
 			date = datetime.datetime.fromtimestamp(int(tweet.find('a', 'tweet-timestamp').find('span', '_timestamp')['data-time']), datetime.timezone.utc)
 			contentP = tweet.find('p', 'tweet-text')
 			content = contentP.text
@@ -47,7 +48,10 @@ class TwitterSearchScraper(snscrape.base.Scraper):
 			tcooutlinks = []
 			for a in contentP.find_all('a'):
 				if a.has_attr('href') and not a['href'].startswith('/') and (not a.has_attr('class') or 'u-hidden' not in a['class']):
-					outlinks.append(a['data-expanded-url'])
+					if a.has_attr('data-expanded-url'):
+						outlinks.append(a['data-expanded-url'])
+					else:
+						logger.warning(f'Ignoring link without expanded URL on {url}: {a["href"]}')
 					tcooutlinks.append(a['href'])
 			card = tweet.find('div', 'card2')
 			if card and 'has-autoplayable-media' not in card['class']:
@@ -57,7 +61,7 @@ class TwitterSearchScraper(snscrape.base.Scraper):
 						tcooutlinks.append(div['data-card-url'])
 			outlinks = list(dict.fromkeys(outlinks)) # Deduplicate in case the same link was shared more than once within this tweet; may change order on Python 3.6 or older
 			tcooutlinks = list(dict.fromkeys(tcooutlinks))
-			yield Tweet(f'https://twitter.com/{username}/status/{tweetID}', date, content, outlinks, ' '.join(outlinks), tcooutlinks, ' '.join(tcooutlinks))
+			yield Tweet(url, date, content, outlinks, ' '.join(outlinks), tcooutlinks, ' '.join(tcooutlinks))
 
 	def _check_json_callback(self, r):
 		if r.headers.get('content-type') != 'application/json;charset=utf-8':
