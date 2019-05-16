@@ -75,9 +75,9 @@ class TwitterSearchScraper(snscrape.base.Scraper):
 			feed = self._get_feed_from_html(r.text)
 			if not feed:
 				return
+			yield from self._feed_to_items(feed)
 			newestID = feed[0]['data-item-id']
 			maxPosition = f'TWEET-{feed[-1]["data-item-id"]}-{newestID}'
-			yield from self._feed_to_items(feed)
 		else:
 			_, _, newestID = self._maxPosition.split('-')
 			maxPosition = self._maxPosition
@@ -103,8 +103,8 @@ class TwitterSearchScraper(snscrape.base.Scraper):
 			feed = self._get_feed_from_html(json.loads(r.text)['items_html'])
 			if not feed:
 				return
-			maxPosition = f'TWEET-{feed[-1]["data-item-id"]}-{newestID}'
 			yield from self._feed_to_items(feed)
+			maxPosition = f'TWEET-{feed[-1]["data-item-id"]}-{newestID}'
 
 	@classmethod
 	def setup_parser(cls, subparser):
