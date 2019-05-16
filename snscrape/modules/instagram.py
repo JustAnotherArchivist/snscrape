@@ -73,7 +73,7 @@ class InstagramCommonScraper(snscrape.base.Scraper):
 			return
 		jsonData = r.text.split('<script type="text/javascript">window._sharedData = ')[1].split(';</script>')[0] # May throw an IndexError if Instagram changes something again; we just let that bubble.
 		response = json.loads(jsonData)
-		rhxGis = response['rhx_gis']
+		rhxGis = response['rhx_gis'] if 'rhx_gis' in response else ''
 		if response['entry_data'][self._pageName][0]['graphql'][self._responseContainer][self._edgeXToMedia]['count'] == 0:
 			logger.info(f'{self._mode} has no posts')
 			return
