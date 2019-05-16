@@ -23,6 +23,7 @@ def _dump_locals_on_exception():
 			with tempfile.NamedTemporaryFile('w', prefix = 'snscrape_locals_', delete = False) as fp:
 				fp.write(f'Locals from file "{frameRecord.filename}", line {frameRecord.lineno}, in {frameRecord.function}:\n')
 				fp.write(repr(locals_))
+				fp.write('\n')
 				if 'self' in locals_ and hasattr(locals_['self'], '__dict__'):
 					fp.write(f'Object dict:\n')
 					fp.write(repr(locals_['self'].__dict__))
