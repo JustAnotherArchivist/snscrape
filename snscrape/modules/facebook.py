@@ -57,6 +57,13 @@ class FacebookUserScraper(snscrape.base.Scraper):
 	def _soup_to_items(self, soup, baseUrl):
 		for entry in soup.find_all('div', class_ = '_5pcr'): # also class 'fbUserContent' in 2017 and 'userContentWrapper' in 2019
 			entryA = entry.find('a', class_ = '_5pcq') # There can be more than one, e.g. when a post is shared by another user, but the first one is always the one of this entry.
+			if not entryA:
+				mediaSetA = entry.find('a', class_ = '_17z-')
+				if mediaSetA and mediaSetA.has_attr('href'):
+					logger.warning(f'Ignoring link-less media set: {mediaSetA["href"]}')
+				else:
+					logger.warning(f'Ignoring entry without a link after {cleanUrl}')
+				continue
 			href = entryA.get('href')
 			if not any(x in href for x in ('/posts/', '/photos/', '/videos/', '/permalink.php?', '/events/', '/notes/')):
 				if href != '#' or 'new photo' not in entry.text or 'to the album' not in entry.text:
