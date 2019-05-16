@@ -18,15 +18,17 @@ def _dump_locals_on_exception():
 	except Exception as e:
 		trace = inspect.trace()
 		if len(trace) >= 3:
-			frameRecord = inspect.trace()[2]
-			locals_ = frameRecord[0].f_locals
 			with tempfile.NamedTemporaryFile('w', prefix = 'snscrape_locals_', delete = False) as fp:
-				fp.write(f'Locals from file "{frameRecord.filename}", line {frameRecord.lineno}, in {frameRecord.function}:\n')
-				fp.write(repr(locals_))
-				fp.write('\n')
-				if 'self' in locals_ and hasattr(locals_['self'], '__dict__'):
-					fp.write(f'Object dict:\n')
-					fp.write(repr(locals_['self'].__dict__))
+				for i in range(2, len(trace)):
+					frameRecord = trace[i]
+					locals_ = frameRecord[0].f_locals
+					fp.write(f'Locals from file "{frameRecord.filename}", line {frameRecord.lineno}, in {frameRecord.function}:\n')
+					fp.write(repr(locals_))
+					fp.write('\n')
+					if 'self' in locals_ and hasattr(locals_['self'], '__dict__'):
+						fp.write(f'Object dict:\n')
+						fp.write(repr(locals_['self'].__dict__))
+					fp.write('\n\n')
 				logger.fatal(f'Local variables logged to {fp.name}')
 		raise
 
