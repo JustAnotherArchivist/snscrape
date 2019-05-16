@@ -14,6 +14,10 @@ class Tweet(typing.NamedTuple, snscrape.base.Item):
 	url: str
 	date: datetime.datetime
 	content: str
+	outlinks: list
+	outlinksss: str
+	tcooutlinks: list
+	tcooutlinksss: str
 
 	def __str__(self):
 		return self.url
@@ -37,8 +41,23 @@ class TwitterSearchScraper(snscrape.base.Scraper):
 			username = tweet.find('span', 'username').find('b').text
 			tweetID = tweet['data-item-id']
 			date = datetime.datetime.fromtimestamp(int(tweet.find('a', 'tweet-timestamp').find('span', '_timestamp')['data-time']), datetime.timezone.utc)
-			content = tweet.find('p', 'tweet-text').text
-			yield Tweet(f'https://twitter.com/{username}/status/{tweetID}', date, content)
+			contentP = tweet.find('p', 'tweet-text')
+			content = contentP.text
+			outlinks = []
+			tcooutlinks = []
+			for a in contentP.find_all('a'):
+				if a.has_attr('href') and not a['href'].startswith('/') and (not a.has_attr('class') or 'u-hidden' not in a['class']):
+					outlinks.append(a['data-expanded-url'])
+					tcooutlinks.append(a['href'])
+			card = tweet.find('div', 'card2')
+			if card and 'has-autoplayable-media' not in card['class']:
+				for div in card.find_all('div'):
+					if div.has_attr('data-card-url'):
+						outlinks.append(div['data-card-url'])
+						tcooutlinks.append(div['data-card-url'])
+			outlinks = list(dict.fromkeys(outlinks)) # Deduplicate in case the same link was shared more than once within this tweet; may change order on Python 3.6 or older
+			tcooutlinks = list(dict.fromkeys(tcooutlinks))
+			yield Tweet(f'https://twitter.com/{username}/status/{tweetID}', date, content, outlinks, ' '.join(outlinks), tcooutlinks, ' '.join(tcooutlinks))
 
 	def _check_json_callback(self, r):
 		if r.headers.get('content-type') != 'application/json;charset=utf-8':
