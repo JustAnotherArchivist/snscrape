@@ -19,8 +19,10 @@ def _dump_locals_on_exception():
 		trace = inspect.trace()
 		if len(trace) >= 3:
 			with tempfile.NamedTemporaryFile('w', prefix = 'snscrape_locals_', delete = False) as fp:
-				for i in range(2, len(trace)):
-					frameRecord = trace[i]
+				for frameRecord in trace[2:]:
+					module = inspect.getmodule(frameRecord[0])
+					if not module.__name__.startswith('snscrape.') and module.__name__ != 'snscrape':
+						continue
 					locals_ = frameRecord[0].f_locals
 					fp.write(f'Locals from file "{frameRecord.filename}", line {frameRecord.lineno}, in {frameRecord.function}:\n')
 					fp.write(repr(locals_))
