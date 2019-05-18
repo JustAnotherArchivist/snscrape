@@ -31,10 +31,17 @@ class TwitterSearchScraper(snscrape.base.Scraper):
 		self._query = query
 		self._maxPosition = maxPosition
 
-	def _get_feed_from_html(self, html):
+	def _get_feed_from_html(self, html, withMinPosition):
 		soup = bs4.BeautifulSoup(html, 'lxml')
 		feed = soup.find_all('li', 'js-stream-item')
-		return feed
+		if withMinPosition:
+			streamContainer = soup.find('div', 'stream-container')
+			if not streamContainer or not streamContainer.has_attr('data-min-position'):
+				raise RuntimeError('Unable to find min-position')
+			minPosition = streamContainer['data-min-position']
+		else:
+			minPosition = None
+		return feed, minPosition
 
 	def _feed_to_items(self, feed):
 		for tweet in feed:
@@ -76,14 +83,11 @@ class TwitterSearchScraper(snscrape.base.Scraper):
 			logger.info(f'Retrieving search page for {self._query}')
 			r = self._get('https://twitter.com/search', params = {'f': 'tweets', 'vertical': 'default', 'lang': 'en', 'q': self._query, 'src': 'spxr', 'qf': 'off'}, headers = headers)
 
-			feed = self._get_feed_from_html(r.text)
+			feed, maxPosition = self._get_feed_from_html(r.text, True)
 			if not feed:
 				return
 			yield from self._feed_to_items(feed)
-			newestID = feed[0]['data-item-id']
-			maxPosition = f'TWEET-{feed[-1]["data-item-id"]}-{newestID}'
 		else:
-			_, _, newestID = self._maxPosition.split('-')
 			maxPosition = self._maxPosition
 
 		while True:
@@ -104,11 +108,12 @@ class TwitterSearchScraper(snscrape.base.Scraper):
 				headers = headers,
 				responseOkCallback = self._check_json_callback)
 
-			feed = self._get_feed_from_html(json.loads(r.text)['items_html'])
+			obj = json.loads(r.text)
+			feed, _ = self._get_feed_from_html(obj['items_html'], False)
 			if not feed:
 				return
 			yield from self._feed_to_items(feed)
-			maxPosition = f'TWEET-{feed[-1]["data-item-id"]}-{newestID}'
+			maxPosition = obj['min_position']
 
 	@classmethod
 	def setup_parser(cls, subparser):
