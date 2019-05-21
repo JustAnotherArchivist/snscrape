@@ -48,18 +48,31 @@ class TwitterSearchScraper(snscrape.base.Scraper):
 			username = tweet.find('span', 'username').find('b').text
 			tweetID = tweet['data-item-id']
 			url = f'https://twitter.com/{username}/status/{tweetID}'
-			date = datetime.datetime.fromtimestamp(int(tweet.find('a', 'tweet-timestamp').find('span', '_timestamp')['data-time']), datetime.timezone.utc)
+
+			date = None
+			timestampA = tweet.find('a', 'tweet-timestamp')
+			if timestampA:
+				timestampSpan = timestampA.find('span', '_timestamp')
+				if timestampSpan and timestampSpan.has_attr('data-time'):
+					date = datetime.datetime.fromtimestamp(int(timestampSpan['data-time']), datetime.timezone.utc)
+			if not date:
+				logger.warning(f'Failed to extract date for {url}')
+
 			contentP = tweet.find('p', 'tweet-text')
-			content = contentP.text
+			content = None
 			outlinks = []
 			tcooutlinks = []
-			for a in contentP.find_all('a'):
-				if a.has_attr('href') and not a['href'].startswith('/') and (not a.has_attr('class') or 'u-hidden' not in a['class']):
-					if a.has_attr('data-expanded-url'):
-						outlinks.append(a['data-expanded-url'])
-					else:
-						logger.warning(f'Ignoring link without expanded URL on {url}: {a["href"]}')
-					tcooutlinks.append(a['href'])
+			if contentP:
+				content = contentP.text
+				for a in contentP.find_all('a'):
+					if a.has_attr('href') and not a['href'].startswith('/') and (not a.has_attr('class') or 'u-hidden' not in a['class']):
+						if a.has_attr('data-expanded-url'):
+							outlinks.append(a['data-expanded-url'])
+						else:
+							logger.warning(f'Ignoring link without expanded URL on {url}: {a["href"]}')
+						tcooutlinks.append(a['href'])
+			else:
+				logger.warning(f'Failed to extract content for {url}')
 			card = tweet.find('div', 'card2')
 			if card and 'has-autoplayable-media' not in card['class']:
 				for div in card.find_all('div'):
