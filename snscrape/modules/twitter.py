@@ -37,8 +37,14 @@ class TwitterSearchScraper(snscrape.base.Scraper):
 		if withMinPosition:
 			streamContainer = soup.find('div', 'stream-container')
 			if not streamContainer or not streamContainer.has_attr('data-min-position'):
-				raise RuntimeError('Unable to find min-position')
-			minPosition = streamContainer['data-min-position']
+				if soup.find('div', 'SearchEmptyTimeline'):
+					# No results found
+					minPosition = None
+				else:
+					# Unknown error condition
+					raise RuntimeError('Unable to find min-position')
+			else:
+				minPosition = streamContainer['data-min-position']
 		else:
 			minPosition = None
 		return feed, minPosition
@@ -103,6 +109,9 @@ class TwitterSearchScraper(snscrape.base.Scraper):
 			yield from self._feed_to_items(feed)
 		else:
 			maxPosition = self._maxPosition
+
+		if not maxPosition:
+			return
 
 		while True:
 			logger.info(f'Retrieving scroll page {maxPosition}')
