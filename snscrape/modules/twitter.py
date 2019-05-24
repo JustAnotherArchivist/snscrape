@@ -98,6 +98,7 @@ class TwitterSearchScraper(snscrape.base.Scraper):
 
 			feed, maxPosition = self._get_feed_from_html(r.text, True)
 			if not feed:
+				logger.warning(f'No results for {self._query}')
 				return
 			yield from self._feed_to_items(feed)
 		else:
