@@ -66,8 +66,13 @@ class FacebookUserScraper(snscrape.base.Scraper):
 				continue
 			href = entryA.get('href')
 			if not any(x in href for x in ('/posts/', '/photos/', '/videos/', '/permalink.php?', '/events/', '/notes/')):
-				if href != '#' or 'new photo' not in entry.text or 'to the album' not in entry.text:
+				if href == '#' and 'new photo' in entry.text and 'to the album' in entry.text:
 					# Don't print a warning if it's a "User added 5 new photos to the album"-type entry, which doesn't have a permalink.
+					pass
+				elif href.startswith('/business/help/788160621327601/?'):
+					# Skip the help article about branded content
+					pass
+				else:
 					logger.warning(f'Ignoring odd link: {href}')
 				continue
 			dirtyUrl = urllib.parse.urljoin(baseUrl, href)
