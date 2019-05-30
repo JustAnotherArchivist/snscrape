@@ -60,6 +60,14 @@ class InstagramCommonScraper(snscrape.base.Scraper):
 			  displayUrl = node['node']['display_url'],
 			 )
 
+	def _check_json_callback(self, r):
+		try:
+			obj = json.loads(r.text)
+		except json.JSONDecodeError:
+			return False, 'invalid JSON'
+		r._snscrape_json_obj = obj
+		return True, None
+
 	def get_items(self):
 		headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
 
@@ -91,13 +99,13 @@ class InstagramCommonScraper(snscrape.base.Scraper):
 			variables = self._variablesFormat.format(**locals())
 			headers['X-Requested-With'] = 'XMLHttpRequest'
 			headers['X-Instagram-GIS'] = hashlib.md5(f'{rhxGis}:{variables}'.encode('utf-8')).hexdigest()
-			r = self._get(f'https://www.instagram.com/graphql/query/?query_hash={self._queryHash}&variables={variables}', headers = headers)
+			r = self._get(f'https://www.instagram.com/graphql/query/?query_hash={self._queryHash}&variables={variables}', headers = headers, responseOkCallback = self._check_json_callback)
 
 			if r.status_code != 200:
 				logger.error(f'Got status code {r.status_code}')
 				return
 
-			response = json.loads(r.text)
+			response = r._snscrape_json_obj
 			if not response['data'][self._responseContainer][self._edgeXToMedia]['edges']:
 				return
 			yield from self._response_to_items(response['data'])
