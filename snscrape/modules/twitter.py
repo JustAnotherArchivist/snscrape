@@ -133,9 +133,10 @@ class TwitterSearchScraper(snscrape.base.Scraper):
 
 			obj = json.loads(r.text)
 			feed, _ = self._get_feed_from_html(obj['items_html'], False)
-			if not feed:
+			if feed:
+				yield from self._feed_to_items(feed)
+			if obj['min_position'] == maxPosition:
 				return
-			yield from self._feed_to_items(feed)
 			maxPosition = obj['min_position']
 
 	@classmethod
