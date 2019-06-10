@@ -60,6 +60,17 @@ class InstagramCommonScraper(snscrape.base.Scraper):
 			  displayUrl = node['node']['display_url'],
 			 )
 
+	def _check_initial_page_callback(self, r):
+		if r.status_code != 200:
+			return True, None
+		jsonData = r.text.split('<script type="text/javascript">window._sharedData = ')[1].split(';</script>')[0] # May throw an IndexError if Instagram changes something again; we just let that bubble.
+		try:
+			obj = json.loads(jsonData)
+		except json.JSONDecodeError:
+			return False, 'invalid JSON'
+		r._snscrape_json_obj = obj
+		return True, None
+
 	def _check_json_callback(self, r):
 		try:
 			obj = json.loads(r.text)
@@ -72,15 +83,14 @@ class InstagramCommonScraper(snscrape.base.Scraper):
 		headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
 
 		logger.info('Retrieving initial data')
-		r = self._get(self._initialUrl, headers = headers)
+		r = self._get(self._initialUrl, headers = headers, responseOkCallback = self._check_initial_page_callback)
 		if r.status_code == 404:
 			logger.warning(f'{self._mode} does not exist')
 			return
 		elif r.status_code != 200:
 			logger.error(f'Got status code {r.status_code}')
 			return
-		jsonData = r.text.split('<script type="text/javascript">window._sharedData = ')[1].split(';</script>')[0] # May throw an IndexError if Instagram changes something again; we just let that bubble.
-		response = json.loads(jsonData)
+		response = r._snscrape_json_obj
 		rhxGis = response['rhx_gis'] if 'rhx_gis' in response else ''
 		if response['entry_data'][self._pageName][0]['graphql'][self._responseContainer][self._edgeXToMedia]['count'] == 0:
 			logger.info(f'{self._mode} has no posts')
