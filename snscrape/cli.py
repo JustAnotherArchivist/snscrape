@@ -3,12 +3,58 @@ import contextlib
 import datetime
 import inspect
 import logging
+import requests.models
 import snscrape.base
 import snscrape.modules
 import tempfile
 
 
 logger = logging.getLogger(__name__)
+
+
+def _requests_preparedrequest_repr(name, request):
+	ret = []
+	ret.append(repr(request))
+	ret.append(f'\n  {name}.method = {request.method}')
+	ret.append(f'\n  {name}.url = {request.url}')
+	ret.append(f'\n  {name}.headers = \\')
+	for field in request.headers:
+		ret.append(f'\n    {field} = {_repr("_", request.headers[field])}')
+	if request.body:
+		ret.append(f'\n  {name}.body = ')
+		ret.append(_repr('_', request.body).replace('\n', '\n  '))
+	return ''.join(ret)
+
+
+def _requests_response_repr(name, response, withHistory = True):
+	ret = []
+	ret.append(repr(response))
+	ret.append(f'\n  {name}.url = {response.url}')
+	ret.append(f'\n  {name}.request = ')
+	ret.append(_repr('_', response.request).replace('\n', '\n  '))
+	if withHistory and response.history:
+		ret.append(f'\n  {name}.history = [')
+		for previousResponse in response.history:
+			ret.append(f'\n    ')
+			ret.append(_requests_response_repr('_', previousResponse, withHistory = False).replace('\n', '\n    '))
+		ret.append('\n  ]')
+	ret.append(f'\n  {name}.status_code = {response.status_code}')
+	ret.append(f'\n  {name}.headers = \\')
+	for field in response.headers:
+		ret.append(f'\n    {field} = {_repr("_", response.headers[field])}')
+	ret.append(f'\n  {name}.content = {_repr("_", response.content)}')
+	return ''.join(ret)
+
+
+def _repr(name, value):
+	if type(value) is requests.models.Response:
+		return _requests_response_repr(name, value)
+	if type(value) is requests.models.PreparedRequest:
+		return _requests_preparedrequest_repr(name, value)
+	valueRepr = repr(value)
+	if '\n' in valueRepr:
+		return ''.join(['\\\n  ', valueRepr.replace('\n', '\n  ')])
+	return valueRepr
 
 
 @contextlib.contextmanager
@@ -25,7 +71,12 @@ def _dump_locals_on_exception():
 						continue
 					locals_ = frameRecord[0].f_locals
 					fp.write(f'Locals from file "{frameRecord.filename}", line {frameRecord.lineno}, in {frameRecord.function}:\n')
-					fp.write(repr(locals_))
+					for variableName in locals_:
+						variable = locals_[variableName]
+						varRepr = _repr(variableName, variable)
+						fp.write(f'  {variableName} {type(variable)} = ')
+						fp.write(varRepr.replace('\n', '\n  '))
+						fp.write('\n')
 					fp.write('\n')
 					if 'self' in locals_ and hasattr(locals_['self'], '__dict__'):
 						fp.write(f'Object dict:\n')
