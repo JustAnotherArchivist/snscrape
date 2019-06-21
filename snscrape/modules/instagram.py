@@ -44,7 +44,7 @@ class InstagramCommonScraper(snscrape.base.Scraper):
 			self._edgeXToMedia = 'edge_hashtag_to_media'
 			self._pageIDKey = 'name'
 			self._queryHash = 'f92f56d47dc7a55b606908374b43a314'
-			self._variablesFormat = '{{"tag_name":"{pageID}","show_ranked":false,"first":10,"after":"{endCursor}"}}'
+			self._variablesFormat = '{{"tag_name":"{pageID}","first":50,"after":"{endCursor}"}}'
 		elif self._mode == 'Location':
 			self._initialUrl = f'https://www.instagram.com/explore/locations/{self._name}/'
 			self._pageName = 'LocationsPage'
