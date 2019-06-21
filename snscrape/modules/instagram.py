@@ -24,7 +24,7 @@ class InstagramPost(typing.NamedTuple, snscrape.base.Item):
 class InstagramCommonScraper(snscrape.base.Scraper):
 	def __init__(self, mode, name, **kwargs):
 		super().__init__(**kwargs)
-		if mode not in ('User', 'Hashtag'):
+		if mode not in ('User', 'Hashtag', 'Location'):
 			raise ValueError('Invalid mode')
 		self._mode = mode
 		self._name = name
@@ -45,6 +45,14 @@ class InstagramCommonScraper(snscrape.base.Scraper):
 			self._pageIDKey = 'name'
 			self._queryHash = 'f92f56d47dc7a55b606908374b43a314'
 			self._variablesFormat = '{{"tag_name":"{pageID}","show_ranked":false,"first":10,"after":"{endCursor}"}}'
+		elif self._mode == 'Location':
+			self._initialUrl = f'https://www.instagram.com/explore/locations/{self._name}/'
+			self._pageName = 'LocationsPage'
+			self._responseContainer = 'location'
+			self._edgeXToMedia = 'edge_location_to_media'
+			self._pageIDKey = 'id'
+			self._queryHash = '1b84447a4d8b6d6d0426fefb34514485'
+			self._variablesFormat = '{{"id":"{pageID}","first":50,"after":"{endCursor}"}}'
 
 	def _response_to_items(self, response):
 		for node in response[self._responseContainer][self._edgeXToMedia]['edges']:
@@ -146,3 +154,15 @@ class InstagramHashtagScraper(InstagramCommonScraper):
 	@classmethod
 	def from_args(cls, args):
 		return cls('Hashtag', args.hashtag, retries = args.retries)
+
+
+class InstagramLocationScraper(InstagramCommonScraper):
+	name = 'instagram-location'
+
+	@classmethod
+	def setup_parser(cls, subparser):
+		subparser.add_argument('locationid', help = 'An Instagram location ID', type = int)
+
+	@classmethod
+	def from_args(cls, args):
+		return cls('Location', args.locationid, retries = args.retries)
