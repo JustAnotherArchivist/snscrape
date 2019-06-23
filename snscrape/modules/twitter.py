@@ -14,6 +14,8 @@ class Tweet(typing.NamedTuple, snscrape.base.Item):
 	url: str
 	date: datetime.datetime
 	content: str
+	id: int
+	username: str
 	outlinks: list
 	outlinksss: str
 	tcooutlinks: list
@@ -87,7 +89,7 @@ class TwitterSearchScraper(snscrape.base.Scraper):
 						tcooutlinks.append(div['data-card-url'])
 			outlinks = list(dict.fromkeys(outlinks)) # Deduplicate in case the same link was shared more than once within this tweet; may change order on Python 3.6 or older
 			tcooutlinks = list(dict.fromkeys(tcooutlinks))
-			yield Tweet(url, date, content, outlinks, ' '.join(outlinks), tcooutlinks, ' '.join(tcooutlinks))
+			yield Tweet(url, date, content, tweetID, username, outlinks, ' '.join(outlinks), tcooutlinks, ' '.join(tcooutlinks))
 
 	def _check_json_callback(self, r):
 		if r.headers.get('content-type') != 'application/json;charset=utf-8':
