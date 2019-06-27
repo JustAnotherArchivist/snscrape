@@ -16,6 +16,8 @@ class FacebookPost(typing.NamedTuple, snscrape.base.Item):
 	dirtyUrl: str
 	date: datetime.datetime
 	content: typing.Optional[str]
+	outlinks: list
+	outlinksss: str
 
 	def __str__(self):
 		return self.cleanUrl
@@ -82,7 +84,21 @@ class FacebookUserScraper(snscrape.base.Scraper):
 				content = contentDiv.text
 			else:
 				content = None
-			yield FacebookPost(cleanUrl = self._clean_url(dirtyUrl), dirtyUrl = dirtyUrl, date = date, content = content)
+			outlinks = []
+			for a in entry.find_all('a'):
+				if not a.has_attr('href'):
+					continue
+				href = a.get('href')
+				if not href.startswith('https://l.facebook.com/l.php?'):
+					continue
+				query = urllib.parse.parse_qs(urllib.parse.urlparse(href).query)
+				if 'u' not in query or len(query['u']) != 1:
+					logger.warning(f'Ignoring odd outlink: {href}')
+					continue
+				outlink = query['u'][0]
+				if outlink.startswith('http://') or outlink.startswith('https://') and outlink not in outlinks:
+					outlinks.append(outlink)
+			yield FacebookPost(cleanUrl = self._clean_url(dirtyUrl), dirtyUrl = dirtyUrl, date = date, content = content, outlinks = outlinks, outlinksss = ' '.join(outlinks))
 
 	def get_items(self):
 		headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36', 'Accept-Language': 'en-US,en;q=0.5'}
