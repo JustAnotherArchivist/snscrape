@@ -82,8 +82,8 @@ class InstagramCommonScraper(snscrape.base.Scraper):
 	def _check_json_callback(self, r):
 		try:
 			obj = json.loads(r.text)
-		except json.JSONDecodeError:
-			return False, 'invalid JSON'
+		except json.JSONDecodeError as e:
+			return False, f'invalid JSON ({e!r})'
 		r._snscrape_json_obj = obj
 		return True, None
 
