@@ -80,6 +80,8 @@ class InstagramCommonScraper(snscrape.base.Scraper):
 		return True, None
 
 	def _check_json_callback(self, r):
+		if r.status_code != 200:
+			return False, f'status code {r.status_code}'
 		try:
 			obj = json.loads(r.text)
 		except json.JSONDecodeError as e:
