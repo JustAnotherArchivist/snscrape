@@ -23,13 +23,7 @@ class FacebookPost(typing.NamedTuple, snscrape.base.Item):
 		return self.cleanUrl
 
 
-class FacebookUserScraper(snscrape.base.Scraper):
-	name = 'facebook-user'
-
-	def __init__(self, username, **kwargs):
-		super().__init__(**kwargs)
-		self._username = username
-
+class FacebookCommonScraper(snscrape.base.Scraper):
 	def _clean_url(self, dirtyUrl):
 		u = urllib.parse.urlparse(dirtyUrl)
 		if u.path == '/permalink.php':
@@ -56,7 +50,21 @@ class FacebookUserScraper(snscrape.base.Scraper):
 			return dirtyUrl
 		return urllib.parse.urlunsplit(clean)
 
-	def _soup_to_items(self, soup, baseUrl):
+	def _is_odd_link(self, href, entryText, mode):
+		# Returns (isOddLink: bool, warn: bool|None)
+		if mode == 'user':
+			if not any(x in href for x in ('/posts/', '/photos/', '/videos/', '/permalink.php?', '/events/', '/notes/')):
+				if href == '#' and 'new photo' in entryText and 'to the album' in entryText:
+					# Don't print a warning if it's a "User added 5 new photos to the album"-type entry, which doesn't have a permalink.
+					return True, False
+				elif href.startswith('/business/help/788160621327601/?'):
+					# Skip the help article about branded content
+					return True, False
+				else:
+					return True, True
+			return False, None
+
+	def _soup_to_items(self, soup, baseUrl, mode):
 		for entry in soup.find_all('div', class_ = '_5pcr'): # also class 'fbUserContent' in 2017 and 'userContentWrapper' in 2019
 			entryA = entry.find('a', class_ = '_5pcq') # There can be more than one, e.g. when a post is shared by another user, but the first one is always the one of this entry.
 			if not entryA:
@@ -67,14 +75,9 @@ class FacebookUserScraper(snscrape.base.Scraper):
 					logger.warning(f'Ignoring entry without a link after {cleanUrl}')
 				continue
 			href = entryA.get('href')
-			if not any(x in href for x in ('/posts/', '/photos/', '/videos/', '/permalink.php?', '/events/', '/notes/')):
-				if href == '#' and 'new photo' in entry.text and 'to the album' in entry.text:
-					# Don't print a warning if it's a "User added 5 new photos to the album"-type entry, which doesn't have a permalink.
-					pass
-				elif href.startswith('/business/help/788160621327601/?'):
-					# Skip the help article about branded content
-					pass
-				else:
+			oddLink, warn = self._is_odd_link(href, entry.text, mode)
+			if oddLink:
+				if warn:
 					logger.warning(f'Ignoring odd link: {href}')
 				continue
 			dirtyUrl = urllib.parse.urljoin(baseUrl, href)
@@ -100,6 +103,14 @@ class FacebookUserScraper(snscrape.base.Scraper):
 					outlinks.append(outlink)
 			yield FacebookPost(cleanUrl = self._clean_url(dirtyUrl), dirtyUrl = dirtyUrl, date = date, content = content, outlinks = outlinks, outlinksss = ' '.join(outlinks))
 
+
+class FacebookUserScraper(FacebookCommonScraper):
+	name = 'facebook-user'
+
+	def __init__(self, username, **kwargs):
+		super().__init__(**kwargs)
+		self._username = username
+
 	def get_items(self):
 		headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36', 'Accept-Language': 'en-US,en;q=0.5'}
 
@@ -116,7 +127,7 @@ class FacebookUserScraper(snscrape.base.Scraper):
 			logger.error('Got status code {r.status_code}')
 			return
 		soup = bs4.BeautifulSoup(r.text, 'lxml')
-		yield from self._soup_to_items(soup, baseUrl)
+		yield from self._soup_to_items(soup, baseUrl, 'user')
 		nextPageLink = soup.find('a', ajaxify = nextPageLinkPattern)
 
 		while nextPageLink:
@@ -137,7 +148,7 @@ class FacebookUserScraper(snscrape.base.Scraper):
 			assert response['domops'][0][2] == False
 			assert '__html' in response['domops'][0][3]
 			soup = bs4.BeautifulSoup(response['domops'][0][3]['__html'], 'lxml')
-			yield from self._soup_to_items(soup, baseUrl)
+			yield from self._soup_to_items(soup, baseUrl, 'user')
 			nextPageLink = soup.find('a', ajaxify = nextPageLinkPattern)
 
 	@classmethod
