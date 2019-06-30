@@ -30,6 +30,10 @@ class FacebookCommonScraper(snscrape.base.Scraper):
 			# Retain only story_fbid and id parameters
 			q = urllib.parse.parse_qs(u.query)
 			clean = (u.scheme, u.netloc, u.path, urllib.parse.urlencode((('story_fbid', q['story_fbid'][0]), ('id', q['id'][0]))), '')
+		elif u.path == '/photo.php':
+			# Retain only the fbid parameter
+			q = urllib.parse.parse_qs(u.query)
+			clean = (u.scheme, u.netloc, u.path, urllib.parse.urlencode((('fbid', q['fbid'][0]),)), '')
 		elif u.path.split('/')[2] == 'posts' or u.path.startswith('/events/') or u.path.startswith('/notes/'):
 			# No manipulation of the path needed, but strip the query string
 			clean = (u.scheme, u.netloc, u.path, '', '')
@@ -53,7 +57,7 @@ class FacebookCommonScraper(snscrape.base.Scraper):
 	def _is_odd_link(self, href, entryText, mode):
 		# Returns (isOddLink: bool, warn: bool|None)
 		if mode == 'user':
-			if not any(x in href for x in ('/posts/', '/photos/', '/videos/', '/permalink.php?', '/events/', '/notes/')):
+			if not any(x in href for x in ('/posts/', '/photos/', '/videos/', '/permalink.php?', '/events/', '/notes/', '/photo.php?')):
 				if href == '#' and 'new photo' in entryText and 'to the album' in entryText:
 					# Don't print a warning if it's a "User added 5 new photos to the album"-type entry, which doesn't have a permalink.
 					return True, False
