@@ -186,6 +186,11 @@ class FacebookGroupScraper(FacebookCommonScraper):
 		elif r.status_code != 200:
 			logger.error('Got status code {r.status_code}')
 			return
+
+		if 'content:{pagelet_group_mall:{container_id:"' not in r.text:
+			logger.error('Code container ID marker not found (does the group exist?)')
+			return
+
 		soup = bs4.BeautifulSoup(r.text, 'lxml')
 
 		# Posts are inside an HTML comment in two code tags with IDs listed in JS...
