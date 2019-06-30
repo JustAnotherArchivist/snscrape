@@ -63,6 +63,10 @@ class FacebookCommonScraper(snscrape.base.Scraper):
 				else:
 					return True, True
 			return False, None
+		elif mode == 'group':
+			if not re.match(r'^/groups/[^/]+/permalink/\d+/(\?|$)', href):
+				return True, True
+			return False, None
 
 	def _soup_to_items(self, soup, baseUrl, mode):
 		for entry in soup.find_all('div', class_ = '_5pcr'): # also class 'fbUserContent' in 2017 and 'userContentWrapper' in 2019
@@ -158,3 +162,67 @@ class FacebookUserScraper(FacebookCommonScraper):
 	@classmethod
 	def from_args(cls, args):
 		return cls(args.username, retries = args.retries)
+
+
+class FacebookGroupScraper(FacebookCommonScraper):
+	name = 'facebook-group'
+
+	def __init__(self, group, **kwargs):
+		super().__init__(**kwargs)
+		self._group = group
+
+	def get_items(self):
+		headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36', 'Accept-Language': 'en-US,en;q=0.5'}
+
+		pageletDataPattern = re.compile(r'"GroupEntstreamPagelet",\{.*?\}(?=,\{)')
+		pageletDataPrefixLength = len('"GroupEntstreamPagelet",')
+		spuriousForLoopPattern = re.compile(r'^for \(;;\);')
+
+		baseUrl = f'https://www.facebook.com/groups/{self._group}/'
+		r = self._get(baseUrl, headers = headers)
+		if r.status_code == 404:
+			logger.warning('Group does not exist')
+			return
+		elif r.status_code != 200:
+			logger.error('Got status code {r.status_code}')
+			return
+		soup = bs4.BeautifulSoup(r.text, 'lxml')
+
+		# Posts are inside an HTML comment in two code tags with IDs listed in JS...
+		for codeContainerIdStart in ('content:{pagelet_group_mall:{container_id:"', 'content:{group_mall_after_tti:{container_id:"'):
+			codeContainerIdPos = r.text.index(codeContainerIdStart) + len(codeContainerIdStart)
+			codeContainerId = r.text[codeContainerIdPos : r.text.index('"', codeContainerIdPos)]
+			codeContainer = soup.find('code', id = codeContainerId)
+			if not codeContainer:
+				raise RuntimeError('Code container not found')
+			if type(codeContainer.string) is not bs4.element.Comment:
+				raise RuntimeError('Code container does not contain a comment')
+			codeSoup = bs4.BeautifulSoup(codeContainer.string, 'lxml')
+			yield from self._soup_to_items(codeSoup, baseUrl, 'group')
+
+		# Pagination
+		data = pageletDataPattern.search(r.text).group(0)[pageletDataPrefixLength:]
+		while True:
+			# As on the user profile pages, the web app sends a lot of additional parameters, but those all seem to be unnecessary (although some change the response format, e.g. from JSON to HTML)
+			r = self._get(
+				f'https://www.facebook.com/ajax/pagelet/generic.php/GroupEntstreamPagelet',
+				params = {'data': data, '__a': 1},
+				headers = headers,
+			  )
+			if r.status_code != 200:
+				raise RuntimeError(f'Got status code {r.status_code}')
+			obj = json.loads(spuriousForLoopPattern.sub('', r.text))
+			if obj['payload'] == '':
+				# End of pagination
+				break
+			soup = bs4.BeautifulSoup(obj['payload'], 'lxml')
+			yield from self._soup_to_items(soup, baseUrl, 'group')
+			data = pageletDataPattern.search(r.text).group(0)[pageletDataPrefixLength:]
+
+	@classmethod
+	def setup_parser(cls, subparser):
+		subparser.add_argument('group', help = 'A group name or ID')
+
+	@classmethod
+	def from_args(cls, args):
+		return cls(args.group, retries = args.retries)
