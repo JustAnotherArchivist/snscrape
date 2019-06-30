@@ -25,6 +25,17 @@ class Tweet(typing.NamedTuple, snscrape.base.Item):
 		return self.url
 
 
+class Account(typing.NamedTuple, snscrape.base.Item):
+	username: str
+
+	@property
+	def url(self):
+		return f'https://twitter.com/{self.username}'
+
+	def __str__(self):
+		return self.url
+
+
 class TwitterCommonScraper(snscrape.base.Scraper):
 	def _feed_to_items(self, feed):
 		for tweet in feed:
@@ -246,3 +257,72 @@ class TwitterThreadScraper(TwitterCommonScraper):
 	@classmethod
 	def from_args(cls, args):
 		return cls(tweetID = args.tweetID, retries = args.retries)
+
+
+class TwitterListPostsScraper(TwitterSearchScraper):
+	name = 'twitter-list-posts'
+
+	def __init__(self, listName, **kwargs):
+		super().__init__(f'list:{listName}', **kwargs)
+		self._listName = listName
+
+	@classmethod
+	def setup_parser(cls, subparser):
+		subparser.add_argument('list', help = 'A Twitter list, formatted as "username/listname"')
+
+	@classmethod
+	def from_args(cls, args):
+		return cls(args.list, retries = args.retries)
+
+
+class TwitterListMembersScraper(TwitterCommonScraper):
+	name = 'twitter-list-members'
+
+	def __init__(self, listName, **kwargs):
+		super().__init__(**kwargs)
+		self._user, self._list = listName.split('/')
+
+	def get_items(self):
+		headers = {'User-Agent': f'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.{random.randint(1, 3500)}.{random.randint(1, 160)} Safari/537.36'}
+
+		baseUrl = f'https://twitter.com/{self._user}/lists/{self._list}/members'
+		r = self._get(baseUrl, headers = headers)
+		if r.status_code != 200:
+			logger.warning('List not found')
+			return
+		soup = bs4.BeautifulSoup(r.text, 'lxml')
+		container = soup.find('div', 'stream-container')
+		if not container:
+			raise RuntimeError('Unable to find container')
+		items = container.find_all('li', 'js-stream-item')
+		if not items:
+			logger.warning('Empty list')
+			return
+		for item in items:
+			yield Account(username = item.find('div', 'account')['data-screen-name'])
+
+		if not container.has_attr('data-min-position') or container['data-min-position'] == '':
+			return
+		maxPosition = container['data-min-position']
+		while True:
+			r = self._get(
+				f'{baseUrl}/timeline?include_available_features=1&include_entities=1&max_position={maxPosition}&reset_error_state=false',
+				headers = headers,
+				responseOkCallback = self._check_json_callback
+			  )
+			obj = json.loads(r.text)
+			soup = bs4.BeautifulSoup(obj['items_html'], 'lxml')
+			items = soup.find_all('li', 'js-stream-item')
+			for item in items:
+				yield Account(username = item.find('div', 'account')['data-screen-name'])
+			if not obj['has_more_items']:
+				break
+			maxPosition = obj['min_position']
+
+	@classmethod
+	def setup_parser(cls, subparser):
+		subparser.add_argument('list', help = 'A Twitter list, formatted as "username/listname"')
+
+	@classmethod
+	def from_args(cls, args):
+		return cls(args.list, retries = args.retries)
