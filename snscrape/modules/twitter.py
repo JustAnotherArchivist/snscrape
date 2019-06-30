@@ -25,32 +25,7 @@ class Tweet(typing.NamedTuple, snscrape.base.Item):
 		return self.url
 
 
-class TwitterSearchScraper(snscrape.base.Scraper):
-	name = 'twitter-search'
-
-	def __init__(self, query, maxPosition = None, **kwargs):
-		super().__init__(**kwargs)
-		self._query = query
-		self._maxPosition = maxPosition
-
-	def _get_feed_from_html(self, html, withMinPosition):
-		soup = bs4.BeautifulSoup(html, 'lxml')
-		feed = soup.find_all('li', 'js-stream-item')
-		if withMinPosition:
-			streamContainer = soup.find('div', 'stream-container')
-			if not streamContainer or not streamContainer.has_attr('data-min-position'):
-				if soup.find('div', 'SearchEmptyTimeline'):
-					# No results found
-					minPosition = None
-				else:
-					# Unknown error condition
-					raise RuntimeError('Unable to find min-position')
-			else:
-				minPosition = streamContainer['data-min-position']
-		else:
-			minPosition = None
-		return feed, minPosition
-
+class TwitterCommonScraper(snscrape.base.Scraper):
 	def _feed_to_items(self, feed):
 		for tweet in feed:
 			username = tweet.find('span', 'username').find('b').text
@@ -95,6 +70,33 @@ class TwitterSearchScraper(snscrape.base.Scraper):
 		if r.headers.get('content-type') != 'application/json;charset=utf-8':
 			return False, f'content type is not JSON'
 		return True, None
+
+
+class TwitterSearchScraper(TwitterCommonScraper):
+	name = 'twitter-search'
+
+	def __init__(self, query, maxPosition = None, **kwargs):
+		super().__init__(**kwargs)
+		self._query = query
+		self._maxPosition = maxPosition
+
+	def _get_feed_from_html(self, html, withMinPosition):
+		soup = bs4.BeautifulSoup(html, 'lxml')
+		feed = soup.find_all('li', 'js-stream-item')
+		if withMinPosition:
+			streamContainer = soup.find('div', 'stream-container')
+			if not streamContainer or not streamContainer.has_attr('data-min-position'):
+				if soup.find('div', 'SearchEmptyTimeline'):
+					# No results found
+					minPosition = None
+				else:
+					# Unknown error condition
+					raise RuntimeError('Unable to find min-position')
+			else:
+				minPosition = streamContainer['data-min-position']
+		else:
+			minPosition = None
+		return feed, minPosition
 
 	def get_items(self):
 		headers = {'User-Agent': f'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.{random.randint(1, 3500)}.{random.randint(1, 160)} Safari/537.36'}
@@ -180,3 +182,67 @@ class TwitterHashtagScraper(TwitterSearchScraper):
 	@classmethod
 	def from_args(cls, args):
 		return cls(args.hashtag, retries = args.retries)
+
+
+class TwitterThreadScraper(TwitterCommonScraper):
+	name = 'twitter-thread'
+
+	def __init__(self, tweetID = None, **kwargs):
+		if tweetID is not None and tweetID.strip('0123456789') != '':
+			raise ValueError('Invalid tweet ID, must be numeric')
+		super().__init__(**kwargs)
+		self._tweetID = tweetID
+
+	def get_items(self):
+		headers = {'User-Agent': f'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.{random.randint(1, 3500)}.{random.randint(1, 160)} Safari/537.36'}
+
+		# Fetch the page of the last tweet in the thread
+		r = self._get(f'https://twitter.com/user/status/{self._tweetID}', headers = headers)
+		soup = bs4.BeautifulSoup(r.text, 'lxml')
+
+		# Extract tweets on that page in the correct order; first, the tweet that was supplied, then the ancestors with pagination if necessary
+		tweet = soup.find('div', 'ThreadedConversation--permalinkTweetWithAncestors')
+		if tweet:
+			tweet = tweet.find('div', 'tweet')
+		if not tweet:
+			logger.warning('Tweet does not exist, is not a thread, or does not have ancestors')
+			return
+		items = list(self._feed_to_items([tweet]))
+		assert len(items) == 1
+		yield items[0]
+		username = items[0].username
+
+		ancestors = soup.find('div', 'ThreadedConversation--ancestors')
+		if not ancestors:
+			logger.warning('Tweet does not have ancestors despite claiming to')
+			return
+		feed = reversed(ancestors.find_all('li', 'js-stream-item'))
+		yield from self._feed_to_items(feed)
+
+		# If necessary, iterate through pagination until reaching the initial tweet
+		streamContainer = ancestors.find('div', 'stream-container')
+		if not streamContainer.has_attr('data-max-position') or streamContainer['data-max-position'] == '':
+			return
+		minPosition = streamContainer['data-max-position']
+		while True:
+			r = self._get(
+				f'https://twitter.com/i/{username}/conversation/{self._tweetID}?include_available_features=1&include_entities=1&min_position={minPosition}',
+				headers = headers,
+				responseOkCallback = self._check_json_callback
+			  )
+
+			obj = json.loads(r.text)
+			soup = bs4.BeautifulSoup(obj['items_html'], 'lxml')
+			feed = reversed(soup.find_all('li', 'js-stream-item'))
+			yield from self._feed_to_items(feed)
+			if not obj['has_more_items']:
+				break
+			minPosition = obj['max_position']
+
+	@classmethod
+	def setup_parser(cls, subparser):
+		subparser.add_argument('tweetID', help = 'A tweet ID of the last tweet in a thread')
+
+	@classmethod
+	def from_args(cls, args):
+		return cls(tweetID = args.tweetID, retries = args.retries)
