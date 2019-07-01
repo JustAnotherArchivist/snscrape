@@ -4,12 +4,40 @@ import datetime
 import inspect
 import logging
 import requests.models
-import snscrape.base
-import snscrape.modules
+# Imported in parse_args() after setting up the logger:
+#import snscrape.base
+#import snscrape.modules
 import tempfile
 
 
-logger = logging.getLogger(__name__)
+## Logging
+dumpLocals = False
+logger = logging # Replaced below after setting the logger class
+
+
+class Logger(logging.Logger):
+	def _log_with_stack(self, level, *args, **kwargs):
+		super().log(level, *args, **kwargs)
+		if dumpLocals:
+			stack = inspect.stack()
+			if len(stack) >= 3:
+				name = _dump_stack_and_locals(stack[2:][::-1])
+				super().log(level, f'Dumped stack and locals to {name}')
+
+	def warning(self, *args, **kwargs):
+		self._log_with_stack(logging.WARNING, *args, **kwargs)
+
+	def error(self, *args, **kwargs):
+		self._log_with_stack(logging.ERROR, *args, **kwargs)
+
+	def critical(self, *args, **kwargs):
+		self._log_with_stack(logging.CRITICAL, *args, **kwargs)
+
+	def log(self, level, *args, **kwargs):
+		if level >= logging.WARNING:
+			self._log_with_stack(level, *args, **kwargs)
+		else:
+			super().log(level, *args, **kwargs)
 
 
 def _requests_preparedrequest_repr(name, request):
@@ -63,27 +91,40 @@ def _dump_locals_on_exception():
 		yield
 	except Exception as e:
 		trace = inspect.trace()
-		if len(trace) >= 3:
-			with tempfile.NamedTemporaryFile('w', prefix = 'snscrape_locals_', delete = False) as fp:
-				for frameRecord in trace[2:]:
-					module = inspect.getmodule(frameRecord[0])
-					if not module.__name__.startswith('snscrape.') and module.__name__ != 'snscrape':
-						continue
-					locals_ = frameRecord[0].f_locals
-					fp.write(f'Locals from file "{frameRecord.filename}", line {frameRecord.lineno}, in {frameRecord.function}:\n')
-					for variableName in locals_:
-						variable = locals_[variableName]
-						varRepr = _repr(variableName, variable)
-						fp.write(f'  {variableName} {type(variable)} = ')
-						fp.write(varRepr.replace('\n', '\n  '))
-						fp.write('\n')
-					fp.write('\n')
-					if 'self' in locals_ and hasattr(locals_['self'], '__dict__'):
-						fp.write(f'Object dict:\n')
-						fp.write(repr(locals_['self'].__dict__))
-					fp.write('\n\n')
-				logger.fatal(f'Local variables logged to {fp.name}')
+		if len(trace) >= 2:
+			name = _dump_stack_and_locals(trace[1:])
+			logger.fatal(f'Dumped stack and locals to {name}')
 		raise
+
+
+def _dump_stack_and_locals(trace):
+	with tempfile.NamedTemporaryFile('w', prefix = 'snscrape_locals_', delete = False) as fp:
+		fp.write('Stack:\n')
+		for frameRecord in trace:
+			fp.write(f'  File "{frameRecord.filename}", line {frameRecord.lineno}, in {frameRecord.function}\n')
+			for line in frameRecord.code_context:
+				fp.write(f'    {line.strip()}\n')
+		fp.write('\n')
+
+		for frameRecord in trace:
+			module = inspect.getmodule(frameRecord[0])
+			if not module.__name__.startswith('snscrape.') and module.__name__ != 'snscrape':
+				continue
+			locals_ = frameRecord[0].f_locals
+			fp.write(f'Locals from file "{frameRecord.filename}", line {frameRecord.lineno}, in {frameRecord.function}:\n')
+			for variableName in locals_:
+				variable = locals_[variableName]
+				varRepr = _repr(variableName, variable)
+				fp.write(f'  {variableName} {type(variable)} = ')
+				fp.write(varRepr.replace('\n', '\n  '))
+				fp.write('\n')
+			fp.write('\n')
+			if 'self' in locals_ and hasattr(locals_['self'], '__dict__'):
+				fp.write(f'Object dict:\n')
+				fp.write(repr(locals_['self'].__dict__))
+				fp.write('\n\n')
+		name = fp.name
+	return name
 
 
 def parse_datetime_arg(arg):
@@ -109,6 +150,7 @@ def parse_datetime_arg(arg):
 def parse_args():
 	parser = argparse.ArgumentParser(formatter_class = argparse.ArgumentDefaultsHelpFormatter)
 	parser.add_argument('-v', '--verbose', '--verbosity', dest = 'verbosity', action = 'count', default = 0, help = 'Increase output verbosity')
+	parser.add_argument('--dump-locals', dest = 'dumpLocals', action = 'store_true', default = False, help = 'Dump local variables on serious log messages (warnings or higher)')
 	parser.add_argument('--retry', '--retries', dest = 'retries', type = int, default = 3, metavar = 'N',
 		help = 'When the connection fails or the server returns an unexpected response, retry up to N times with an exponential backoff')
 	parser.add_argument('-n', '--max-results', dest = 'maxResults', type = int, metavar = 'N', help = 'Only return the first N results')
@@ -116,6 +158,8 @@ def parse_args():
 	parser.add_argument('--since', type = parse_datetime_arg, metavar = 'DATETIME', help = 'Only return results newer than DATETIME')
 
 	subparsers = parser.add_subparsers(dest = 'scraper', help = 'The scraper you want to use')
+	import snscrape.base
+	import snscrape.modules
 	classes = snscrape.base.Scraper.__subclasses__()
 	for cls in classes:
 		if cls.name is not None:
@@ -133,7 +177,16 @@ def parse_args():
 	return args
 
 
-def setup_logging(verbosity):
+def setup_logging():
+	logging.setLoggerClass(Logger)
+	global logger
+	logger = logging.getLogger(__name__)
+
+
+def configure_logging(verbosity, dumpLocals_):
+	global dumpLocals
+	dumpLocals = dumpLocals_
+
 	rootLogger = logging.getLogger()
 
 	# Set level
@@ -157,8 +210,9 @@ def setup_logging(verbosity):
 
 
 def main():
+	setup_logging()
 	args = parse_args()
-	setup_logging(args.verbosity)
+	configure_logging(args.verbosity, args.dumpLocals)
 	scraper = args.cls.from_args(args)
 
 	i = 0
