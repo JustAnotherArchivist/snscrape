@@ -7,6 +7,7 @@ import requests.models
 # Imported in parse_args() after setting up the logger:
 #import snscrape.base
 #import snscrape.modules
+#import snscrape.version
 import tempfile
 
 
@@ -148,7 +149,12 @@ def parse_datetime_arg(arg):
 
 
 def parse_args():
+	import snscrape.base
+	import snscrape.modules
+	import snscrape.version
+
 	parser = argparse.ArgumentParser(formatter_class = argparse.ArgumentDefaultsHelpFormatter)
+	parser.add_argument('--version', action = 'version', version = f'snscrape {snscrape.version.__version__}')
 	parser.add_argument('-v', '--verbose', '--verbosity', dest = 'verbosity', action = 'count', default = 0, help = 'Increase output verbosity')
 	parser.add_argument('--dump-locals', dest = 'dumpLocals', action = 'store_true', default = False, help = 'Dump local variables on serious log messages (warnings or higher)')
 	parser.add_argument('--retry', '--retries', dest = 'retries', type = int, default = 3, metavar = 'N',
@@ -158,8 +164,6 @@ def parse_args():
 	parser.add_argument('--since', type = parse_datetime_arg, metavar = 'DATETIME', help = 'Only return results newer than DATETIME')
 
 	subparsers = parser.add_subparsers(dest = 'scraper', help = 'The scraper you want to use')
-	import snscrape.base
-	import snscrape.modules
 	classes = snscrape.base.Scraper.__subclasses__()
 	for cls in classes:
 		if cls.name is not None:
