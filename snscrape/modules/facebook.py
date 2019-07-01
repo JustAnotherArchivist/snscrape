@@ -84,7 +84,7 @@ class FacebookCommonScraper(snscrape.base.Scraper):
 			entryA = entry.find('a', class_ = '_5pcq') # There can be more than one, e.g. when a post is shared by another user, but the first one is always the one of this entry.
 			mediaSetA = entry.find('a', class_ = '_17z-')
 			if not mediaSetA and not entryA:
-				logger.warning(f'Ignoring link-less entry after {cleanUrl}')
+				logger.warning(f'Ignoring link-less entry after {cleanUrl}: {entry.text!r}')
 				continue
 			if mediaSetA and (not entryA or entryA['href'] == '#'):
 				href = mediaSetA['href']
