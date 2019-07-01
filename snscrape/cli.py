@@ -146,6 +146,10 @@ def setup_logging(verbosity):
 	# Create formatter
 	formatter = logging.Formatter('{asctime}.{msecs:03.0f}  {levelname}  {name}  {message}', datefmt = '%Y-%m-%d %H:%M:%S', style = '{')
 
+	# Remove existing handlers
+	for handler in rootLogger.handlers:
+		rootLogger.removeHandler(handler)
+
 	# Add stream handler
 	handler = logging.StreamHandler()
 	handler.setFormatter(formatter)
