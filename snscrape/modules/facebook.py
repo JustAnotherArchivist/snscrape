@@ -34,6 +34,13 @@ class FacebookCommonScraper(snscrape.base.Scraper):
 			# Retain only the fbid parameter
 			q = urllib.parse.parse_qs(u.query)
 			clean = (u.scheme, u.netloc, u.path, urllib.parse.urlencode((('fbid', q['fbid'][0]),)), '')
+		elif u.path == '/media/set/':
+			# Retain only the set parameter and try to shorten it to the minimum
+			q = urllib.parse.parse_qs(u.query)
+			setVal = q['set'][0]
+			if setVal.rstrip('0123456789').endswith('.a.'):
+				setVal = f'a.{setVal.rsplit(".", 1)[1]}'
+			clean = (u.scheme, u.netloc, u.path, urllib.parse.urlencode((('set', setVal),)), '')
 		elif u.path.split('/')[2] == 'posts' or u.path.startswith('/events/') or u.path.startswith('/notes/'):
 			# No manipulation of the path needed, but strip the query string
 			clean = (u.scheme, u.netloc, u.path, '', '')
@@ -57,7 +64,7 @@ class FacebookCommonScraper(snscrape.base.Scraper):
 	def _is_odd_link(self, href, entryText, mode):
 		# Returns (isOddLink: bool, warn: bool|None)
 		if mode == 'user':
-			if not any(x in href for x in ('/posts/', '/photos/', '/videos/', '/permalink.php?', '/events/', '/notes/', '/photo.php?')):
+			if not any(x in href for x in ('/posts/', '/photos/', '/videos/', '/permalink.php?', '/events/', '/notes/', '/photo.php?', '/media/set/')):
 				if href == '#' and 'new photo' in entryText and 'to the album' in entryText:
 					# Don't print a warning if it's a "User added 5 new photos to the album"-type entry, which doesn't have a permalink.
 					return True, False
@@ -75,21 +82,21 @@ class FacebookCommonScraper(snscrape.base.Scraper):
 	def _soup_to_items(self, soup, baseUrl, mode):
 		for entry in soup.find_all('div', class_ = '_5pcr'): # also class 'fbUserContent' in 2017 and 'userContentWrapper' in 2019
 			entryA = entry.find('a', class_ = '_5pcq') # There can be more than one, e.g. when a post is shared by another user, but the first one is always the one of this entry.
-			if not entryA:
-				mediaSetA = entry.find('a', class_ = '_17z-')
-				if mediaSetA and mediaSetA.has_attr('href'):
-					logger.warning(f'Ignoring link-less media set: {mediaSetA["href"]}')
-				else:
-					logger.warning(f'Ignoring entry without a link after {cleanUrl}')
+			mediaSetA = entry.find('a', class_ = '_17z-')
+			if not mediaSetA and not entryA:
+				logger.warning(f'Ignoring link-less entry after {cleanUrl}')
 				continue
-			href = entryA.get('href')
+			if mediaSetA and (not entryA or entryA['href'] == '#'):
+				href = mediaSetA['href']
+			elif entryA:
+				href = entryA['href']
 			oddLink, warn = self._is_odd_link(href, entry.text, mode)
 			if oddLink:
 				if warn:
 					logger.warning(f'Ignoring odd link: {href}')
 				continue
 			dirtyUrl = urllib.parse.urljoin(baseUrl, href)
-			date = datetime.datetime.fromtimestamp(int(entryA.find('abbr', class_ = '_5ptz')['data-utime']), datetime.timezone.utc)
+			date = datetime.datetime.fromtimestamp(int(entry.find('abbr', class_ = '_5ptz')['data-utime']), datetime.timezone.utc)
 			contentDiv = entry.find('div', class_ = '_5pbx')
 			if contentDiv:
 				content = contentDiv.text
