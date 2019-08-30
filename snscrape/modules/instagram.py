@@ -16,6 +16,11 @@ class InstagramPost(typing.NamedTuple, snscrape.base.Item):
 	content: str
 	thumbnailUrl: str
 	displayUrl: str
+	username: str
+	likes: int
+	comments: int
+	commentsDisabled: bool
+	isVideo: bool
 
 	def __str__(self):
 		return self.cleanUrl
@@ -57,7 +62,8 @@ class InstagramCommonScraper(snscrape.base.Scraper):
 	def _response_to_items(self, response):
 		for node in response[self._responseContainer][self._edgeXToMedia]['edges']:
 			code = node['node']['shortcode']
-			usernameQuery = '?taken-by=' + node['node']['owner']['username'] if 'username' in node['node']['owner'] else ''
+			username = node['node']['owner']['username'] if 'username' in node['node']['owner'] else ''
+			usernameQuery = '?taken-by=' + username
 			cleanUrl = f'https://www.instagram.com/p/{code}/'
 			yield InstagramPost(
 			  cleanUrl = cleanUrl,
@@ -66,6 +72,11 @@ class InstagramCommonScraper(snscrape.base.Scraper):
 			  content = node['node']['edge_media_to_caption']['edges'][0]['node']['text'] if len(node['node']['edge_media_to_caption']['edges']) else None,
 			  thumbnailUrl = node['node']['thumbnail_src'],
 			  displayUrl = node['node']['display_url'],
+			  username = username,
+			  likes = node['node']['edge_liked_by']['count'],
+			  comments = node['node']['edge_media_to_comment']['count'],
+			  commentsDisabled = node['node']['comments_disabled'],
+			  isVideo = node['node']['is_video'],
 			 )
 
 	def _check_initial_page_callback(self, r):
