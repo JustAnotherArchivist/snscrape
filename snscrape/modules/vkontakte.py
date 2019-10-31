@@ -56,6 +56,12 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 			logger.error('Private profile')
 			return
 
+		profileDeleted = soup.find('h5', class_ = 'profile_deleted_text')
+		if profileDeleted:
+			# Unclear what this state represents, so just log website text.
+			logger.error(profileDeleted.text)
+			return
+
 		newestPost = soup.find('div', class_ = 'post')
 		if not newestPost:
 			logger.info('Wall has no posts')
