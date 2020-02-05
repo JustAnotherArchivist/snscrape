@@ -56,6 +56,12 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 			logger.error('Private profile')
 			return
 
+		profileDeleted = soup.find('h5', class_ = 'profile_deleted_text')
+		if profileDeleted:
+			# Unclear what this state represents, so just log website text.
+			logger.error(profileDeleted.text)
+			return
+
 		newestPost = soup.find('div', class_ = 'post')
 		if not newestPost:
 			logger.info('Wall has no posts')
@@ -80,14 +86,15 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 			if r.status_code != 200:
 				logger.error(f'Got status code {r.status_code}')
 				return
-			fields = r.content.split(b'<!>')
-			if fields[5].startswith(b'<div class="page_block no_posts">'):
+			# Convert to JSON and read the HTML payload.  Note that this implicitly converts the data to a Python string (i.e., Unicode), away from a windows-1251-encoded bytes.
+			posts = r.json()['payload'][1][0]
+			if posts.startswith('<div class="page_block no_posts">'):
 				# Reached the end
 				break
-			if not fields[5].startswith(b'<div id="post'):
-				logger.error(f'Got an unknown response: {fields[5][:200]!r}...')
+			if not posts.startswith('<div id="post'):
+				logger.error(f'Got an unknown response: {posts[:200]!r}...')
 				break
-			soup = bs4.BeautifulSoup(fields[5], 'lxml', from_encoding = r.encoding)
+			soup = bs4.BeautifulSoup(posts, 'lxml')
 			yield from self._soup_to_items(soup, baseUrl)
 
 	@classmethod
