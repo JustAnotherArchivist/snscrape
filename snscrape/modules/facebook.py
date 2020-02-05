@@ -80,6 +80,7 @@ class FacebookCommonScraper(snscrape.base.Scraper):
 			return False, None
 
 	def _soup_to_items(self, soup, baseUrl, mode):
+		cleanUrl = None # Value from previous iteration is used for warning on link-less entries
 		for entry in soup.find_all('div', class_ = '_5pcr'): # also class 'fbUserContent' in 2017 and 'userContentWrapper' in 2019
 			entryA = entry.find('a', class_ = '_5pcq') # There can be more than one, e.g. when a post is shared by another user, but the first one is always the one of this entry.
 			mediaSetA = entry.find('a', class_ = '_17z-')
@@ -96,6 +97,7 @@ class FacebookCommonScraper(snscrape.base.Scraper):
 					logger.warning(f'Ignoring odd link: {href}')
 				continue
 			dirtyUrl = urllib.parse.urljoin(baseUrl, href)
+			cleanUrl = self._clean_url(dirtyUrl)
 			date = datetime.datetime.fromtimestamp(int(entry.find('abbr', class_ = '_5ptz')['data-utime']), datetime.timezone.utc)
 			contentDiv = entry.find('div', class_ = '_5pbx')
 			if contentDiv:
@@ -116,7 +118,7 @@ class FacebookCommonScraper(snscrape.base.Scraper):
 				outlink = query['u'][0]
 				if outlink.startswith('http://') or outlink.startswith('https://') and outlink not in outlinks:
 					outlinks.append(outlink)
-			yield FacebookPost(cleanUrl = self._clean_url(dirtyUrl), dirtyUrl = dirtyUrl, date = date, content = content, outlinks = outlinks, outlinksss = ' '.join(outlinks))
+			yield FacebookPost(cleanUrl = cleanUrl, dirtyUrl = dirtyUrl, date = date, content = content, outlinks = outlinks, outlinksss = ' '.join(outlinks))
 
 
 class FacebookUserScraper(FacebookCommonScraper):
