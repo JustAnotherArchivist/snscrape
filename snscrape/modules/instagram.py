@@ -73,7 +73,7 @@ class InstagramCommonScraper(snscrape.base.Scraper):
 			  thumbnailUrl = node['node']['thumbnail_src'],
 			  displayUrl = node['node']['display_url'],
 			  username = username,
-			  likes = node['node']['edge_liked_by']['count'],
+			  likes = node['node']['edge_media_preview_like']['count'],
 			  comments = node['node']['edge_media_to_comment']['count'],
 			  commentsDisabled = node['node']['comments_disabled'],
 			  isVideo = node['node']['is_video'],
