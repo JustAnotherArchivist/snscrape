@@ -247,7 +247,7 @@ class TwitterThreadScraper(TwitterCommonScraper):
 		self._tweetID = tweetID
 
 	def get_items(self):
-		headers = {'User-Agent': f'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.{random.randint(1, 3500)}.{random.randint(1, 160)} Safari/537.36'}
+		headers = {'User-Agent': f'Opera/9.80 (Windows NT 6.1; WOW64) Presto/2.12.388 Version/12.18'}
 
 		# Fetch the page of the last tweet in the thread
 		r = self._get(f'https://twitter.com/user/status/{self._tweetID}', headers = headers)
@@ -325,7 +325,7 @@ class TwitterListMembersScraper(TwitterCommonScraper):
 		self._user, self._list = listName.split('/')
 
 	def get_items(self):
-		headers = {'User-Agent': f'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.{random.randint(1, 3500)}.{random.randint(1, 160)} Safari/537.36'}
+		headers = {'User-Agent': f'Opera/9.80 (Windows NT 6.1; WOW64) Presto/2.12.388 Version/12.18'}
 
 		baseUrl = f'https://twitter.com/{self._user}/lists/{self._list}/members'
 		r = self._get(baseUrl, headers = headers)
