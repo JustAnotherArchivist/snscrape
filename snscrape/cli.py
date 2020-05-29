@@ -93,13 +93,19 @@ def _dump_locals_on_exception():
 	except Exception as e:
 		trace = inspect.trace()
 		if len(trace) >= 2:
-			name = _dump_stack_and_locals(trace[1:])
+			name = _dump_stack_and_locals(trace[1:], exc = e)
 			logger.fatal(f'Dumped stack and locals to {name}')
 		raise
 
 
-def _dump_stack_and_locals(trace):
+def _dump_stack_and_locals(trace, exc = None):
 	with tempfile.NamedTemporaryFile('w', prefix = 'snscrape_locals_', delete = False) as fp:
+		if exc is not None:
+			fp.write('Exception:\n')
+			fp.write(f'  {type(exc).__module__}.{type(exc).__name__}: {exc!s}\n')
+			fp.write(f'  args: {exc.args!r}\n')
+			fp.write('\n')
+
 		fp.write('Stack:\n')
 		for frameRecord in trace:
 			fp.write(f'  File "{frameRecord.filename}", line {frameRecord.lineno}, in {frameRecord.function}\n')
