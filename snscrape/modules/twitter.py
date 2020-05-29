@@ -180,7 +180,12 @@ class TwitterSearchScraper(TwitterCommonScraper):
 					continue
 				for entry in entries:
 					if entry['entryId'].startswith('sq-I-t-'):
-						tweet = obj['globalObjects']['tweets'][entry['content']['item']['content']['tweet']['id']]
+						if 'tweet' in entry['content']['item']['content']:
+							tweet = obj['globalObjects']['tweets'][entry['content']['item']['content']['tweet']['id']]
+						elif 'tombstone' in entry['content']['item']['content'] and 'tweet' in entry['content']['item']['content']['tombstone']:
+							tweet = obj['globalObjects']['tweets'][entry['content']['item']['content']['tombstone']['tweet']['id']]
+						else:
+							raise RuntimeError(f'Unable to handle entry {entry["entryId"]!r}')
 						tweetID = tweet['id']
 						content = tweet['full_text']
 						username = obj['globalObjects']['users'][tweet['user_id_str']]['screen_name']
