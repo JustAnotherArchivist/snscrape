@@ -100,7 +100,7 @@ class TwitterSearchScraper(TwitterCommonScraper):
 		r = self._get(self._baseUrl, headers = {'User-Agent': self._userAgent})
 		match = re.search(r'document\.cookie = decodeURIComponent\("gt=(\d+);', r.text)
 		if not match:
-			raise RuntimeError('Unable to find guest token')
+			raise snscrape.base.ScraperException('Unable to find guest token')
 		return match.group(1)
 
 	def _check_scroll_response(self, r):
@@ -166,8 +166,7 @@ class TwitterSearchScraper(TwitterCommonScraper):
 			try:
 				obj = r.json()
 			except json.JSONDecodeError as e:
-				logger.error(f'Received invalid JSON from Twitter: {e!s}')
-				raise RuntimeError('Received invalid JSON from Twitter') from e
+				raise snscrape.base.ScraperException('Received invalid JSON from Twitter') from e
 
 			# No data format test, just a hard and loud crash if anything's wrong :-)
 			newCursor = None
@@ -185,7 +184,7 @@ class TwitterSearchScraper(TwitterCommonScraper):
 						elif 'tombstone' in entry['content']['item']['content'] and 'tweet' in entry['content']['item']['content']['tombstone']:
 							tweet = obj['globalObjects']['tweets'][entry['content']['item']['content']['tombstone']['tweet']['id']]
 						else:
-							raise RuntimeError(f'Unable to handle entry {entry["entryId"]!r}')
+							raise snscrape.base.ScraperException(f'Unable to handle entry {entry["entryId"]!r}')
 						tweetID = tweet['id']
 						content = tweet['full_text']
 						username = obj['globalObjects']['users'][tweet['user_id_str']]['screen_name']
@@ -340,7 +339,7 @@ class TwitterListMembersScraper(TwitterCommonScraper):
 		soup = bs4.BeautifulSoup(r.text, 'lxml')
 		container = soup.find('div', 'stream-container')
 		if not container:
-			raise RuntimeError('Unable to find container')
+			raise snscrape.base.ScraperException('Unable to find container')
 		items = container.find_all('li', 'js-stream-item')
 		if not items:
 			logger.warning('Empty list')

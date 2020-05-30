@@ -49,8 +49,7 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 		while True:
 			r = self._get(nextPageUrl, headers = headers)
 			if r.status_code != 200:
-				logger.error(f'Got status code {r.status_code}')
-				return
+				raise snscrape.base.ScraperException(f'Got status code {r.status_code}')
 			soup = bs4.BeautifulSoup(r.text, 'lxml')
 			yield from self._soup_to_items(soup, nextPageUrl)
 			pageLink = soup.find('a', attrs = {'class': 'tme_messages_more', 'data-before': True})

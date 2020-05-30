@@ -43,23 +43,22 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 		logger.info('Retrieving initial data')
 		r = self._get(baseUrl, headers = headers)
 		if r.status_code == 404:
-			logger.error('Wall does not exist')
+			logger.warning('Wall does not exist')
 			return
 		elif r.status_code != 200:
-			logger.error(f'Got status code {r.status_code}')
-			return
+			raise snscrape.base.ScraperException(f'Got status code {r.status_code}')
 
 		# VK sends windows-1251-encoded data, but Requests's decoding doesn't seem to work correctly and causes lxml to choke, so we need to pass the binary content and the encoding explicitly.
 		soup = bs4.BeautifulSoup(r.content, 'lxml', from_encoding = r.encoding)
 
 		if soup.find('div', class_ = 'profile_closed_wall_dummy'):
-			logger.error('Private profile')
+			logger.warning('Private profile')
 			return
 
 		profileDeleted = soup.find('h5', class_ = 'profile_deleted_text')
 		if profileDeleted:
 			# Unclear what this state represents, so just log website text.
-			logger.error(profileDeleted.text)
+			logger.warning(profileDeleted.text)
 			return
 
 		newestPost = soup.find('div', class_ = 'post')
@@ -84,16 +83,14 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 			  headers = headers
 			 )
 			if r.status_code != 200:
-				logger.error(f'Got status code {r.status_code}')
-				return
+				raise snscrape.base.ScraperException(f'Got status code {r.status_code}')
 			# Convert to JSON and read the HTML payload.  Note that this implicitly converts the data to a Python string (i.e., Unicode), away from a windows-1251-encoded bytes.
 			posts = r.json()['payload'][1][0]
 			if posts.startswith('<div class="page_block no_posts">'):
 				# Reached the end
 				break
 			if not posts.startswith('<div id="post'):
-				logger.error(f'Got an unknown response: {posts[:200]!r}...')
-				break
+				raise snscrape.base.ScraperException(f'Got an unknown response: {posts[:200]!r}...')
 			soup = bs4.BeautifulSoup(posts, 'lxml')
 			yield from self._soup_to_items(soup, baseUrl)
 

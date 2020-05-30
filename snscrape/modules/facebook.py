@@ -141,8 +141,7 @@ class FacebookUserScraper(FacebookCommonScraper):
 			logger.warning('User does not exist')
 			return
 		elif r.status_code != 200:
-			logger.error('Got status code {r.status_code}')
-			return
+			raise snscrape.base.ScraperException('Got status code {r.status_code}')
 		soup = bs4.BeautifulSoup(r.text, 'lxml')
 		yield from self._soup_to_items(soup, baseUrl, 'user')
 		nextPageLink = soup.find('a', ajaxify = nextPageLinkPattern)
@@ -154,8 +153,7 @@ class FacebookUserScraper(FacebookCommonScraper):
 			# Reproducing that would be difficult to get right, especially as Facebook's codebase evolves, so it's just not sent at all here.
 			r = self._get(urllib.parse.urljoin(baseUrl, nextPageLink.get('ajaxify')) + '&__a=1', headers = headers)
 			if r.status_code != 200:
-				logger.error(f'Got status code {r.status_code}')
-				return
+				raise snscrape.base.ScraperException(f'Got status code {r.status_code}')
 			response = json.loads(spuriousForLoopPattern.sub('', r.text))
 			assert 'domops' in response
 			assert len(response['domops']) == 1
@@ -197,12 +195,10 @@ class FacebookGroupScraper(FacebookCommonScraper):
 			logger.warning('Group does not exist')
 			return
 		elif r.status_code != 200:
-			logger.error('Got status code {r.status_code}')
-			return
+			raise snscrape.base.ScraperException('Got status code {r.status_code}')
 
 		if 'content:{pagelet_group_mall:{container_id:"' not in r.text:
-			logger.error('Code container ID marker not found (does the group exist?)')
-			return
+			raise snscrape.base.ScraperException('Code container ID marker not found (does the group exist?)')
 
 		soup = bs4.BeautifulSoup(r.text, 'lxml')
 
@@ -212,9 +208,9 @@ class FacebookGroupScraper(FacebookCommonScraper):
 			codeContainerId = r.text[codeContainerIdPos : r.text.index('"', codeContainerIdPos)]
 			codeContainer = soup.find('code', id = codeContainerId)
 			if not codeContainer:
-				raise RuntimeError('Code container not found')
+				raise snscrape.base.ScraperException('Code container not found')
 			if type(codeContainer.string) is not bs4.element.Comment:
-				raise RuntimeError('Code container does not contain a comment')
+				raise snscrape.base.ScraperException('Code container does not contain a comment')
 			codeSoup = bs4.BeautifulSoup(codeContainer.string, 'lxml')
 			yield from self._soup_to_items(codeSoup, baseUrl, 'group')
 
@@ -228,7 +224,7 @@ class FacebookGroupScraper(FacebookCommonScraper):
 				headers = headers,
 			  )
 			if r.status_code != 200:
-				raise RuntimeError(f'Got status code {r.status_code}')
+				raise snscrape.base.ScraperException(f'Got status code {r.status_code}')
 			obj = json.loads(spuriousForLoopPattern.sub('', r.text))
 			if obj['payload'] == '':
 				# End of pagination

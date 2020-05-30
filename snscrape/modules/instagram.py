@@ -109,8 +109,7 @@ class InstagramCommonScraper(snscrape.base.Scraper):
 			logger.warning(f'{self._mode} does not exist')
 			return
 		elif r.status_code != 200:
-			logger.error(f'Got status code {r.status_code}')
-			return
+			raise snscrape.base.ScraperException(f'Got status code {r.status_code}')
 		response = r._snscrape_json_obj
 		rhxGis = response['rhx_gis'] if 'rhx_gis' in response else ''
 		if response['entry_data'][self._pageName][0]['graphql'][self._responseContainer][self._edgeXToMedia]['count'] == 0:
@@ -133,8 +132,7 @@ class InstagramCommonScraper(snscrape.base.Scraper):
 			r = self._get(f'https://www.instagram.com/graphql/query/?query_hash={self._queryHash}&variables={variables}', headers = headers, responseOkCallback = self._check_json_callback)
 
 			if r.status_code != 200:
-				logger.error(f'Got status code {r.status_code}')
-				return
+				raise snscrape.base.ScraperException(f'Got status code {r.status_code}')
 
 			response = r._snscrape_json_obj
 			if not response['data'][self._responseContainer][self._edgeXToMedia]['edges']:
