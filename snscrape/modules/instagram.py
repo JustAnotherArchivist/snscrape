@@ -110,6 +110,8 @@ class InstagramCommonScraper(snscrape.base.Scraper):
 			return
 		elif r.status_code != 200:
 			raise snscrape.base.ScraperException(f'Got status code {r.status_code}')
+		elif r.url.startswith('https://www.instagram.com/accounts/login/'):
+			raise snscrape.base.ScraperException('Redirected to login page')
 		response = r._snscrape_json_obj
 		rhxGis = response['rhx_gis'] if 'rhx_gis' in response else ''
 		if response['entry_data'][self._pageName][0]['graphql'][self._responseContainer][self._edgeXToMedia]['count'] == 0:
