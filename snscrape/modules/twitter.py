@@ -98,10 +98,9 @@ class TwitterSearchScraper(TwitterCommonScraper):
 	def _get_guest_token(self):
 		logger.info(f'Retrieving guest token from search page')
 		r = self._get(self._baseUrl, headers = {'User-Agent': self._userAgent})
-		match = re.search(r'document\.cookie = decodeURIComponent\("gt=(\d+);', r.text)
-		if not match:
-			raise snscrape.base.ScraperException('Unable to find guest token')
-		return match.group(1)
+		if 'gt' not in r.cookies:
+			raise snscrape.base.ScraperException("Twitter didn't set the cookie")
+		return r.cookies['gt']
 
 	def _check_scroll_response(self, r):
 		if r.status_code == 429:
@@ -162,6 +161,7 @@ class TwitterSearchScraper(TwitterCommonScraper):
 			r = self._get('https://api.twitter.com/2/search/adaptive.json', params = params, headers = headers, responseOkCallback = self._check_scroll_response)
 			if r.status_code == 429:
 				guestToken = None
+				del self._session.cookies['gt']
 				continue
 			try:
 				obj = r.json()
