@@ -5,6 +5,7 @@ import random
 import logging
 import re
 import snscrape.base
+import time
 import typing
 import urllib.parse
 
@@ -98,9 +99,14 @@ class TwitterSearchScraper(TwitterCommonScraper):
 	def _get_guest_token(self):
 		logger.info(f'Retrieving guest token from search page')
 		r = self._get(self._baseUrl, headers = {'User-Agent': self._userAgent})
-		if 'gt' not in r.cookies:
-			raise snscrape.base.ScraperException("Twitter didn't set the cookie")
-		return r.cookies['gt']
+		match = re.search(r'document\.cookie = decodeURIComponent\("gt=(\d+); Max-Age=10800; Domain=\.twitter\.com; Path=/; Secure"\);', r.text)
+		if match:
+			logger.debug('Found guest token in HTML')
+			return match.group(1)
+		if 'gt' in r.cookies:
+			logger.debug('Found guest token in cookies')
+			return r.cookies['gt']
+		raise snscrape.base.ScraperException('Unable to find guest token')
 
 	def _check_scroll_response(self, r):
 		if r.status_code == 429:
@@ -123,6 +129,7 @@ class TwitterSearchScraper(TwitterCommonScraper):
 		while True:
 			if not guestToken:
 				guestToken = self._get_guest_token()
+				self._session.cookies.set('gt', guestToken, domain = '.twitter.com', path = '/', secure = True, expires = time.time() + 10800)
 				headers['x-guest-token'] = guestToken
 
 			logger.info(f'Retrieving scroll page {cursor}')
@@ -162,6 +169,7 @@ class TwitterSearchScraper(TwitterCommonScraper):
 			if r.status_code == 429:
 				guestToken = None
 				del self._session.cookies['gt']
+				del headers['x-guest-token']
 				continue
 			try:
 				obj = r.json()
