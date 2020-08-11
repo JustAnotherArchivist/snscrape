@@ -145,8 +145,8 @@ class TwitterSearchScraper(TwitterCommonScraper):
 				'skip_status': '1',
 				'cards_platform': 'Web-12',
 				'include_cards': '1',
-				'include_composer_source': 'true',
 				'include_ext_alt_text': 'true',
+				'include_quote_count': 'true',
 				'include_reply_count': '1',
 				'tweet_mode': 'extended',
 				'include_entities': 'true',
@@ -164,7 +164,7 @@ class TwitterSearchScraper(TwitterCommonScraper):
 				params['cursor'] = cursor
 			params['pc'] = '1'
 			params['spelling_corrections'] = '1'
-			params['ext'] = 'mediaStats%2CcameraMoment'
+			params['ext'] = 'ext=mediaStats%2ChighlightedLabel'
 			r = self._get('https://api.twitter.com/2/search/adaptive.json', params = params, headers = headers, responseOkCallback = self._check_scroll_response)
 			if r.status_code == 429:
 				guestToken = None
