@@ -82,6 +82,17 @@ class FacebookCommonScraper(snscrape.base.Scraper):
 	def _soup_to_items(self, soup, baseUrl, mode):
 		cleanUrl = None # Value from previous iteration is used for warning on link-less entries
 		for entry in soup.find_all('div', class_ = '_5pcr'): # also class 'fbUserContent' in 2017 and 'userContentWrapper' in 2019
+			# Check that this is not inside another div._5pcr to avoid duplicates or extracting the wrong URL (e.g. 'X was mentioned in a post' on community pages)
+			parent = entry.parent
+			isNested = False
+			while parent:
+				if parent.name == 'div' and 'class' in parent.attrs and '_5pcr' in parent.attrs['class']:
+					isNested = True
+					break
+				parent = parent.parent
+			if isNested:
+				continue
+
 			entryA = entry.find('a', class_ = '_5pcq') # There can be more than one, e.g. when a post is shared by another user, but the first one is always the one of this entry.
 			mediaSetA = entry.find('a', class_ = '_17z-')
 			if not mediaSetA and not entryA:
@@ -121,21 +132,18 @@ class FacebookCommonScraper(snscrape.base.Scraper):
 			yield FacebookPost(cleanUrl = cleanUrl, dirtyUrl = dirtyUrl, date = date, content = content, outlinks = outlinks, outlinksss = ' '.join(outlinks))
 
 
-class FacebookUserScraper(FacebookCommonScraper):
-	name = 'facebook-user'
-
+class FacebookUserAndCommunityScraper(FacebookCommonScraper):
 	def __init__(self, username, **kwargs):
 		super().__init__(**kwargs)
 		self._username = username
 
-	def get_items(self):
+	def _get_items(self, baseUrl):
 		headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36', 'Accept-Language': 'en-US,en;q=0.5'}
 
 		nextPageLinkPattern = re.compile(r'^/pages_reaction_units/more/\?page_id=')
 		spuriousForLoopPattern = re.compile(r'^for \(;;\);')
 
 		logger.info('Retrieving initial data')
-		baseUrl = f'https://www.facebook.com/{self._username}/'
 		r = self._get(baseUrl, headers = headers)
 		if r.status_code == 404:
 			logger.warning('User does not exist')
@@ -159,7 +167,7 @@ class FacebookUserScraper(FacebookCommonScraper):
 			assert len(response['domops']) == 1
 			assert len(response['domops'][0]) == 4
 			assert response['domops'][0][0] == 'replace', f'{response["domops"][0]} is not "replace"'
-			assert response['domops'][0][1] == '#www_pages_reaction_see_more_unitwww_pages_home'
+			assert response['domops'][0][1] in ('#www_pages_reaction_see_more_unitwww_pages_home', '#www_pages_reaction_see_more_unitwww_pages_community_tab')
 			assert response['domops'][0][2] == False
 			assert '__html' in response['domops'][0][3]
 			soup = bs4.BeautifulSoup(response['domops'][0][3]['__html'], 'lxml')
@@ -173,6 +181,20 @@ class FacebookUserScraper(FacebookCommonScraper):
 	@classmethod
 	def from_args(cls, args):
 		return cls(args.username, retries = args.retries)
+
+
+class FacebookUserScraper(FacebookUserAndCommunityScraper):
+	name = 'facebook-user'
+
+	def get_items(self):
+		yield from super()._get_items(f'https://www.facebook.com/{self._username}/')
+
+
+class FacebookCommunityScraper(FacebookUserAndCommunityScraper):
+	name = 'facebook-community'
+
+	def get_items(self):
+		yield from super()._get_items(f'https://www.facebook.com/{self._username}/community/')
 
 
 class FacebookGroupScraper(FacebookCommonScraper):
