@@ -189,7 +189,7 @@ class FacebookGroupScraper(FacebookCommonScraper):
 		pageletDataPrefixLength = len('"GroupEntstreamPagelet",')
 		spuriousForLoopPattern = re.compile(r'^for \(;;\);')
 
-		baseUrl = f'https://www.facebook.com/groups/{self._group}/'
+		baseUrl = f'https://www.facebook.com/groups/{self._group}/?sorting_setting=CHRONOLOGICAL'
 		r = self._get(baseUrl, headers = headers)
 		if r.status_code == 404:
 			logger.warning('Group does not exist')
