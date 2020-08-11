@@ -41,7 +41,7 @@ class FacebookCommonScraper(snscrape.base.Scraper):
 			if setVal.rstrip('0123456789').endswith('.a.'):
 				setVal = f'a.{setVal.rsplit(".", 1)[1]}'
 			clean = (u.scheme, u.netloc, u.path, urllib.parse.urlencode((('set', setVal),)), '')
-		elif u.path.split('/')[2] == 'posts' or u.path.startswith('/events/') or u.path.startswith('/notes/'):
+		elif u.path.split('/')[2] == 'posts' or u.path.startswith('/events/') or u.path.startswith('/notes/') or u.path.split('/')[1:4:2] == ['groups', 'permalink']:
 			# No manipulation of the path needed, but strip the query string
 			clean = (u.scheme, u.netloc, u.path, '', '')
 		elif u.path.split('/')[2] in ('photos', 'videos'):
