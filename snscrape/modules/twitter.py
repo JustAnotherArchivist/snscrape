@@ -188,6 +188,8 @@ class TwitterSearchScraper(TwitterCommonScraper):
 				for entry in entries:
 					if entry['entryId'].startswith('sq-I-t-'):
 						if 'tweet' in entry['content']['item']['content']:
+							if 'promotedMetadata' in entry['content']['item']['content']['tweet']: # Promoted tweet aka ads
+								continue
 							tweet = obj['globalObjects']['tweets'][entry['content']['item']['content']['tweet']['id']]
 						elif 'tombstone' in entry['content']['item']['content'] and 'tweet' in entry['content']['item']['content']['tombstone']:
 							tweet = obj['globalObjects']['tweets'][entry['content']['item']['content']['tombstone']['tweet']['id']]
