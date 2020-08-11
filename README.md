@@ -2,7 +2,7 @@
 snscrape is a scraper for social networking services (SNS). It scrapes things like user profiles, hashtags, or searches and returns the discovered items, e.g. the relevant posts.                  
 
 The following services are currently supported:
-* Facebook: user profiles and groups
+* Facebook: user profiles, groups, and communities (aka visitor posts)
 * Instagram: user profiles, hashtags, and locations
 * Telegram: channels
 * Twitter: user profiles, hashtags, searches, threads, and lists (members as well as posts)
