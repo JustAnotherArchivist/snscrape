@@ -261,7 +261,7 @@ class TwitterThreadScraper(TwitterCommonScraper):
 		self._tweetID = tweetID
 
 	def get_items(self):
-		headers = {'User-Agent': f'Opera/9.80 (Windows NT 6.1; WOW64) Presto/2.12.388 Version/12.18'}
+		headers = {'User-Agent': f'Opera/9.80 (Windows NT 6.1; WOW64) Presto/2.12.388 Version/12.18 Bot'}
 
 		# Fetch the page of the last tweet in the thread
 		r = self._get(f'https://twitter.com/user/status/{self._tweetID}', headers = headers)
