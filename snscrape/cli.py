@@ -2,6 +2,7 @@ import argparse
 import contextlib
 import datetime
 import inspect
+import json
 import logging
 import requests.models
 # Imported in parse_args() after setting up the logger:
@@ -166,7 +167,9 @@ def parse_args():
 	parser.add_argument('--retry', '--retries', dest = 'retries', type = int, default = 3, metavar = 'N',
 		help = 'When the connection fails or the server returns an unexpected response, retry up to N times with an exponential backoff')
 	parser.add_argument('-n', '--max-results', dest = 'maxResults', type = int, metavar = 'N', help = 'Only return the first N results')
-	parser.add_argument('-f', '--format', dest = 'format', type = str, default = None, help = 'Output format')
+	group = parser.add_mutually_exclusive_group(required = False)
+	group.add_argument('-f', '--format', dest = 'format', type = str, default = None, help = 'Output format')
+	group.add_argument('--jsonl', dest = 'jsonl', action = 'store_true', default = False, help = 'Output JSONL')
 	parser.add_argument('--since', type = parse_datetime_arg, metavar = 'DATETIME', help = 'Only return results newer than DATETIME')
 
 	subparsers = parser.add_subparsers(dest = 'scraper', help = 'The scraper you want to use')
@@ -219,6 +222,12 @@ def configure_logging(verbosity, dumpLocals_):
 	rootLogger.addHandler(handler)
 
 
+def json_serialise_datetime(obj):
+	if isinstance(obj, datetime.datetime):
+		return obj.isoformat()
+	raise TypeError(f'Object of type {type(obj)} is not JSON serializable')
+
+
 def main():
 	setup_logging()
 	args = parse_args()
@@ -231,7 +240,9 @@ def main():
 			if args.since is not None and item.date < args.since:
 				logger.info(f'Exiting due to reaching older results than {args.since}')
 				break
-			if args.format is not None:
+			if args.jsonl:
+				print(json.dumps(item._asdict(), default = json_serialise_datetime))
+			elif args.format is not None:
 				print(args.format.format(**item._asdict()))
 			else:
 				print(item)
