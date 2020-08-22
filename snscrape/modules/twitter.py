@@ -95,17 +95,22 @@ class TwitterSearchScraper(TwitterCommonScraper):
 		self._cursor = cursor
 		self._userAgent = f'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.{random.randint(0, 9999)} Safari/537.{random.randint(0, 99)}'
 		self._baseUrl = 'https://twitter.com/search?' + urllib.parse.urlencode({'f': 'live', 'lang': 'en', 'q': self._query, 'src': 'spelling_expansion_revert_click'})
+		self._guestToken = None
 
-	def _get_guest_token(self):
-		logger.info(f'Retrieving guest token from search page')
-		r = self._get(self._baseUrl, headers = {'User-Agent': self._userAgent})
+	def _get_guest_token(self, url):
+		logger.info(f'Retrieving guest token')
+		gt = None
+		r = self._get(url, headers = {'User-Agent': self._userAgent})
 		match = re.search(r'document\.cookie = decodeURIComponent\("gt=(\d+); Max-Age=10800; Domain=\.twitter\.com; Path=/; Secure"\);', r.text)
 		if match:
 			logger.debug('Found guest token in HTML')
-			return match.group(1)
+			gt = match.group(1)
 		if 'gt' in r.cookies:
 			logger.debug('Found guest token in cookies')
-			return r.cookies['gt']
+			gt = r.cookies['gt']
+		if gt:
+			self._session.cookies.set('gt', gt, domain = '.twitter.com', path = '/', secure = True, expires = time.time() + 10800)
+			return gt
 		raise snscrape.base.ScraperException('Unable to find guest token')
 
 	def _check_scroll_response(self, r):
@@ -124,13 +129,13 @@ class TwitterSearchScraper(TwitterCommonScraper):
 			'Authorization': 'Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs=1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA',
 			'Referer': self._baseUrl,
 		}
-		guestToken = None
+		if self._guestToken:
+			headers['x-guest-token'] = self._guestToken
 		cursor = self._cursor
 		while True:
-			if not guestToken:
-				guestToken = self._get_guest_token()
-				self._session.cookies.set('gt', guestToken, domain = '.twitter.com', path = '/', secure = True, expires = time.time() + 10800)
-				headers['x-guest-token'] = guestToken
+			if not self._guestToken:
+				self._guestToken = self._get_guest_token(self._baseUrl)
+				headers['x-guest-token'] = self._guestToken
 
 			logger.info(f'Retrieving scroll page {cursor}')
 			params = {
@@ -167,7 +172,7 @@ class TwitterSearchScraper(TwitterCommonScraper):
 			params['ext'] = 'ext=mediaStats%2ChighlightedLabel'
 			r = self._get('https://api.twitter.com/2/search/adaptive.json', params = params, headers = headers, responseOkCallback = self._check_scroll_response)
 			if r.status_code == 429:
-				guestToken = None
+				self._guestToken = None
 				del self._session.cookies['gt']
 				del headers['x-guest-token']
 				continue
