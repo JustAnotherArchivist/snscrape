@@ -19,37 +19,63 @@ class VKontaktePost(typing.NamedTuple, snscrape.base.Item):
 		return self.url
 
 
+class User(typing.NamedTuple, snscrape.base.Entity):
+	username: str
+	name: str
+	verified: bool
+	description: typing.Optional[str] = None
+	websites: typing.Optional[typing.List[str]] = None
+	followers: typing.Optional[int] = None
+	followersGranularity: typing.Optional[snscrape.base.Granularity] = None
+	posts: typing.Optional[int] = None
+	postsGranularity: typing.Optional[snscrape.base.Granularity] = None
+	photos: typing.Optional[int] = None
+	photosGranularity: typing.Optional[snscrape.base.Granularity] = None
+	tags: typing.Optional[int] = None
+	tagsGranularity: typing.Optional[snscrape.base.Granularity] = None
+	following: typing.Optional[int] = None
+	followingGranularity: typing.Optional[snscrape.base.Granularity] = None
+
+	def __str__(self):
+		return f'https://vk.com/{self.username}'
+
+
 class VKontakteUserScraper(snscrape.base.Scraper):
 	name = 'vkontakte-user'
 
 	def __init__(self, username, **kwargs):
 		super().__init__(**kwargs)
 		self._username = username
+		self._baseUrl = f'https://vk.com/{self._username}'
+		self._headers = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:52.0) Gecko/20100101 Firefox/52.0', 'Accept-Language': 'en-US,en;q=0.5'}
+		self._initialPage = None
+		self._initialPageSoup = None
 
-	def _soup_to_items(self, soup, baseUrl):
+	def _soup_to_items(self, soup):
 		for post in soup.find_all('div', class_ = 'post'):
 			dateSpan = post.find('div', class_ = 'post_date').find('span', class_ = 'rel_date')
 			textDiv = post.find('div', class_ = 'wall_post_text')
 			yield VKontaktePost(
-			  url = urllib.parse.urljoin(baseUrl, post.find('a', class_ = 'post_link')['href']),
+			  url = urllib.parse.urljoin(self._baseUrl, post.find('a', class_ = 'post_link')['href']),
 			  date = datetime.datetime.fromtimestamp(int(dateSpan['time']), datetime.timezone.utc) if 'time' in dateSpan else None,
 			  content = textDiv.text if textDiv else None,
 			 )
 
-	def get_items(self):
-		headers = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:52.0) Gecko/20100101 Firefox/52.0', 'Accept-Language': 'en-US,en;q=0.5'}
-		baseUrl = f'https://vk.com/{self._username}'
+	def _initial_page(self):
+		if self._initialPage is None:
+			logger.info('Retrieving initial data')
+			r = self._get(self._baseUrl, headers = self._headers)
+			if r.status_code not in (200, 404):
+				raise snscrape.base.ScraperException(f'Got status code {r.status_code}')
+			# VK sends windows-1251-encoded data, but Requests's decoding doesn't seem to work correctly and causes lxml to choke, so we need to pass the binary content and the encoding explicitly.
+			self._initialPage, self._initialPageSoup = r, bs4.BeautifulSoup(r.content, 'lxml', from_encoding = r.encoding)
+		return self._initialPage, self._initialPageSoup
 
-		logger.info('Retrieving initial data')
-		r = self._get(baseUrl, headers = headers)
+	def get_items(self):
+		r, soup = self._initial_page()
 		if r.status_code == 404:
 			logger.warning('Wall does not exist')
 			return
-		elif r.status_code != 200:
-			raise snscrape.base.ScraperException(f'Got status code {r.status_code}')
-
-		# VK sends windows-1251-encoded data, but Requests's decoding doesn't seem to work correctly and causes lxml to choke, so we need to pass the binary content and the encoding explicitly.
-		soup = bs4.BeautifulSoup(r.content, 'lxml', from_encoding = r.encoding)
 
 		if soup.find('div', class_ = 'profile_closed_wall_dummy'):
 			logger.warning('Private profile')
@@ -72,7 +98,7 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 		else:
 			fixedPostID = ''
 
-		yield from self._soup_to_items(soup, baseUrl)
+		yield from self._soup_to_items(soup)
 
 		headers['X-Requested-With'] = 'XMLHttpRequest'
 		for offset in itertools.count(start = 10, step = 10):
@@ -92,7 +118,71 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 			if not posts.startswith('<div id="post'):
 				raise snscrape.base.ScraperException(f'Got an unknown response: {posts[:200]!r}...')
 			soup = bs4.BeautifulSoup(posts, 'lxml')
-			yield from self._soup_to_items(soup, baseUrl)
+			yield from self._soup_to_items(soup)
+
+	def get_entity(self):
+		r, soup = self._initial_page()
+		if r.status_code != 200:
+			return
+		kwargs = {}
+		kwargs['username'] = r.url.rsplit('/', 1)[1]
+		nameH1 = soup.find('h1', class_ = 'page_name')
+		kwargs['name'] = nameH1.text
+		kwargs['verified'] = bool(nameH1.find('div', class_ = 'page_verified'))
+		infoDiv = soup.find('div', id = 'page_info_wrap')
+
+		descriptionDiv = soup.find('div', id = 'page_current_info')
+		if descriptionDiv:
+			kwargs['description'] = descriptionDiv.text
+		websites = []
+		for rowDiv in infoDiv.find_all('div', class_ = ['profile_info_row', 'group_info_row']):
+			if 'profile_info_row' in rowDiv['class']:
+				labelDiv = rowDiv.find('div', class_ = 'fl_l')
+				if not labelDiv or labelDiv.text != 'Website:':
+					continue
+			else: # group_info_row
+				if rowDiv['title'] == 'Description':
+					kwargs['description'] = rowDiv.text
+				if rowDiv['title'] != 'Website':
+					continue
+			for a in rowDiv.find_all('a'):
+				if not a['href'].startswith('/away.php?to='):
+					logger.warning(f'Skipping odd website link: {a["href"]!r}')
+					continue
+				websites.append(urllib.parse.unquote(a['href'].split('=', 1)[1].split('&', 1)[0]))
+		if websites:
+			kwargs['websites'] = websites
+
+		def parse_num(s):
+			if s.endswith('K'):
+				return int(s[:-1]) * 1000, 1000
+			else:
+				return int(s.replace(',', '')), 1
+
+		countsDiv = soup.find('div', class_ = 'counts_module')
+		if countsDiv:
+			for a in countsDiv.find_all('a', class_ = 'page_counter'):
+				count, granularity = parse_num(a.find('div', class_ = 'count').text)
+				label = a.find('div', class_ = 'label').text
+				if label in ('follower', 'post', 'photo', 'tag'):
+					label = f'{label}s'
+				if label in ('followers', 'posts', 'photos', 'tags'):
+					kwargs[label], kwargs[f'{label}Granularity'] = count, granularity
+
+		idolsDiv = soup.find('div', id = 'profile_idols')
+		if idolsDiv:
+			topDiv = idolsDiv.find('div', class_ = 'header_top')
+			if topDiv and topDiv.find('span', class_ = 'header_label').text == 'Following':
+				kwargs['following'], kwargs['followingGranularity'] = parse_num(topDiv.find('span', class_ = 'header_count').text)
+
+		# On public pages, this is where followers are listed
+		followersDiv = soup.find('div', id = 'public_followers')
+		if followersDiv:
+			topDiv = followersDiv.find('div', class_ = 'header_top')
+			if topDiv and topDiv.find('span', class_ = 'header_label').text == 'Followers':
+				kwargs['followers'], kwargs['followersGranularity'] = parse_num(topDiv.find('span', class_ = 'header_count').text)
+
+		return User(**kwargs)
 
 	@classmethod
 	def setup_parser(cls, subparser):

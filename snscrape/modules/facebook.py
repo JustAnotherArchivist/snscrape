@@ -23,6 +23,25 @@ class FacebookPost(typing.NamedTuple, snscrape.base.Item):
 		return self.cleanUrl
 
 
+class User(typing.NamedTuple, snscrape.base.Entity):
+	username: str
+	pageId: int
+	name: str
+	verified: bool
+	created: typing.Optional[datetime.date] = None
+	pageOwner: typing.Optional[str] = None
+	likes: typing.Optional[int] = None
+	followers: typing.Optional[int] = None
+	checkins: typing.Optional[int] = None
+	address: typing.Optional[str] = None
+	phone: typing.Optional[str] = None
+	web: typing.Optional[str] = None
+	keywords: typing.Optional[typing.List[str]] = None
+
+	def __str__(self):
+		return f'https://www.facebook.com/{self.username}/'
+
+
 class FacebookCommonScraper(snscrape.base.Scraper):
 	def _clean_url(self, dirtyUrl):
 		u = urllib.parse.urlparse(dirtyUrl)
@@ -136,6 +155,19 @@ class FacebookUserAndCommunityScraper(FacebookCommonScraper):
 	def __init__(self, username, **kwargs):
 		super().__init__(**kwargs)
 		self._username = username
+		self._headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36', 'Accept-Language': 'en-US,en;q=0.5'}
+		self._initialPage = None
+		self._initialPageSoup = None
+
+	def _initial_page(self):
+		if self._initialPage is None:
+			logger.info('Retrieving initial data')
+			r = self._get(self._baseUrl, headers = self._headers)
+			if r.status_code not in (200, 404):
+				raise snscrape.base.ScraperException('Got status code {r.status_code}')
+			self._initialPage = r
+			self._initialPageSoup = bs4.BeautifulSoup(r.text, 'lxml')
+		return self._initialPage, self._initialPageSoup
 
 	def get_items(self):
 		headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36', 'Accept-Language': 'en-US,en;q=0.5'}
@@ -143,14 +175,10 @@ class FacebookUserAndCommunityScraper(FacebookCommonScraper):
 		nextPageLinkPattern = re.compile(r'^/pages_reaction_units/more/\?page_id=')
 		spuriousForLoopPattern = re.compile(r'^for \(;;\);')
 
-		logger.info('Retrieving initial data')
-		r = self._get(self._baseUrl, headers = headers)
+		r, soup = self._initial_page()
 		if r.status_code == 404:
 			logger.warning('User does not exist')
 			return
-		elif r.status_code != 200:
-			raise snscrape.base.ScraperException('Got status code {r.status_code}')
-		soup = bs4.BeautifulSoup(r.text, 'lxml')
 		yield from self._soup_to_items(soup, self._baseUrl, 'user')
 		nextPageLink = soup.find('a', ajaxify = nextPageLinkPattern)
 
@@ -189,6 +217,76 @@ class FacebookUserScraper(FacebookUserAndCommunityScraper):
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		self._baseUrl = f'https://www.facebook.com/{self._username}/'
+
+	def get_entity(self):
+		kwargs = {}
+
+		nameVerifiedMarkupPattern = re.compile(r'"markup":\[\["__markup_a588f507_0_0",\{"__html":(".*?")\}')
+		handleDivPattern = re.compile(r'<div\s[^>]*(?<=\s)data-key\s*=\s*"tab_home".*?</div>')
+		handlePattern = re.compile(r'<a\s[^>]*(?<=\s)href="/([^/]+)')
+		months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+		createdDatePattern = re.compile('^(' + '|'.join(months) + r') (\d+), (\d+)$')
+
+		r, soup = self._initial_page()
+		if r.status_code != 200:
+			return
+
+		handleDiv = handleDivPattern.search(r.text)
+		handle = handlePattern.search(handleDiv.group(0))
+		kwargs['username'] = handle.group(1)
+
+		nameVerifiedMarkup = nameVerifiedMarkupPattern.search(r.text)
+		nameVerifiedMarkup = json.loads(nameVerifiedMarkup.group(1))
+		nameVerifiedSoup = bs4.BeautifulSoup(nameVerifiedMarkup, 'lxml')
+		kwargs['name'] = nameVerifiedSoup.find('a', class_ = '_64-f').text
+		kwargs['verified'] = bool(nameVerifiedSoup.find('a', class_ = '_56_f'))
+
+		pageTransparencyContentDiv = soup.find('div', class_ = '_61-0')
+		if pageTransparencyContentDiv.text.startswith('Page created - '):
+			createdDateMess = pageTransparencyContentDiv.text.split(' - ', 1)[1]
+			m = createdDatePattern.match(createdDateMess)
+			assert m, 'unexpected created div content'
+			kwargs['created'] = datetime.date(int(m.group(3)), months.index(m.group(1)) + 1, int(m.group(2)))
+		if pageTransparencyContentDiv.text.startswith('Confirmed Page Owner: '):
+			kwargs['pageOwner'] = pageTransparencyContentDiv.text.split(': ', 1)[1]
+
+		communityDiv = soup.find('div', class_ = '_6590')
+		for div in communityDiv.find_all('div', class_ = '_4bl9'):
+			text = div.text
+			if text.endswith(' people like this'):
+				kwargs['likes'] = int(text.split(' ', 1)[0].replace(',', ''))
+			elif text.endswith(' people follow this'):
+				kwargs['followers'] = int(text.split(' ', 1)[0].replace(',', ''))
+			elif text.endswith(' check-ins'):
+				kwargs['checkins'] = int(text.split(' ', 1)[0].replace(',', ''))
+
+		aboutDiv = soup.find('div', class_ = '_u9q')
+		if aboutDiv:
+			# As if the above wasn't already ugly enough, this is where it gets really bad...
+			for div in aboutDiv.find_all('div', class_ = '_2pi9'):
+				img = div.find('img', class_ = '_3-91')
+				if not img:
+					continue
+				if img['src'] == 'https://static.xx.fbcdn.net/rsrc.php/v3/y5/r/vfXKA62x4Da.png': # Address
+					rawAddress = div.find('div', class_ = '_2wzd').text
+					kwargs['address'] = re.sub(r' \((\d+,)?\d+(\.\d+)? mi\)', '\n', rawAddress) # Remove distance from inferred IP location, restore linebreak
+				elif img['src'] == 'https://static.xx.fbcdn.net/rsrc.php/v3/yW/r/mYv88EsODOI.png': # Phone number
+					kwargs['phone'] = div.find('div', class_ = '_4bl9').text
+				elif img['src'] == 'https://static.xx.fbcdn.net/rsrc.php/v3/yx/r/xVA3lB-GVep.png': # Web link
+					for a in div.find_all('a'):
+						if a.text == '' or 'href' not in a.attrs or a.find('span'):
+							continue
+						dirtyWeb = a['href']
+						assert dirtyWeb.startswith('https://l.facebook.com/l.php?u='), 'unexpected web link'
+						kwargs['web'] = urllib.parse.unquote(dirtyWeb.split('=', 1)[1].split('&', 1)[0])
+				elif img['src'] == 'https://static.xx.fbcdn.net/rsrc.php/v3/yl/r/LwDWwC1d0Rx.png': # Keywords
+					kwargs['keywords'] = div.find('div', class_ = '_4bl9').text.split(' · ')
+
+		androidUrlMeta = soup.find('meta', property = 'al:android:url')
+		assert androidUrlMeta['content'].startswith('fb://page/') and androidUrlMeta['content'].endswith('?referrer=app_link')
+		kwargs['pageId'] = int(androidUrlMeta['content'][10:-18])
+
+		return User(**kwargs)
 
 
 class FacebookCommunityScraper(FacebookUserAndCommunityScraper):

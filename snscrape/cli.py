@@ -170,6 +170,7 @@ def parse_args():
 	group = parser.add_mutually_exclusive_group(required = False)
 	group.add_argument('-f', '--format', dest = 'format', type = str, default = None, help = 'Output format')
 	group.add_argument('--jsonl', dest = 'jsonl', action = 'store_true', default = False, help = 'Output JSONL')
+	parser.add_argument('--with-entity', dest = 'withEntity', action = 'store_true', default = False, help = 'Include the entity (e.g. user, channel) as the first output item')
 	parser.add_argument('--since', type = parse_datetime_arg, metavar = 'DATETIME', help = 'Only return results newer than DATETIME')
 
 	subparsers = parser.add_subparsers(dest = 'scraper', help = 'The scraper you want to use')
@@ -236,6 +237,13 @@ def main():
 
 	i = 0
 	with _dump_locals_on_exception():
+		if args.withEntity:
+			entity = scraper.get_entity()
+			if entity:
+				if args.jsonl:
+					print(json.dumps(entity._asdict(), default = json_serialise_datetime))
+				else:
+					print(entity)
 		for i, item in enumerate(scraper.get_items(), start = 1):
 			if args.since is not None and item.date < args.since:
 				logger.info(f'Exiting due to reaching older results than {args.since}')

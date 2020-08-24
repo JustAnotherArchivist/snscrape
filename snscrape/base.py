@@ -17,6 +17,22 @@ class Item:
 		pass
 
 
+class Entity:
+	'''An abstract base class for an entity returned by the scraper's get_entity method.
+
+	An entity is typically the account of a person or organisation. The string representation should be the preferred direct URL to the entity's page on the network.'''
+
+	@abc.abstractmethod
+	def __str__(self):
+		pass
+
+
+Granularity = int
+'''Type of fields storing the unit/granularity of numbers.
+
+For example, a granularity of 1000 means that the SNS returned something like '42k' and the last three significant digits are unknown.'''
+
+
 class URLItem(Item):
 	'''A generic item which only holds a URL string.'''
 
@@ -48,6 +64,10 @@ class Scraper:
 	def get_items(self):
 		'''Iterator yielding Items.'''
 		pass
+
+	def get_entity(self):
+		'''Get the entity behind the scraper, if any.'''
+		return None
 
 	def _request(self, method, url, params = None, data = None, headers = None, timeout = 10, responseOkCallback = None):
 		for attempt in range(self._retries + 1):

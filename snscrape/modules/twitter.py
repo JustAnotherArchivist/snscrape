@@ -1,5 +1,7 @@
 import bs4
 import datetime
+import email.utils
+import itertools
 import json
 import random
 import logging
@@ -11,6 +13,7 @@ import urllib.parse
 
 
 logger = logging.getLogger(__name__)
+_API_AUTHORIZATION_HEADER = 'Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs=1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA'
 
 
 class Tweet(typing.NamedTuple, snscrape.base.Item):
@@ -28,8 +31,30 @@ class Tweet(typing.NamedTuple, snscrape.base.Item):
 		return self.url
 
 
-class Account(typing.NamedTuple, snscrape.base.Item):
+class DescriptionURL(typing.NamedTuple):
+	text: str
+	url: str
+	tcourl: str
+	indices: typing.Tuple[int, int]
+
+
+class User(typing.NamedTuple, snscrape.base.Item, snscrape.base.Entity):
+	# This is both an Item and an Entity since it can be returned as TwitterUserScraper's entity as well as TwitterListMembersScraper's items.
+	# Most fields can be None if they're not known.
+
 	username: str
+	description: typing.Optional[str] = None # Description as it's displayed on the web interface with URLs replaced
+	rawDescription: typing.Optional[str] = None # Raw description with the URL(s) intact
+	descriptionUrls: typing.Optional[typing.List[DescriptionURL]] = None
+	verified: typing.Optional[bool] = None
+	created: typing.Optional[datetime.datetime] = None
+	followersCount: typing.Optional[int] = None
+	friendsCount: typing.Optional[int] = None
+	statusesCount: typing.Optional[int] = None
+	linkUrl: typing.Optional[str] = None
+	linkTcourl: typing.Optional[str] = None
+	profileImageUrl: typing.Optional[str] = None
+	profileBannerUrl: typing.Optional[str] = None
 
 	@property
 	def url(self):
@@ -117,7 +142,7 @@ class TwitterSearchScraper(TwitterCommonScraper):
 		if r.status_code == 429:
 			# Accept a 429 response as "valid" to prevent retries; handled explicitly in get_items
 			return True, None
-		if r.headers.get('content-type') != 'application/json;charset=utf-8':
+		if r.headers.get('content-type').replace(' ', '') != 'application/json;charset=utf-8':
 			return False, f'content type is not JSON'
 		if r.status_code != 200:
 			return False, f'non-200 status code'
@@ -126,7 +151,7 @@ class TwitterSearchScraper(TwitterCommonScraper):
 	def get_items(self):
 		headers = {
 			'User-Agent': self._userAgent,
-			'Authorization': 'Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs=1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA',
+			'Authorization': _API_AUTHORIZATION_HEADER,
 			'Referer': self._baseUrl,
 		}
 		if self._guestToken:
@@ -231,6 +256,55 @@ class TwitterUserScraper(TwitterSearchScraper):
 	def __init__(self, username, **kwargs):
 		super().__init__(f'from:{username}', **kwargs)
 		self._username = username
+
+	def get_entity(self):
+		while True:
+			if not self._guestToken:
+				self._guestToken = self._get_guest_token(f'https://twitter.com/{self._username}')
+
+			params = {'variables': json.dumps({'screen_name': self._username, 'withHighlightedLabel': True}, separators = (',', ':'))}
+			r = self._get(f'https://api.twitter.com/graphql/-xfUfZsnR_zqjFd-IfrN5A/UserByScreenName',
+			              params = urllib.parse.urlencode(params, quote_via=urllib.parse.quote),
+			              headers = {'User-Agent': self._userAgent, 'Authorization': _API_AUTHORIZATION_HEADER, 'Referer': 'https://twitter.com/', 'x-guest-token': self._guestToken},
+			              responseOkCallback = self._check_scroll_response,
+			             )
+			if r.status_code == 429:
+				self._guestToken = None
+				del self._session.cookies['gt']
+				continue
+			elif r.status_code != 200:
+				raise snscrape.base.ScraperException(f'Got status code {r.status_code}')
+			try:
+				obj = r.json()
+			except json.JSONDecodeError as e:
+				raise snscrape.base.ScraperException('Received invalid JSON from Twitter') from e
+			user = obj['data']['user']
+			rawDescription = user['legacy']['description']
+			if user['legacy']['entities']['description']['urls']:
+				description = []
+				description.append(rawDescription[:user['legacy']['entities']['description']['urls'][0]['indices'][0]])
+				urls = sorted(user['legacy']['entities']['description']['urls'], key = lambda x: x['indices'][0])
+				for url, nextUrl in itertools.zip_longest(urls, urls[1:]):
+					description.append(url['display_url'])
+					description.append(rawDescription[url['indices'][1] : nextUrl['indices'][0] if nextUrl is not None else None])
+				description = ''.join(description)
+			else:
+				description = rawDescription
+			return User(
+				username = user['legacy']['screen_name'],
+				description = description,
+				rawDescription = rawDescription,
+				descriptionUrls = [{'text': x['display_url'], 'url': x['expanded_url'], 'tcourl': x['url'], 'indices': tuple(x['indices'])} for x in user['legacy']['entities']['description']['urls']],
+				verified = user['legacy']['verified'],
+				created = email.utils.parsedate_to_datetime(user['legacy']['created_at']),
+				followersCount = user['legacy']['followers_count'],
+				friendsCount = user['legacy']['friends_count'],
+				statusesCount = user['legacy']['statuses_count'],
+				linkUrl = user['legacy']['entities']['url']['urls'][0]['expanded_url'] if 'url' in user['legacy']['entities'] else None,
+				linkTcourl = user['legacy'].get('url'),
+				profileImageUrl = user['legacy']['profile_image_url_https'],
+				profileBannerUrl = user['legacy'].get('profile_banner_url'),
+			  )
 
 	@classmethod
 	def setup_parser(cls, subparser):
@@ -360,7 +434,7 @@ class TwitterListMembersScraper(TwitterCommonScraper):
 			logger.warning('Empty list')
 			return
 		for item in items:
-			yield Account(username = item.find('div', 'account')['data-screen-name'])
+			yield User(username = item.find('div', 'account')['data-screen-name'])
 
 		if not container.has_attr('data-min-position') or container['data-min-position'] == '':
 			return
@@ -375,7 +449,7 @@ class TwitterListMembersScraper(TwitterCommonScraper):
 			soup = bs4.BeautifulSoup(obj['items_html'], 'lxml')
 			items = soup.find_all('li', 'js-stream-item')
 			for item in items:
-				yield Account(username = item.find('div', 'account')['data-screen-name'])
+				yield User(username = item.find('div', 'account')['data-screen-name'])
 			if not obj['has_more_items']:
 				break
 			maxPosition = obj['min_position']
