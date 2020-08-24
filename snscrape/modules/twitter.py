@@ -7,6 +7,7 @@ import random
 import logging
 import re
 import snscrape.base
+import string
 import time
 import typing
 import urllib.parse
@@ -254,6 +255,8 @@ class TwitterUserScraper(TwitterSearchScraper):
 	name = 'twitter-user'
 
 	def __init__(self, username, **kwargs):
+		if not self.is_valid_username(username):
+			raise ValueError('Invalid username')
 		super().__init__(f'from:{username}', **kwargs)
 		self._username = username
 
@@ -306,9 +309,18 @@ class TwitterUserScraper(TwitterSearchScraper):
 				profileBannerUrl = user['legacy'].get('profile_banner_url'),
 			  )
 
+	@staticmethod
+	def is_valid_username(s):
+		return 1 <= len(s) <= 15 and s.strip(string.ascii_letters + string.digits + '_') == ''
+
 	@classmethod
 	def setup_parser(cls, subparser):
-		subparser.add_argument('username', help = 'A Twitter username (without @)')
+		def username(s):
+			if cls.is_valid_username(s):
+				return s
+			raise ValueError('Invalid username')
+
+		subparser.add_argument('username', type = username, help = 'A Twitter username (without @)')
 
 	@classmethod
 	def from_args(cls, args):
