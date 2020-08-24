@@ -25,8 +25,8 @@ class Channel(typing.NamedTuple, snscrape.base.Entity):
 	title: str
 	verified: bool
 	photo: str
-	members: int
 	description: typing.Optional[str] = None
+	members: typing.Optional[int] = None
 	photos: typing.Optional[int] = None
 	photosGranularity: typing.Optional[snscrape.base.Granularity] = None
 	videos: typing.Optional[int] = None
@@ -75,6 +75,9 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 
 	def get_items(self):
 		r, soup = self._initial_page()
+		if '/s/' not in r.url:
+			logger.warning('No public post list for this user')
+			return
 		while True:
 			yield from self._soup_to_items(soup, r.url)
 			pageLink = soup.find('a', attrs = {'class': 'tme_messages_more', 'data-before': True})
@@ -94,11 +97,13 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 			raise snscrape.base.ScraperException(f'Got status code {r.status_code}')
 		soup = bs4.BeautifulSoup(r.text, 'lxml')
 		membersDiv = soup.find('div', class_ = 'tgme_page_extra')
-		assert membersDiv.text.endswith(' members')
-		kwargs['members'] = int(membersDiv.text[:-8].replace(' ', ''))
+		if membersDiv.text.endswith(' members'):
+			kwargs['members'] = int(membersDiv.text[:-8].replace(' ', ''))
 		kwargs['photo'] = soup.find('img', class_ = 'tgme_page_photo_image').attrs['src']
 
 		r, soup = self._initial_page()
+		if '/s/' not in r.url: # Redirect on channels without public posts
+			return
 		channelInfoDiv = soup.find('div', class_ = 'tgme_channel_info')
 		assert channelInfoDiv, 'channel info div not found'
 		titleDiv = channelInfoDiv.find('div', class_ = 'tgme_channel_info_header_title')
