@@ -129,29 +129,31 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 		nameH1 = soup.find('h1', class_ = 'page_name')
 		kwargs['name'] = nameH1.text
 		kwargs['verified'] = bool(nameH1.find('div', class_ = 'page_verified'))
-		infoDiv = soup.find('div', id = 'page_info_wrap')
 
 		descriptionDiv = soup.find('div', id = 'page_current_info')
 		if descriptionDiv:
 			kwargs['description'] = descriptionDiv.text
-		websites = []
-		for rowDiv in infoDiv.find_all('div', class_ = ['profile_info_row', 'group_info_row']):
-			if 'profile_info_row' in rowDiv['class']:
-				labelDiv = rowDiv.find('div', class_ = 'fl_l')
-				if not labelDiv or labelDiv.text != 'Website:':
-					continue
-			else: # group_info_row
-				if rowDiv['title'] == 'Description':
-					kwargs['description'] = rowDiv.text
-				if rowDiv['title'] != 'Website':
-					continue
-			for a in rowDiv.find_all('a'):
-				if not a['href'].startswith('/away.php?to='):
-					logger.warning(f'Skipping odd website link: {a["href"]!r}')
-					continue
-				websites.append(urllib.parse.unquote(a['href'].split('=', 1)[1].split('&', 1)[0]))
-		if websites:
-			kwargs['websites'] = websites
+
+		infoDiv = soup.find('div', id = 'page_info_wrap')
+		if infoDiv:
+			websites = []
+			for rowDiv in infoDiv.find_all('div', class_ = ['profile_info_row', 'group_info_row']):
+				if 'profile_info_row' in rowDiv['class']:
+					labelDiv = rowDiv.find('div', class_ = 'fl_l')
+					if not labelDiv or labelDiv.text != 'Website:':
+						continue
+				else: # group_info_row
+					if rowDiv['title'] == 'Description':
+						kwargs['description'] = rowDiv.text
+					if rowDiv['title'] != 'Website':
+						continue
+				for a in rowDiv.find_all('a'):
+					if not a['href'].startswith('/away.php?to='):
+						logger.warning(f'Skipping odd website link: {a["href"]!r}')
+						continue
+					websites.append(urllib.parse.unquote(a['href'].split('=', 1)[1].split('&', 1)[0]))
+			if websites:
+				kwargs['websites'] = websites
 
 		def parse_num(s):
 			if s.endswith('K'):
