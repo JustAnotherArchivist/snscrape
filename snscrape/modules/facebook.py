@@ -137,21 +137,21 @@ class FacebookUserAndCommunityScraper(FacebookCommonScraper):
 		super().__init__(**kwargs)
 		self._username = username
 
-	def _get_items(self, baseUrl):
+	def get_items(self):
 		headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36', 'Accept-Language': 'en-US,en;q=0.5'}
 
 		nextPageLinkPattern = re.compile(r'^/pages_reaction_units/more/\?page_id=')
 		spuriousForLoopPattern = re.compile(r'^for \(;;\);')
 
 		logger.info('Retrieving initial data')
-		r = self._get(baseUrl, headers = headers)
+		r = self._get(self._baseUrl, headers = headers)
 		if r.status_code == 404:
 			logger.warning('User does not exist')
 			return
 		elif r.status_code != 200:
 			raise snscrape.base.ScraperException('Got status code {r.status_code}')
 		soup = bs4.BeautifulSoup(r.text, 'lxml')
-		yield from self._soup_to_items(soup, baseUrl, 'user')
+		yield from self._soup_to_items(soup, self._baseUrl, 'user')
 		nextPageLink = soup.find('a', ajaxify = nextPageLinkPattern)
 
 		while nextPageLink:
@@ -159,7 +159,7 @@ class FacebookUserAndCommunityScraper(FacebookCommonScraper):
 
 			# The web app sends a bunch of additional parameters. Most of them would be easy to add, but there's also __dyn, which is a compressed list of the "modules" loaded in the browser.
 			# Reproducing that would be difficult to get right, especially as Facebook's codebase evolves, so it's just not sent at all here.
-			r = self._get(urllib.parse.urljoin(baseUrl, nextPageLink.get('ajaxify')) + '&__a=1', headers = headers)
+			r = self._get(urllib.parse.urljoin(self._baseUrl, nextPageLink.get('ajaxify')) + '&__a=1', headers = headers)
 			if r.status_code != 200:
 				raise snscrape.base.ScraperException(f'Got status code {r.status_code}')
 			response = json.loads(spuriousForLoopPattern.sub('', r.text))
@@ -171,7 +171,7 @@ class FacebookUserAndCommunityScraper(FacebookCommonScraper):
 			assert response['domops'][0][2] == False
 			assert '__html' in response['domops'][0][3]
 			soup = bs4.BeautifulSoup(response['domops'][0][3]['__html'], 'lxml')
-			yield from self._soup_to_items(soup, baseUrl, 'user')
+			yield from self._soup_to_items(soup, self._baseUrl, 'user')
 			nextPageLink = soup.find('a', ajaxify = nextPageLinkPattern)
 
 	@classmethod
@@ -186,15 +186,17 @@ class FacebookUserAndCommunityScraper(FacebookCommonScraper):
 class FacebookUserScraper(FacebookUserAndCommunityScraper):
 	name = 'facebook-user'
 
-	def get_items(self):
-		yield from super()._get_items(f'https://www.facebook.com/{self._username}/')
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+		self._baseUrl = f'https://www.facebook.com/{self._username}/'
 
 
 class FacebookCommunityScraper(FacebookUserAndCommunityScraper):
 	name = 'facebook-community'
 
-	def get_items(self):
-		yield from super()._get_items(f'https://www.facebook.com/{self._username}/community/')
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+		self._baseUrl = f'https://www.facebook.com/{self._username}/community/'
 
 
 class FacebookGroupScraper(FacebookCommonScraper):
