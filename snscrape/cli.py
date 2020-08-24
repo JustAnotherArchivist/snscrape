@@ -223,7 +223,7 @@ def configure_logging(verbosity, dumpLocals_):
 
 
 def json_serialise_datetime(obj):
-	if isinstance(obj, datetime.datetime):
+	if isinstance(obj, (datetime.datetime, datetime.date)):
 		return obj.isoformat()
 	raise TypeError(f'Object of type {type(obj)} is not JSON serializable')
 
