@@ -23,10 +23,10 @@ class TelegramPost(typing.NamedTuple, snscrape.base.Item):
 class Channel(typing.NamedTuple, snscrape.base.Entity):
 	username: str
 	title: str
-	description: str
 	verified: bool
 	photo: str
 	members: int
+	description: typing.Optional[str] = None
 	photos: typing.Optional[int] = None
 	photosGranularity: typing.Optional[snscrape.base.Granularity] = None
 	videos: typing.Optional[int] = None
@@ -105,7 +105,9 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 		kwargs['title'] = titleDiv.find('span').text
 		kwargs['verified'] = bool(titleDiv.find('i', class_ = 'verified-icon'))
 		kwargs['username'] = channelInfoDiv.find('div', class_ = 'tgme_channel_info_header_username').text[1:] # Remove @
-		kwargs['description'] = channelInfoDiv.find('div', class_ = 'tgme_channel_info_description').text
+		descriptionDiv = channelInfoDiv.find('div', class_ = 'tgme_channel_info_description')
+		if descriptionDiv:
+			kwargs['description'] = descriptionDiv.text
 
 		def parse_num(s):
 			s = s.replace(' ', '')
