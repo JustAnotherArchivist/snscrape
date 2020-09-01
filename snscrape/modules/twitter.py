@@ -200,6 +200,34 @@ class TwitterAPIScraper(TwitterCommonScraper):
 			reqParams = paginationParams.copy()
 			reqParams['cursor'] = cursor
 
+	def _instructions_to_tweets(self, obj):
+		# No data format test, just a hard and loud crash if anything's wrong :-)
+		for instruction in obj['timeline']['instructions']:
+			if 'addEntries' in instruction:
+				entries = instruction['addEntries']['entries']
+			elif 'replaceEntry' in instruction:
+				entries = [instruction['replaceEntry']['entry']]
+			else:
+				continue
+			for entry in entries:
+				if entry['entryId'].startswith('sq-I-t-'):
+					if 'tweet' in entry['content']['item']['content']:
+						if 'promotedMetadata' in entry['content']['item']['content']['tweet']: # Promoted tweet aka ads
+							continue
+						tweet = obj['globalObjects']['tweets'][entry['content']['item']['content']['tweet']['id']]
+					elif 'tombstone' in entry['content']['item']['content'] and 'tweet' in entry['content']['item']['content']['tombstone']:
+						tweet = obj['globalObjects']['tweets'][entry['content']['item']['content']['tombstone']['tweet']['id']]
+					else:
+						raise snscrape.base.ScraperException(f'Unable to handle entry {entry["entryId"]!r}')
+					tweetID = tweet['id']
+					content = tweet['full_text']
+					username = obj['globalObjects']['users'][tweet['user_id_str']]['screen_name']
+					date = datetime.datetime.strptime(tweet['created_at'], '%a %b %d %H:%M:%S +0000 %Y').replace(tzinfo = datetime.timezone.utc)
+					outlinks = [u['expanded_url'] for u in tweet['entities']['urls']]
+					tcooutlinks = [u['url'] for u in tweet['entities']['urls']]
+					url = f'https://twitter.com/{username}/status/{tweetID}'
+					yield Tweet(url, date, content, tweetID, username, outlinks, ' '.join(outlinks), tcooutlinks, ' '.join(tcooutlinks))
+
 
 class TwitterSearchScraper(TwitterAPIScraper):
 	name = 'twitter-search'
@@ -255,32 +283,7 @@ class TwitterSearchScraper(TwitterAPIScraper):
 			d['ext'] = 'ext=mediaStats%2ChighlightedLabel'
 
 		for obj in self._iter_api_data('https://api.twitter.com/2/search/adaptive.json', params, paginationParams):
-			# No data format test, just a hard and loud crash if anything's wrong :-)
-			for instruction in obj['timeline']['instructions']:
-				if 'addEntries' in instruction:
-					entries = instruction['addEntries']['entries']
-				elif 'replaceEntry' in instruction:
-					entries = [instruction['replaceEntry']['entry']]
-				else:
-					continue
-				for entry in entries:
-					if entry['entryId'].startswith('sq-I-t-'):
-						if 'tweet' in entry['content']['item']['content']:
-							if 'promotedMetadata' in entry['content']['item']['content']['tweet']: # Promoted tweet aka ads
-								continue
-							tweet = obj['globalObjects']['tweets'][entry['content']['item']['content']['tweet']['id']]
-						elif 'tombstone' in entry['content']['item']['content'] and 'tweet' in entry['content']['item']['content']['tombstone']:
-							tweet = obj['globalObjects']['tweets'][entry['content']['item']['content']['tombstone']['tweet']['id']]
-						else:
-							raise snscrape.base.ScraperException(f'Unable to handle entry {entry["entryId"]!r}')
-						tweetID = tweet['id']
-						content = tweet['full_text']
-						username = obj['globalObjects']['users'][tweet['user_id_str']]['screen_name']
-						date = datetime.datetime.strptime(tweet['created_at'], '%a %b %d %H:%M:%S +0000 %Y').replace(tzinfo = datetime.timezone.utc)
-						outlinks = [u['expanded_url'] for u in tweet['entities']['urls']]
-						tcooutlinks = [u['url'] for u in tweet['entities']['urls']]
-						url = f'https://twitter.com/{username}/status/{tweetID}'
-						yield Tweet(url, date, content, tweetID, username, outlinks, ' '.join(outlinks), tcooutlinks, ' '.join(tcooutlinks))
+			yield from self._instructions_to_tweets(obj)
 
 	@classmethod
 	def setup_parser(cls, subparser):
