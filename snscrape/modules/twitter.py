@@ -44,6 +44,7 @@ class User(typing.NamedTuple, snscrape.base.Item, snscrape.base.Entity):
 	# Most fields can be None if they're not known.
 
 	username: str
+	id: str # Seems to always be numeric, but the API returns it as a string, so it might also contain other things in the future
 	description: typing.Optional[str] = None # Description as it's displayed on the web interface with URLs replaced
 	rawDescription: typing.Optional[str] = None # Raw description with the URL(s) intact
 	descriptionUrls: typing.Optional[typing.List[DescriptionURL]] = None
@@ -322,6 +323,7 @@ class TwitterUserScraper(TwitterSearchScraper):
 			description = rawDescription
 		return User(
 			username = user['legacy']['screen_name'],
+			id = user['rest_id'],
 			description = description,
 			rawDescription = rawDescription,
 			descriptionUrls = [{'text': x['display_url'], 'url': x['expanded_url'], 'tcourl': x['url'], 'indices': tuple(x['indices'])} for x in user['legacy']['entities']['description']['urls']],
