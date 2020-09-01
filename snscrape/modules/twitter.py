@@ -211,7 +211,7 @@ class TwitterAPIScraper(TwitterCommonScraper):
 			else:
 				continue
 			for entry in entries:
-				if entry['entryId'].startswith('sq-I-t-'):
+				if entry['entryId'].startswith('sq-I-t-') or entry['entryId'].startswith('tweet-'):
 					if 'tweet' in entry['content']['item']['content']:
 						if 'promotedMetadata' in entry['content']['item']['content']['tweet']: # Promoted tweet aka ads
 							continue
@@ -220,14 +220,18 @@ class TwitterAPIScraper(TwitterCommonScraper):
 						tweet = obj['globalObjects']['tweets'][entry['content']['item']['content']['tombstone']['tweet']['id']]
 					else:
 						raise snscrape.base.ScraperException(f'Unable to handle entry {entry["entryId"]!r}')
-					tweetID = tweet['id']
-					content = tweet['full_text']
-					username = obj['globalObjects']['users'][tweet['user_id_str']]['screen_name']
-					date = datetime.datetime.strptime(tweet['created_at'], '%a %b %d %H:%M:%S +0000 %Y').replace(tzinfo = datetime.timezone.utc)
-					outlinks = [u['expanded_url'] for u in tweet['entities']['urls']]
-					tcooutlinks = [u['url'] for u in tweet['entities']['urls']]
-					url = f'https://twitter.com/{username}/status/{tweetID}'
-					yield Tweet(url, date, content, tweetID, username, outlinks, ' '.join(outlinks), tcooutlinks, ' '.join(tcooutlinks))
+					yield self._tweet_to_tweet(tweet, obj)
+
+	def _tweet_to_tweet(self, tweet, obj):
+		# Transforms a Twitter API tweet object into a Tweet
+		tweetID = tweet['id'] if 'id' in tweet else int(tweet['id_str'])
+		content = tweet['full_text']
+		username = obj['globalObjects']['users'][tweet['user_id_str']]['screen_name']
+		date = datetime.datetime.strptime(tweet['created_at'], '%a %b %d %H:%M:%S +0000 %Y').replace(tzinfo = datetime.timezone.utc)
+		outlinks = [u['expanded_url'] for u in tweet['entities']['urls']] if 'urls' in tweet['entities'] else []
+		tcooutlinks = [u['url'] for u in tweet['entities']['urls']] if 'urls' in tweet['entities'] else []
+		url = f'https://twitter.com/{username}/status/{tweetID}'
+		return Tweet(url, date, content, tweetID, username, outlinks, ' '.join(outlinks), tcooutlinks, ' '.join(tcooutlinks))
 
 
 class TwitterSearchScraper(TwitterAPIScraper):
@@ -354,6 +358,51 @@ class TwitterUserScraper(TwitterSearchScraper):
 	@classmethod
 	def from_args(cls, args):
 		return cls(args.username, retries = args.retries)
+
+
+class TwitterProfileScraper(TwitterUserScraper):
+	name = 'twitter-profile'
+
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+		self._baseUrl = f'https://twitter.com/{self._username}'
+
+	def get_items(self):
+		user = self.entity
+		params = {
+			'include_profile_interstitial_type': '1',
+			'include_blocking': '1',
+			'include_blocked_by': '1',
+			'include_followed_by': '1',
+			'include_want_retweets': '1',
+			'include_mute_edge': '1',
+			'include_can_dm': '1',
+			'include_can_media_tag': '1',
+			'skip_status': '1',
+			'cards_platform': 'Web-12',
+			'include_cards': '1',
+			'include_ext_alt_text': 'true',
+			'include_quote_count': 'true',
+			'include_reply_count': '1',
+			'tweet_mode': 'extended',
+			'include_entities': 'true',
+			'include_user_entities': 'true',
+			'include_ext_media_color': 'true',
+			'include_ext_media_availability': 'true',
+			'send_error_codes': 'true',
+			'simple_quoted_tweets': 'true',
+			'include_tweet_replies': 'true',
+			'userId': user.id,
+			'count': '100',
+		}
+		paginationParams = params.copy()
+		paginationParams['cursor'] = None
+		for d in (params, paginationParams):
+			d['ext'] = 'ext=mediaStats%2ChighlightedLabel'
+
+		for obj in self._iter_api_data(f'https://api.twitter.com/2/timeline/profile/{user.id}.json', params, paginationParams):
+			yield from self._instructions_to_tweets(obj)
+
 
 class TwitterHashtagScraper(TwitterSearchScraper):
 	name = 'twitter-hashtag'
