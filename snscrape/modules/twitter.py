@@ -27,6 +27,7 @@ class Tweet(typing.NamedTuple, snscrape.base.Item):
 	outlinksss: str
 	tcooutlinks: list
 	tcooutlinksss: str
+	retweetedTweet: typing.Optional['Tweet'] = None
 
 	def __str__(self):
 		return self.url
@@ -231,7 +232,11 @@ class TwitterAPIScraper(TwitterCommonScraper):
 		outlinks = [u['expanded_url'] for u in tweet['entities']['urls']] if 'urls' in tweet['entities'] else []
 		tcooutlinks = [u['url'] for u in tweet['entities']['urls']] if 'urls' in tweet['entities'] else []
 		url = f'https://twitter.com/{username}/status/{tweetID}'
-		return Tweet(url, date, content, tweetID, username, outlinks, ' '.join(outlinks), tcooutlinks, ' '.join(tcooutlinks))
+		if 'retweeted_status_id_str' in tweet:
+			retweetedTweet = self._tweet_to_tweet(obj['globalObjects']['tweets'][tweet['retweeted_status_id_str']], obj)
+		else:
+			retweetedTweet = None
+		return Tweet(url, date, content, tweetID, username, outlinks, ' '.join(outlinks), tcooutlinks, ' '.join(tcooutlinks), retweetedTweet = retweetedTweet)
 
 
 class TwitterSearchScraper(TwitterAPIScraper):
