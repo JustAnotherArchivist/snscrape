@@ -216,8 +216,14 @@ class TwitterAPIScraper(TwitterCommonScraper):
 					if 'tweet' in entry['content']['item']['content']:
 						if 'promotedMetadata' in entry['content']['item']['content']['tweet']: # Promoted tweet aka ads
 							continue
+						if entry['content']['item']['content']['tweet']['id'] not in obj['globalObjects']['tweets']:
+							logger.warning(f'Skipping tweet {entry["content"]["item"]["content"]["tweet"]["id"]} which is not in globalObjects')
+							continue
 						tweet = obj['globalObjects']['tweets'][entry['content']['item']['content']['tweet']['id']]
 					elif 'tombstone' in entry['content']['item']['content'] and 'tweet' in entry['content']['item']['content']['tombstone']:
+						if entry['content']['item']['content']['tombstone']['tweet']['id'] not in obj['globalObjects']['tweets']:
+							logger.warning(f'Skipping tweet {entry["content"]["item"]["content"]["tombstone"]["tweet"]["id"]} which is not in globalObjects')
+							continue
 						tweet = obj['globalObjects']['tweets'][entry['content']['item']['content']['tombstone']['tweet']['id']]
 					else:
 						raise snscrape.base.ScraperException(f'Unable to handle entry {entry["entryId"]!r}')
