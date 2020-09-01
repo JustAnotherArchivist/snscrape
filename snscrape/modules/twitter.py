@@ -178,6 +178,7 @@ class TwitterAPIScraper(TwitterCommonScraper):
 		else:
 			reqParams = paginationParams.copy()
 			reqParams['cursor'] = cursor
+		stopOnEmptyResponse = False
 		while True:
 			logger.info(f'Retrieving scroll page {cursor}')
 			obj = self._get_api_data(endpoint, reqParams)
@@ -195,12 +196,28 @@ class TwitterAPIScraper(TwitterCommonScraper):
 				for entry in entries:
 					if entry['entryId'] == 'sq-cursor-bottom' or entry['entryId'].startswith('cursor-bottom-'):
 						newCursor = entry['content']['operation']['cursor']['value']
-			if not newCursor or newCursor == cursor:
+						if 'stopOnEmptyResponse' in entry['content']['operation']['cursor']:
+							stopOnEmptyResponse = entry['content']['operation']['cursor']['stopOnEmptyResponse']
+			if not newCursor or newCursor == cursor or (stopOnEmptyResponse and self._count_tweets(obj) == 0):
 				# End of pagination
 				break
 			cursor = newCursor
 			reqParams = paginationParams.copy()
 			reqParams['cursor'] = cursor
+
+	def _count_tweets(self, obj):
+		count = 0
+		for instruction in obj['timeline']['instructions']:
+			if 'addEntries' in instruction:
+				entries = instruction['addEntries']['entries']
+			elif 'replaceEntry' in instruction:
+				entries = [instruction['replaceEntry']['entry']]
+			else:
+				continue
+			for entry in entries:
+				if entry['entryId'].startswith('sq-I-t-') or entry['entryId'].startswith('tweet-'):
+					count += 1
+		return count
 
 	def _instructions_to_tweets(self, obj):
 		# No data format test, just a hard and loud crash if anything's wrong :-)
