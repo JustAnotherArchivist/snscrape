@@ -193,7 +193,7 @@ class TwitterAPIScraper(TwitterCommonScraper):
 				else:
 					continue
 				for entry in entries:
-					if entry['entryId'] == 'sq-cursor-bottom':
+					if entry['entryId'] == 'sq-cursor-bottom' or entry['entryId'].startswith('cursor-bottom-'):
 						newCursor = entry['content']['operation']['cursor']['value']
 			if not newCursor or newCursor == cursor:
 				# End of pagination
