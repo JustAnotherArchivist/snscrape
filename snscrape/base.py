@@ -1,4 +1,5 @@
 import abc
+import functools
 import logging
 import requests
 import time
@@ -18,7 +19,7 @@ class Item:
 
 
 class Entity:
-	'''An abstract base class for an entity returned by the scraper's get_entity method.
+	'''An abstract base class for an entity returned by the scraper's entity property.
 
 	An entity is typically the account of a person or organisation. The string representation should be the preferred direct URL to the entity's page on the network.'''
 
@@ -65,9 +66,15 @@ class Scraper:
 		'''Iterator yielding Items.'''
 		pass
 
-	def get_entity(self):
-		'''Get the entity behind the scraper, if any.'''
+	def _get_entity(self):
+		'''Get the entity behind the scraper, if any.
+
+		This is the method implemented by subclasses for doing the actual retrieval/entity object creation. For accessing the scraper's entity, use the entity property.'''
 		return None
+
+	@functools.cached_property
+	def entity(self):
+		return self._get_entity()
 
 	def _request(self, method, url, params = None, data = None, headers = None, timeout = 10, responseOkCallback = None):
 		for attempt in range(self._retries + 1):

@@ -218,7 +218,7 @@ class FacebookUserScraper(FacebookUserAndCommunityScraper):
 		super().__init__(*args, **kwargs)
 		self._baseUrl = f'https://www.facebook.com/{self._username}/'
 
-	def get_entity(self):
+	def _get_entity(self):
 		kwargs = {}
 
 		nameVerifiedMarkupPattern = re.compile(r'"markup":\[\["__markup_a588f507_0_0",\{"__html":(".*?")\}')

@@ -120,7 +120,7 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 			soup = bs4.BeautifulSoup(posts, 'lxml')
 			yield from self._soup_to_items(soup)
 
-	def get_entity(self):
+	def _get_entity(self):
 		r, soup = self._initial_page()
 		if r.status_code != 200:
 			return

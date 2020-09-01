@@ -305,7 +305,7 @@ class TwitterUserScraper(TwitterSearchScraper):
 		super().__init__(f'from:{username}', **kwargs)
 		self._username = username
 
-	def get_entity(self):
+	def _get_entity(self):
 		self._ensure_guest_token(f'https://twitter.com/{self._username}')
 		params = {'variables': json.dumps({'screen_name': self._username, 'withHighlightedLabel': True}, separators = (',', ':'))}
 		obj = self._get_api_data('https://api.twitter.com/graphql/-xfUfZsnR_zqjFd-IfrN5A/UserByScreenName', params = urllib.parse.urlencode(params, quote_via=urllib.parse.quote))

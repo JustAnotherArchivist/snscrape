@@ -89,7 +89,7 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 				raise snscrape.base.ScraperException(f'Got status code {r.status_code}')
 			soup = bs4.BeautifulSoup(r.text, 'lxml')
 
-	def get_entity(self):
+	def _get_entity(self):
 		kwargs = {}
 		# /channel has a more accurate member count and bigger profile picture
 		r = self._get(f'https://t.me/{self._name}', headers = self._headers)

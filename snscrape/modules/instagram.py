@@ -179,7 +179,7 @@ class InstagramUserScraper(InstagramCommonScraper):
 	def from_args(cls, args):
 		return cls('User', args.username, retries = args.retries)
 
-	def get_entity(self):
+	def _get_entity(self):
 		r = self._initial_page()
 		if r.status_code != 200:
 			return

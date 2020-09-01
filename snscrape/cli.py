@@ -238,7 +238,7 @@ def main():
 	i = 0
 	with _dump_locals_on_exception():
 		if args.withEntity:
-			entity = scraper.get_entity()
+			entity = scraper.entity
 			if entity:
 				if args.jsonl:
 					print(json.dumps(entity._asdict(), default = json_serialise_datetime))
