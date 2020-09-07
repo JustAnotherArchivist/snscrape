@@ -67,7 +67,7 @@ class User(typing.NamedTuple, snscrape.base.Item, snscrape.base.Entity):
 		return self.url
 
 
-class TwitterCommonScraper(snscrape.base.Scraper):
+class TwitterOldDesignScraper(snscrape.base.Scraper):
 	def _feed_to_items(self, feed):
 		for tweet in feed:
 			username = tweet.find('span', 'username').find('b').text
@@ -114,7 +114,7 @@ class TwitterCommonScraper(snscrape.base.Scraper):
 		return True, None
 
 
-class TwitterAPIScraper(TwitterCommonScraper):
+class TwitterAPIScraper(snscrape.base.Scraper):
 	def __init__(self, baseUrl, **kwargs):
 		super().__init__(**kwargs)
 		self._baseUrl = baseUrl
@@ -448,7 +448,7 @@ class TwitterHashtagScraper(TwitterSearchScraper):
 		return cls(args.hashtag, retries = args.retries)
 
 
-class TwitterThreadScraper(TwitterCommonScraper):
+class TwitterThreadScraper(TwitterOldDesignScraper):
 	name = 'twitter-thread'
 
 	def __init__(self, tweetID = None, **kwargs):
@@ -528,7 +528,7 @@ class TwitterListPostsScraper(TwitterSearchScraper):
 		return cls(args.list, retries = args.retries)
 
 
-class TwitterListMembersScraper(TwitterCommonScraper):
+class TwitterListMembersScraper(TwitterOldDesignScraper):
 	name = 'twitter-list-members'
 
 	def __init__(self, listName, **kwargs):
