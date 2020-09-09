@@ -84,7 +84,7 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 			if not pageLink:
 				break
 			nextPageUrl = urllib.parse.urljoin(r.url, pageLink['href'])
-			r = self._get(nextPageUrl, headers = headers)
+			r = self._get(nextPageUrl, headers = self._headers)
 			if r.status_code != 200:
 				raise snscrape.base.ScraperException(f'Got status code {r.status_code}')
 			soup = bs4.BeautifulSoup(r.text, 'lxml')
