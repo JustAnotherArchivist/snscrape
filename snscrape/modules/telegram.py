@@ -58,9 +58,12 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 			self._initialPage, self._initialPageSoup = r, bs4.BeautifulSoup(r.text, 'lxml')
 		return self._initialPage, self._initialPageSoup
 
-	def _soup_to_items(self, soup, pageUrl):
+	def _soup_to_items(self, soup, pageUrl, onlyUsername = False):
 		posts = soup.find_all('div', attrs = {'class': 'tgme_widget_message', 'data-post': True})
 		for post in reversed(posts):
+			if onlyUsername:
+				yield post['data-post'].split('/')[0]
+				return
 			date = datetime.datetime.strptime(post.find('div', class_ = 'tgme_widget_message_footer').find('a', class_ = 'tgme_widget_message_date').find('time', datetime = True)['datetime'].replace('-', '', 2).replace(':', ''), '%Y%m%dT%H%M%S%z')
 			message = post.find('div', class_ = 'tgme_widget_message_text')
 			if message:
@@ -109,7 +112,14 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 		titleDiv = channelInfoDiv.find('div', class_ = 'tgme_channel_info_header_title')
 		kwargs['title'] = titleDiv.find('span').text
 		kwargs['verified'] = bool(titleDiv.find('i', class_ = 'verified-icon'))
-		kwargs['username'] = channelInfoDiv.find('div', class_ = 'tgme_channel_info_header_username').text[1:] # Remove @
+		# The username in the channel info is not canonicalised, nor is the one on the /channel page anywhere.
+		# However, the post URLs are, so extract the first post and use that.
+		try:
+			kwargs['username'] = next(self._soup_to_items(soup, r.url, onlyUsername = True))
+		except StopIteration:
+			# If there are no posts, fall back to the channel info div, although that should never happen due to the 'Channel created' entry.
+			logger.warning('Could not find a post; extracting username from channel info div, which may not be capitalised correctly')
+			kwargs['username'] = channelInfoDiv.find('div', class_ = 'tgme_channel_info_header_username').text[1:] # Remove @
 		descriptionDiv = channelInfoDiv.find('div', class_ = 'tgme_channel_info_description')
 		if descriptionDiv:
 			kwargs['description'] = descriptionDiv.text
