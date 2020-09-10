@@ -100,6 +100,7 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 
 		yield from self._soup_to_items(soup)
 
+		headers = self._headers.copy()
 		headers['X-Requested-With'] = 'XMLHttpRequest'
 		for offset in itertools.count(start = 10, step = 10):
 			logger.info('Retrieving next page')
