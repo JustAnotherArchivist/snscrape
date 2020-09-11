@@ -166,7 +166,7 @@ def parse_args():
 	parser.add_argument('--dump-locals', dest = 'dumpLocals', action = 'store_true', default = False, help = 'Dump local variables on serious log messages (warnings or higher)')
 	parser.add_argument('--retry', '--retries', dest = 'retries', type = int, default = 3, metavar = 'N',
 		help = 'When the connection fails or the server returns an unexpected response, retry up to N times with an exponential backoff')
-	parser.add_argument('-n', '--max-results', dest = 'maxResults', type = int, metavar = 'N', help = 'Only return the first N results')
+	parser.add_argument('-n', '--max-results', dest = 'maxResults', type = lambda x: int(x) if int(x) >= 0 else parser.error('--max-results N must be zero or positive'), metavar = 'N', help = 'Only return the first N results')
 	group = parser.add_mutually_exclusive_group(required = False)
 	group.add_argument('-f', '--format', dest = 'format', type = str, default = None, help = 'Output format')
 	group.add_argument('--jsonl', dest = 'jsonl', action = 'store_true', default = False, help = 'Output JSONL')
@@ -187,6 +187,9 @@ def parse_args():
 	# http://bugs.python.org/issue16308 / https://bugs.python.org/issue26510 (fixed in Python 3.7)
 	if not args.scraper:
 		raise RuntimeError('Error: no scraper specified')
+
+	if not args.withEntity and args.maxResults == 0:
+		parser.error('--max-results 0 is only valid when used with --with-entity')
 
 	return args
 
@@ -258,6 +261,9 @@ def main():
 					print(json.dumps(namedtuple_to_dict_recursive(entity), default = json_serialise_datetime))
 				else:
 					print(entity)
+		if args.maxResults == 0:
+			logger.info('Exiting after 0 results')
+			return
 		for i, item in enumerate(scraper.get_items(), start = 1):
 			if args.since is not None and item.date < args.since:
 				logger.info(f'Exiting due to reaching older results than {args.since}')
