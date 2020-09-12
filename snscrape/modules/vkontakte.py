@@ -1,4 +1,5 @@
 import bs4
+import collections
 import datetime
 import itertools
 import logging
@@ -100,25 +101,20 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 		# If there is a pinned post, we need its ID for the pagination requests; we also need to keep the post around so it can be inserted into the stream at the right point
 		if 'post_fixed' in newestPost.attrs['class']:
 			fixedPostID = int(newestPost.attrs['id'].split('_')[1])
-			fixedPost = self._post_div_to_item(newestPost)
 		else:
 			fixedPostID = ''
-			fixedPost = None
 
-		lastPostID = float('infinity')
+		last1000PostIDs = collections.deque(maxlen = 1000)
 
 		def _process_soup(soup):
-			nonlocal fixedPost, lastPostID
+			nonlocal last1000PostIDs
 			for item in self._soup_to_items(soup):
 				postID = int(item.url.rsplit('_', 1)[1])
-				if postID < lastPostID:
-					if fixedPost is not None and fixedPostID > postID:
-						yield fixedPost
-						fixedPost = None
+				if postID not in last1000PostIDs:
 					yield item
-					lastPostID = postID
+					last1000PostIDs.append(postID)
 
-		yield from _process_soup(soup.find(id = 'page_wall_posts'))
+		yield from _process_soup(soup)
 
 		lastWorkingOffset = 0
 		for offset in itertools.count(start = 10, step = 10):
