@@ -106,34 +106,9 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 			fixedPost = None
 
 		lastPostID = float('infinity')
-		for item in self._soup_to_items(soup.find(id = 'page_wall_posts')):
-			postID = int(item.url.rsplit('_', 1)[1])
-			if postID < lastPostID:
-				if fixedPost is not None and fixedPostID > postID:
-					yield fixedPost
-					fixedPost = None
-				yield item
-				lastPostID = postID
 
-		headers = self._headers.copy()
-		headers['X-Requested-With'] = 'XMLHttpRequest'
-		for offset in itertools.count(start = 10, step = 10):
-			logger.info('Retrieving next page')
-			r = self._post(
-			  'https://vk.com/al_wall.php',
-			  data = [('act', 'get_wall'), ('al', 1), ('fixed', fixedPostID), ('offset', offset), ('onlyCache', 'false'), ('owner_id', ownerID), ('type', 'own'), ('wall_start_from', offset)],
-			  headers = headers
-			 )
-			if r.status_code != 200:
-				raise snscrape.base.ScraperException(f'Got status code {r.status_code}')
-			# Convert to JSON and read the HTML payload.  Note that this implicitly converts the data to a Python string (i.e., Unicode), away from a windows-1251-encoded bytes.
-			posts = r.json()['payload'][1][0]
-			if posts.startswith('<div class="page_block no_posts">'):
-				# Reached the end
-				break
-			if not posts.startswith('<div id="post'):
-				raise snscrape.base.ScraperException(f'Got an unknown response: {posts[:200]!r}...')
-			soup = bs4.BeautifulSoup(posts, 'lxml')
+		def _process_soup(soup):
+			nonlocal fixedPost, lastPostID
 			for item in self._soup_to_items(soup):
 				postID = int(item.url.rsplit('_', 1)[1])
 				if postID < lastPostID:
@@ -142,6 +117,48 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 						fixedPost = None
 					yield item
 					lastPostID = postID
+
+		yield from _process_soup(soup.find(id = 'page_wall_posts'))
+
+		lastWorkingOffset = 0
+		for offset in itertools.count(start = 10, step = 10):
+			posts = self._get_wall_offset(fixedPostID, ownerID, offset)
+			if posts.startswith('<div class="page_block no_posts">'):
+				# Reached the end
+				break
+			if not posts.startswith('<div id="post'):
+				if posts == '"\\/blank.php?block=119910902"':
+					logger.warning(f'Encountered geoblock on offset {offset}, trying to work around the block but might be missing content')
+					for geoblockOffset in range(lastWorkingOffset + 1, offset + 10):
+						geoPosts = self._get_wall_offset(fixedPostID, ownerID, geoblockOffset)
+						if geoPosts.startswith('<div class="page_block no_posts">'):
+							# No breaking the outer loop, it'll just make one extra request and exit as well
+							break
+						if not geoPosts.startswith('<div id="post'):
+							if geoPosts == '"\\/blank.php?block=119910902"':
+								continue
+							raise snscrape.base.ScraperException(f'Got an unknown response: {geoPosts[:200]!r}...')
+						yield from _process_soup(soup = bs4.BeautifulSoup(geoPosts, 'lxml'))
+					continue
+				raise snscrape.base.ScraperException(f'Got an unknown response: {posts[:200]!r}...')
+			lastWorkingOffset = offset
+			soup = bs4.BeautifulSoup(posts, 'lxml')
+			yield from _process_soup(soup)
+
+	def _get_wall_offset(self, fixedPostID, ownerID, offset):
+		headers = self._headers.copy()
+		headers['X-Requested-With'] = 'XMLHttpRequest'
+		logger.info(f'Retrieving page offset {offset}')
+		r = self._post(
+		  'https://vk.com/al_wall.php',
+		  data = [('act', 'get_wall'), ('al', 1), ('fixed', fixedPostID), ('offset', offset), ('onlyCache', 'false'), ('owner_id', ownerID), ('type', 'own'), ('wall_start_from', offset)],
+		  headers = headers
+		 )
+		if r.status_code != 200:
+			raise snscrape.base.ScraperException(f'Got status code {r.status_code}')
+		# Convert to JSON and read the HTML payload.  Note that this implicitly converts the data to a Python string (i.e., Unicode), away from a windows-1251-encoded bytes.
+		posts = r.json()['payload'][1][0]
+		return posts
 
 	def _get_entity(self):
 		r, soup = self._initial_page()
