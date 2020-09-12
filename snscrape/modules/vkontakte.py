@@ -51,15 +51,20 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 		self._initialPage = None
 		self._initialPageSoup = None
 
+	def _post_div_to_item(self, post):
+		url = urllib.parse.urljoin(self._baseUrl, post.find('a', class_ = 'post_link')['href'])
+		assert url.startswith('https://vk.com/wall') and '_' in url and url[-1] != '_' and url.rsplit('_', 1)[1].strip('0123456789') == ''
+		dateSpan = post.find('div', class_ = 'post_date').find('span', class_ = 'rel_date')
+		textDiv = post.find('div', class_ = 'wall_post_text')
+		return VKontaktePost(
+		  url = url,
+		  date = datetime.datetime.fromtimestamp(int(dateSpan['time']), datetime.timezone.utc) if 'time' in dateSpan else None,
+		  content = textDiv.text if textDiv else None,
+		 )
+
 	def _soup_to_items(self, soup):
 		for post in soup.find_all('div', class_ = 'post'):
-			dateSpan = post.find('div', class_ = 'post_date').find('span', class_ = 'rel_date')
-			textDiv = post.find('div', class_ = 'wall_post_text')
-			yield VKontaktePost(
-			  url = urllib.parse.urljoin(self._baseUrl, post.find('a', class_ = 'post_link')['href']),
-			  date = datetime.datetime.fromtimestamp(int(dateSpan['time']), datetime.timezone.utc) if 'time' in dateSpan else None,
-			  content = textDiv.text if textDiv else None,
-			 )
+			yield self._post_div_to_item(post)
 
 	def _initial_page(self):
 		if self._initialPage is None:
@@ -92,13 +97,23 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 			logger.info('Wall has no posts')
 			return
 		ownerID = newestPost.attrs['data-post-id'].split('_')[0]
-		# If there is a pinned post, we need its ID for the pagination requests
+		# If there is a pinned post, we need its ID for the pagination requests; we also need to keep the post around so it can be inserted into the stream at the right point
 		if 'post_fixed' in newestPost.attrs['class']:
-			fixedPostID = newestPost.attrs['id'].split('_')[1]
+			fixedPostID = int(newestPost.attrs['id'].split('_')[1])
+			fixedPost = self._post_div_to_item(newestPost)
 		else:
 			fixedPostID = ''
+			fixedPost = None
 
-		yield from self._soup_to_items(soup)
+		lastPostID = float('infinity')
+		for item in self._soup_to_items(soup.find(id = 'page_wall_posts')):
+			postID = int(item.url.rsplit('_', 1)[1])
+			if postID < lastPostID:
+				if fixedPost is not None and fixedPostID > postID:
+					yield fixedPost
+					fixedPost = None
+				yield item
+				lastPostID = postID
 
 		headers = self._headers.copy()
 		headers['X-Requested-With'] = 'XMLHttpRequest'
@@ -119,7 +134,14 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 			if not posts.startswith('<div id="post'):
 				raise snscrape.base.ScraperException(f'Got an unknown response: {posts[:200]!r}...')
 			soup = bs4.BeautifulSoup(posts, 'lxml')
-			yield from self._soup_to_items(soup)
+			for item in self._soup_to_items(soup):
+				postID = int(item.url.rsplit('_', 1)[1])
+				if postID < lastPostID:
+					if fixedPost is not None and fixedPostID > postID:
+						yield fixedPost
+						fixedPost = None
+					yield item
+					lastPostID = postID
 
 	def _get_entity(self):
 		r, soup = self._initial_page()
