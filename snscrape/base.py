@@ -76,7 +76,7 @@ class Scraper:
 	def entity(self):
 		return self._get_entity()
 
-	def _request(self, method, url, params = None, data = None, headers = None, timeout = 10, responseOkCallback = None):
+	def _request(self, method, url, params = None, data = None, headers = None, timeout = 10, responseOkCallback = None, allowRedirects = True):
 		for attempt in range(self._retries + 1):
 			# The request is newly prepared on each retry because of potential cookie updates.
 			req = self._session.prepare_request(requests.Request(method, url, params = params, data = data, headers = headers))
@@ -85,7 +85,7 @@ class Scraper:
 			if data:
 				logger.debug(f'... with data: {data!r}')
 			try:
-				r = self._session.send(req, timeout = timeout)
+				r = self._session.send(req, allow_redirects = allowRedirects, timeout = timeout)
 			except requests.exceptions.RequestException as exc:
 				if attempt < self._retries:
 					retrying = ', retrying'
