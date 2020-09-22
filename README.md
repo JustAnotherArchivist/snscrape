@@ -4,9 +4,11 @@ snscrape is a scraper for social networking services (SNS). It scrapes things li
 The following services are currently supported:
 * Facebook: user profiles, groups, and communities (aka visitor posts)
 * Instagram: user profiles, hashtags, and locations
+* Reddit: users, subreddits, and searches (via Pushshift)
 * Telegram: channels
-* Twitter: user profiles, hashtags, searches, threads, and lists (members as well as posts)
+* Twitter: users, user profiles, hashtags, searches, threads, and lists (members as well as posts)
 * VKontakte: user profiles
+* Weibo (Sina Weibo): user profiles
 
 ## Requirements
 snscrape requires Python 3.6 or higher. The Python package dependencies are installed automatically when you install snscrape.
@@ -33,6 +35,12 @@ snscrape twitter-user textfiles >twitter-@textfiles
 To get the latest 100 tweets with the hashtag #archiveteam:
 
     snscrape --max-results 100 twitter-hashtag archiveteam
+
+Other noteworthy options are:
+
+* `--format` to customise the output format.
+* `--jsonl` to get output as JSONL. This includes all information extracted by snscrape (e.g. message content, datetime, images; details vary by the module and scraper).
+* `--with-entity` to get an item on the entity being scraped, e.g. the user or channel. This is not supported on all scrapers. (You can use this together with `--max-results 0` to only fetch the entity info.)
 
 `snscrape --help` or `snscrape <module> --help` provides details on the available options. `snscrape --help` also lists all available modules.
 
