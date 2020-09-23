@@ -9,7 +9,7 @@ setuptools.setup(
 	classifiers = [
 		'Development Status :: 4 - Beta',
 		'License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)',
-		'Programming Language :: Python :: 3.6',
+		'Programming Language :: Python :: 3.8',
 	],
 	packages = ['snscrape', 'snscrape.modules'],
 	setup_requires = ['setuptools_scm'],
