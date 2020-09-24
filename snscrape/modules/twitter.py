@@ -362,7 +362,7 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 		kwargs['id'] = user['id'] if 'id' in user else int(user['id_str'])
 		kwargs['description'] = self._render_text_with_urls(user['description'], user['entities']['description']['urls'])
 		kwargs['rawDescription'] = user['description']
-		kwargs['descriptionUrls'] = [{'text': x['display_url'], 'url': x['expanded_url'], 'tcourl': x['url'], 'indices': tuple(x['indices'])} for x in user['entities']['description']['urls']],
+		kwargs['descriptionUrls'] = [{'text': x['display_url'], 'url': x['expanded_url'], 'tcourl': x['url'], 'indices': tuple(x['indices'])} for x in user['entities']['description']['urls']]
 		kwargs['verified'] = user['verified']
 		kwargs['created'] = email.utils.parsedate_to_datetime(user['created_at'])
 		kwargs['followersCount'] = user['followers_count']
@@ -371,7 +371,7 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 		kwargs['linkUrl'] = user['entities']['url']['urls'][0]['expanded_url'] if 'url' in user['entities'] else None
 		kwargs['linkTcourl'] = user.get('url')
 		kwargs['profileImageUrl'] = user['profile_image_url_https']
-		kwargs['profileBannerUrl'] = user['profile_banner_url']
+		kwargs['profileBannerUrl'] = user.get('profile_banner_url')
 		return User(**kwargs)
 
 
