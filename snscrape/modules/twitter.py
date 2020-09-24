@@ -23,12 +23,12 @@ class Tweet(typing.NamedTuple, snscrape.base.Item):
 	content: str
 	renderedContent: str
 	id: int
-	username: str
+	username: str # Deprecated, use user['username'] instead
 	user: 'User'
 	outlinks: list
-	outlinksss: str
+	outlinksss: str # Deprecated, use outlinks instead
 	tcooutlinks: list
-	tcooutlinksss: str
+	tcooutlinksss: str # Deprecated, use tcooutlinks instead
 	replyCount: int
 	retweetCount: int
 	likeCount: int
