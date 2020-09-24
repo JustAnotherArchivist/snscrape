@@ -6,7 +6,7 @@ The following services are currently supported:
 * Instagram: user profiles, hashtags, and locations
 * Reddit: users, subreddits, and searches (via Pushshift)
 * Telegram: channels
-* Twitter: users, user profiles, hashtags, searches, threads, and lists (members as well as posts)
+* Twitter: users, user profiles, hashtags, searches, threads, and list posts
 * VKontakte: user profiles
 * Weibo (Sina Weibo): user profiles
 
