@@ -340,7 +340,8 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 			if media:
 				kwargs['media'] = media
 		kwargs['retweetedTweet'] = self._tweet_to_tweet(obj['globalObjects']['tweets'][tweet['retweeted_status_id_str']], obj) if 'retweeted_status_id_str' in tweet else None
-		kwargs['quotedTweet'] = self._tweet_to_tweet(obj['globalObjects']['tweets'][tweet['quoted_status_id_str']], obj) if 'quoted_status_id_str' in tweet else None
+		if 'quoted_status_id_str' in tweet and tweet['quoted_status_id_str'] in obj['globalObjects']['tweets']:
+			kwargs['quotedTweet'] = self._tweet_to_tweet(obj['globalObjects']['tweets'][tweet['quoted_status_id_str']], obj)
 		kwargs['mentionedUsers'] = [User(username = u['screen_name'], id = u['id'] if 'id' in u else int(u['id_str'])) for u in tweet['entities']['user_mentions']] if tweet['entities']['user_mentions'] else None
 		return Tweet(**kwargs)
 
