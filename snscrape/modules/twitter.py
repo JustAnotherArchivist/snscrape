@@ -625,7 +625,7 @@ class TwitterListPostsScraper(TwitterSearchScraper):
 
 	@classmethod
 	def setup_parser(cls, subparser):
-		subparser.add_argument('list', help = 'A Twitter list, formatted as "username/listname"')
+		subparser.add_argument('list', help = 'A Twitter list ID or a string of the form "username/listname" (replace spaces with dashes)')
 
 	@classmethod
 	def from_args(cls, args):
