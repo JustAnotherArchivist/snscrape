@@ -85,6 +85,7 @@ class User(typing.NamedTuple, snscrape.base.Entity):
 	# Most fields can be None if they're not known.
 
 	username: str
+	displayname: str
 	id: str # Seems to always be numeric, but the API returns it as a string, so it might also contain other things in the future
 	description: typing.Optional[str] = None # Description as it's displayed on the web interface with URLs replaced
 	rawDescription: typing.Optional[str] = None # Raw description with the URL(s) intact
@@ -94,6 +95,11 @@ class User(typing.NamedTuple, snscrape.base.Entity):
 	followersCount: typing.Optional[int] = None
 	friendsCount: typing.Optional[int] = None
 	statusesCount: typing.Optional[int] = None
+	favouritesCount: typing.Optional[int] = None
+	listedCount: typing.Optional[int] = None
+	mediaCount: typing.Optional[int] = None
+	location: typing.Optional[str] = None
+	protected: typing.Optional[bool] = None
 	linkUrl: typing.Optional[str] = None
 	linkTcourl: typing.Optional[str] = None
 	profileImageUrl: typing.Optional[str] = None
@@ -341,7 +347,7 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 		kwargs['retweetedTweet'] = self._tweet_to_tweet(obj['globalObjects']['tweets'][tweet['retweeted_status_id_str']], obj) if 'retweeted_status_id_str' in tweet else None
 		if 'quoted_status_id_str' in tweet and tweet['quoted_status_id_str'] in obj['globalObjects']['tweets']:
 			kwargs['quotedTweet'] = self._tweet_to_tweet(obj['globalObjects']['tweets'][tweet['quoted_status_id_str']], obj)
-		kwargs['mentionedUsers'] = [User(username = u['screen_name'], id = u['id'] if 'id' in u else int(u['id_str'])) for u in tweet['entities']['user_mentions']] if tweet['entities']['user_mentions'] else None
+		kwargs['mentionedUsers'] = [User(username = u['screen_name'], displayname = u['name'], id = u['id'] if 'id' in u else int(u['id_str'])) for u in tweet['entities']['user_mentions']] if tweet['entities']['user_mentions'] else None
 		return Tweet(**kwargs)
 
 	def _render_text_with_urls(self, text, urls):
@@ -359,6 +365,7 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 	def _user_to_user(self, user):
 		kwargs = {}
 		kwargs['username'] = user['screen_name']
+		kwargs['displayname'] = user['name']
 		kwargs['id'] = user['id'] if 'id' in user else int(user['id_str'])
 		kwargs['description'] = self._render_text_with_urls(user['description'], user['entities']['description']['urls'])
 		kwargs['rawDescription'] = user['description']
@@ -368,6 +375,11 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 		kwargs['followersCount'] = user['followers_count']
 		kwargs['friendsCount'] = user['friends_count']
 		kwargs['statusesCount'] = user['statuses_count']
+		kwargs['favouritesCount'] = user['favourites_count']
+		kwargs['listedCount'] = user['listed_count']
+		kwargs['mediaCount'] = user['media_count']
+		kwargs['location'] = user['location']
+		kwargs['protected'] = user['protected']
 		kwargs['linkUrl'] = user['entities']['url']['urls'][0]['expanded_url'] if 'url' in user['entities'] else None
 		kwargs['linkTcourl'] = user.get('url')
 		kwargs['profileImageUrl'] = user['profile_image_url_https']
@@ -459,6 +471,7 @@ class TwitterUserScraper(TwitterSearchScraper):
 		description = self._render_text_with_urls(rawDescription, user['legacy']['entities']['description']['urls'])
 		return User(
 			username = user['legacy']['screen_name'],
+			displayname = user['legacy']['name'],
 			id = user['rest_id'],
 			description = description,
 			rawDescription = rawDescription,
@@ -468,6 +481,11 @@ class TwitterUserScraper(TwitterSearchScraper):
 			followersCount = user['legacy']['followers_count'],
 			friendsCount = user['legacy']['friends_count'],
 			statusesCount = user['legacy']['statuses_count'],
+			favouritesCount = user['legacy']['favourites_count'],
+			listedCount = user['legacy']['listed_count'],
+			mediaCount = user['legacy']['media_count'],
+			location = user['legacy']['location'],
+			protected = user['legacy']['protected'],
 			linkUrl = user['legacy']['entities']['url']['urls'][0]['expanded_url'] if 'url' in user['legacy']['entities'] else None,
 			linkTcourl = user['legacy'].get('url'),
 			profileImageUrl = user['legacy']['profile_image_url_https'],
