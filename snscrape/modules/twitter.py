@@ -295,7 +295,7 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 		kwargs['renderedContent'] = self._render_text_with_urls(tweet['full_text'], tweet['entities']['urls'])
 		kwargs['username'] = obj['globalObjects']['users'][tweet['user_id_str']]['screen_name']
 		kwargs['user'] = self._user_to_user(obj['globalObjects']['users'][tweet['user_id_str']])
-		kwargs['date'] = datetime.datetime.strptime(tweet['created_at'], '%a %b %d %H:%M:%S +0000 %Y').replace(tzinfo = datetime.timezone.utc)
+		kwargs['date'] = email.utils.parsedate_to_datetime(tweet['created_at'])
 		kwargs['outlinks'] = [u['expanded_url'] for u in tweet['entities']['urls']] if 'urls' in tweet['entities'] else []
 		kwargs['outlinksss'] = ' '.join(kwargs['outlinks'])
 		kwargs['tcooutlinks'] = [u['url'] for u in tweet['entities']['urls']] if 'urls' in tweet['entities'] else []
