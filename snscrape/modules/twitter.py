@@ -297,7 +297,7 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 		kwargs = {}
 		kwargs['id'] = tweet['id'] if 'id' in tweet else int(tweet['id_str'])
 		kwargs['content'] = tweet['full_text']
-		kwargs['renderedContent'] = self._render_text_with_urls(tweet['full_text'], tweet['entities']['urls'])
+		kwargs['renderedContent'] = self._render_text_with_urls(tweet['full_text'], tweet['entities'].get('urls'))
 		kwargs['username'] = obj['globalObjects']['users'][tweet['user_id_str']]['screen_name']
 		kwargs['user'] = self._user_to_user(obj['globalObjects']['users'][tweet['user_id_str']])
 		kwargs['date'] = email.utils.parsedate_to_datetime(tweet['created_at'])
@@ -347,7 +347,10 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 		kwargs['retweetedTweet'] = self._tweet_to_tweet(obj['globalObjects']['tweets'][tweet['retweeted_status_id_str']], obj) if 'retweeted_status_id_str' in tweet else None
 		if 'quoted_status_id_str' in tweet and tweet['quoted_status_id_str'] in obj['globalObjects']['tweets']:
 			kwargs['quotedTweet'] = self._tweet_to_tweet(obj['globalObjects']['tweets'][tweet['quoted_status_id_str']], obj)
-		kwargs['mentionedUsers'] = [User(username = u['screen_name'], displayname = u['name'], id = u['id'] if 'id' in u else int(u['id_str'])) for u in tweet['entities']['user_mentions']] if tweet['entities']['user_mentions'] else None
+		kwargs['mentionedUsers'] = [
+			User(username = u['screen_name'], displayname = u['name'], id = u['id'] if 'id' in u else int(u['id_str'])) \
+			for u in tweet['entities']['user_mentions']
+		  ] if 'user_mentions' in tweet['entities'] and tweet['entities']['user_mentions'] else None
 		return Tweet(**kwargs)
 
 	def _render_text_with_urls(self, text, urls):
@@ -367,10 +370,10 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 		kwargs['username'] = user['screen_name']
 		kwargs['displayname'] = user['name']
 		kwargs['id'] = user['id'] if 'id' in user else int(user['id_str'])
-		kwargs['description'] = self._render_text_with_urls(user['description'], user['entities']['description']['urls'])
+		kwargs['description'] = self._render_text_with_urls(user['description'], user['entities']['description'].get('urls'))
 		kwargs['rawDescription'] = user['description']
-		kwargs['descriptionUrls'] = [{'text': x['display_url'], 'url': x['expanded_url'], 'tcourl': x['url'], 'indices': tuple(x['indices'])} for x in user['entities']['description']['urls']]
-		kwargs['verified'] = user['verified']
+		kwargs['descriptionUrls'] = [{'text': x['display_url'], 'url': x['expanded_url'], 'tcourl': x['url'], 'indices': tuple(x['indices'])} for x in user['entities']['description'].get('urls', [])]
+		kwargs['verified'] = user.get('verified')
 		kwargs['created'] = email.utils.parsedate_to_datetime(user['created_at'])
 		kwargs['followersCount'] = user['followers_count']
 		kwargs['friendsCount'] = user['friends_count']
@@ -379,8 +382,8 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 		kwargs['listedCount'] = user['listed_count']
 		kwargs['mediaCount'] = user['media_count']
 		kwargs['location'] = user['location']
-		kwargs['protected'] = user['protected']
-		kwargs['linkUrl'] = user['entities']['url']['urls'][0]['expanded_url'] if 'url' in user['entities'] else None
+		kwargs['protected'] = user.get('protected')
+		kwargs['linkUrl'] = (user['entities']['url']['urls'][0].get('expanded_url') or user.get('url')) if 'url' in user['entities'] else None
 		kwargs['linkTcourl'] = user.get('url')
 		kwargs['profileImageUrl'] = user['profile_image_url_https']
 		kwargs['profileBannerUrl'] = user.get('profile_banner_url')
