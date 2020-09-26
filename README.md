@@ -11,7 +11,7 @@ The following services are currently supported:
 * Weibo (Sina Weibo): user profiles
 
 ## Requirements
-snscrape requires Python 3.6 or higher. The Python package dependencies are installed automatically when you install snscrape.
+snscrape requires Python 3.8 or higher. The Python package dependencies are installed automatically when you install snscrape.
 
 Note that one of the dependencies, lxml, also requires libxml2 and libxslt to be installed.
 
