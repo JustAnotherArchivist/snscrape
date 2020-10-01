@@ -68,7 +68,17 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 			message = post.find('div', class_ = 'tgme_widget_message_text')
 			if message:
 				content = message.text
-				outlinks = [urllib.parse.urljoin(pageUrl, link['href']) for link in post.find_all('a') if not link.text.startswith('@') and link['href'].startswith('https://t.me/')]
+				outlinks = []
+				for link in post.find_all('a'):
+					if any(x in link.parent.attrs.get('class', []) for x in ('tgme_widget_message_user', 'tgme_widget_message_author')):
+						# Author links at the top (avatar and name)
+						continue
+					if link['href'] == f'https://t.me/{post["data-post"]}':
+						# Generic filter of links to the post itself, catches videos, photos, and the date link
+						continue
+					href = urllib.parse.urljoin(pageUrl, link['href'])
+					if href not in outlinks:
+						outlinks.append(href)
 				outlinksss = ' '.join(outlinks)
 			else:
 				content = None
