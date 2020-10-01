@@ -17,7 +17,7 @@ class FacebookPost(typing.NamedTuple, snscrape.base.Item):
 	date: datetime.datetime
 	content: typing.Optional[str]
 	outlinks: list
-	outlinksss: str
+	outlinksss: str # deprecated, use outlinks instead
 
 	def __str__(self):
 		return self.cleanUrl

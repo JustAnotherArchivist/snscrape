@@ -22,7 +22,7 @@ class TelegramPost(typing.NamedTuple, snscrape.base.Item):
 	date: datetime.datetime
 	content: str
 	outlinks: list
-	outlinksss: str
+	outlinksss: str # deprecated, use outlinks instead
 	linkPreview: typing.Optional[LinkPreview] = None
 
 	def __str__(self):
