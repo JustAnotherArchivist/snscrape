@@ -11,9 +11,9 @@ logger = logging.getLogger(__name__)
 
 class LinkPreview(typing.NamedTuple):
 	href: str
-	siteName: str
-	title: str
-	description: str
+	siteName: typing.Optional[str] = None
+	title: typing.Optional[str] = None
+	description: typing.Optional[str] = None
 	image: typing.Optional[str] = None
 
 
@@ -94,19 +94,20 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 				outlinksss = ''
 			linkPreview = None
 			if (linkPreviewA := post.find('a', class_ = 'tgme_widget_message_link_preview')):
-				image = None
+				kwargs = {}
+				kwargs['href'] = urllib.parse.urljoin(pageUrl, linkPreviewA['href'])
+				if (siteNameDiv := linkPreviewA.find('div', class_ = 'link_preview_site_name')):
+					kwargs['siteName'] = siteNameDiv.text
+				if (titleDiv := linkPreviewA.find('div', class_ = 'link_preview_title')):
+					kwargs['title'] = titleDiv.text
+				if (descriptionDiv := linkPreviewA.find('div', class_ = 'link_preview_description')):
+					kwargs['description'] = descriptionDiv.text
 				if (imageI := linkPreviewA.find('i', class_ = 'link_preview_image')):
 					if imageI['style'].startswith("background-image:url('"):
-						image = imageI['style'][22 : imageI['style'].index("'", 22)]
+						kwargs['image'] = imageI['style'][22 : imageI['style'].index("'", 22)]
 					else:
 						self.logger.warning(f'Could not process link preview image on https://t.me/s/{post["data-post"]}')
-				linkPreview = LinkPreview(
-					href = urllib.parse.urljoin(pageUrl, linkPreviewA['href']),
-					siteName = linkPreviewA.find('div', class_ = 'link_preview_site_name').text,
-					title = linkPreviewA.find('div', class_ = 'link_preview_title').text,
-					description = linkPreviewA.find('div', class_ = 'link_preview_description').text,
-					image = image,
-				)
+				linkPreview = LinkPreview(**kwargs)
 			yield TelegramPost(url = f'https://t.me/s/{post["data-post"]}', date = date, content = content, outlinks = outlinks, outlinksss = outlinksss, linkPreview = linkPreview)
 
 	def get_items(self):
