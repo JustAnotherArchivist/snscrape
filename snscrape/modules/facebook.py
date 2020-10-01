@@ -129,8 +129,7 @@ class FacebookCommonScraper(snscrape.base.Scraper):
 			dirtyUrl = urllib.parse.urljoin(baseUrl, href)
 			cleanUrl = self._clean_url(dirtyUrl)
 			date = datetime.datetime.fromtimestamp(int(entry.find('abbr', class_ = '_5ptz')['data-utime']), datetime.timezone.utc)
-			contentDiv = entry.find('div', class_ = '_5pbx')
-			if contentDiv:
+			if (contentDiv := entry.find('div', class_ = '_5pbx')):
 				content = contentDiv.text
 			else:
 				content = None
@@ -180,9 +179,8 @@ class FacebookUserAndCommunityScraper(FacebookCommonScraper):
 			logger.warning('User does not exist')
 			return
 		yield from self._soup_to_items(soup, self._baseUrl, 'user')
-		nextPageLink = soup.find('a', ajaxify = nextPageLinkPattern)
 
-		while nextPageLink:
+		while (nextPageLink := soup.find('a', ajaxify = nextPageLinkPattern)):
 			logger.info('Retrieving next page')
 
 			# The web app sends a bunch of additional parameters. Most of them would be easy to add, but there's also __dyn, which is a compressed list of the "modules" loaded in the browser.
@@ -200,7 +198,6 @@ class FacebookUserAndCommunityScraper(FacebookCommonScraper):
 			assert '__html' in response['domops'][0][3]
 			soup = bs4.BeautifulSoup(response['domops'][0][3]['__html'], 'lxml')
 			yield from self._soup_to_items(soup, self._baseUrl, 'user')
-			nextPageLink = soup.find('a', ajaxify = nextPageLinkPattern)
 
 	@classmethod
 	def setup_parser(cls, subparser):
@@ -337,8 +334,7 @@ class FacebookGroupScraper(FacebookCommonScraper):
 			yield from self._soup_to_items(codeSoup, baseUrl, 'group')
 
 		# Pagination
-		data = pageletDataPattern.search(r.text).group(0)[pageletDataPrefixLength:]
-		while True:
+		while (data := pageletDataPattern.search(r.text).group(0)[pageletDataPrefixLength:]):
 			# As on the user profile pages, the web app sends a lot of additional parameters, but those all seem to be unnecessary (although some change the response format, e.g. from JSON to HTML)
 			r = self._get(
 				f'https://www.facebook.com/ajax/pagelet/generic.php/GroupEntstreamPagelet',
@@ -353,7 +349,6 @@ class FacebookGroupScraper(FacebookCommonScraper):
 				break
 			soup = bs4.BeautifulSoup(obj['payload'], 'lxml')
 			yield from self._soup_to_items(soup, baseUrl, 'group')
-			data = pageletDataPattern.search(r.text).group(0)[pageletDataPrefixLength:]
 
 	@classmethod
 	def setup_parser(cls, subparser):

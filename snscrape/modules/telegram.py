@@ -154,8 +154,7 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 			# If there are no posts, fall back to the channel info div, although that should never happen due to the 'Channel created' entry.
 			logger.warning('Could not find a post; extracting username from channel info div, which may not be capitalised correctly')
 			kwargs['username'] = channelInfoDiv.find('div', class_ = 'tgme_channel_info_header_username').text[1:] # Remove @
-		descriptionDiv = channelInfoDiv.find('div', class_ = 'tgme_channel_info_description')
-		if descriptionDiv:
+		if (descriptionDiv := channelInfoDiv.find('div', class_ = 'tgme_channel_info_description')):
 			kwargs['description'] = descriptionDiv.text
 
 		def parse_num(s):

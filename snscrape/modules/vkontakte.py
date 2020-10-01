@@ -87,8 +87,7 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 			logger.warning('Private profile')
 			return
 
-		profileDeleted = soup.find('h5', class_ = 'profile_deleted_text')
-		if profileDeleted:
+		if (profileDeleted := soup.find('h5', class_ = 'profile_deleted_text')):
 			# Unclear what this state represents, so just log website text.
 			logger.warning(profileDeleted.text)
 			return
@@ -166,12 +165,10 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 		kwargs['name'] = nameH1.text
 		kwargs['verified'] = bool(nameH1.find('div', class_ = 'page_verified'))
 
-		descriptionDiv = soup.find('div', id = 'page_current_info')
-		if descriptionDiv:
+		if (descriptionDiv := soup.find('div', id = 'page_current_info')):
 			kwargs['description'] = descriptionDiv.text
 
-		infoDiv = soup.find('div', id = 'page_info_wrap')
-		if infoDiv:
+		if (infoDiv := soup.find('div', id = 'page_info_wrap')):
 			websites = []
 			for rowDiv in infoDiv.find_all('div', class_ = ['profile_info_row', 'group_info_row']):
 				if 'profile_info_row' in rowDiv['class']:
@@ -197,8 +194,7 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 			else:
 				return int(s.replace(',', '')), 1
 
-		countsDiv = soup.find('div', class_ = 'counts_module')
-		if countsDiv:
+		if (countsDiv := soup.find('div', class_ = 'counts_module')):
 			for a in countsDiv.find_all('a', class_ = 'page_counter'):
 				count, granularity = parse_num(a.find('div', class_ = 'count').text)
 				label = a.find('div', class_ = 'label').text
@@ -207,17 +203,13 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 				if label in ('followers', 'posts', 'photos', 'tags'):
 					kwargs[label], kwargs[f'{label}Granularity'] = count, granularity
 
-		idolsDiv = soup.find('div', id = 'profile_idols')
-		if idolsDiv:
-			topDiv = idolsDiv.find('div', class_ = 'header_top')
-			if topDiv and topDiv.find('span', class_ = 'header_label').text == 'Following':
+		if (idolsDiv := soup.find('div', id = 'profile_idols')):
+			if (topDiv := idolsDiv.find('div', class_ = 'header_top')) and topDiv.find('span', class_ = 'header_label').text == 'Following':
 				kwargs['following'], kwargs['followingGranularity'] = parse_num(topDiv.find('span', class_ = 'header_count').text)
 
 		# On public pages, this is where followers are listed
-		followersDiv = soup.find('div', id = 'public_followers')
-		if followersDiv:
-			topDiv = followersDiv.find('div', class_ = 'header_top')
-			if topDiv and topDiv.find('span', class_ = 'header_label').text == 'Followers':
+		if (followersDiv := soup.find('div', id = 'public_followers')):
+			if (topDiv := followersDiv.find('div', class_ = 'header_top')) and topDiv.find('span', class_ = 'header_label').text == 'Followers':
 				kwargs['followers'], kwargs['followersGranularity'] = parse_num(topDiv.find('span', class_ = 'header_count').text)
 
 		return User(**kwargs)

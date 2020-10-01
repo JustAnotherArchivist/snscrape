@@ -254,13 +254,11 @@ def main():
 
 	i = 0
 	with _dump_locals_on_exception():
-		if args.withEntity:
-			entity = scraper.entity
-			if entity:
-				if args.jsonl:
-					print(json.dumps(namedtuple_to_dict_recursive(entity), default = json_serialise_datetime))
-				else:
-					print(entity)
+		if args.withEntity and (entity := scraper.entity):
+			if args.jsonl:
+				print(json.dumps(namedtuple_to_dict_recursive(entity), default = json_serialise_datetime))
+			else:
+				print(entity)
 		if args.maxResults == 0:
 			logger.info('Exiting after 0 results')
 			return
