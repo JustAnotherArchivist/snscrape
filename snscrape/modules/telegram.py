@@ -74,8 +74,7 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 				yield post['data-post'].split('/')[0]
 				return
 			date = datetime.datetime.strptime(post.find('div', class_ = 'tgme_widget_message_footer').find('a', class_ = 'tgme_widget_message_date').find('time', datetime = True)['datetime'].replace('-', '', 2).replace(':', ''), '%Y%m%dT%H%M%S%z')
-			message = post.find('div', class_ = 'tgme_widget_message_text')
-			if message:
+			if (message := post.find('div', class_ = 'tgme_widget_message_text')):
 				content = message.text
 				outlinks = []
 				for link in post.find_all('a'):
@@ -94,11 +93,9 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 				outlinks = []
 				outlinksss = ''
 			linkPreview = None
-			linkPreviewA = post.find('a', class_ = 'tgme_widget_message_link_preview')
-			if linkPreviewA:
+			if (linkPreviewA := post.find('a', class_ = 'tgme_widget_message_link_preview')):
 				image = None
-				imageI = linkPreviewA.find('i', class_ = 'link_preview_image')
-				if imageI:
+				if (imageI := linkPreviewA.find('i', class_ = 'link_preview_image')):
 					if imageI['style'].startswith("background-image:url('"):
 						image = imageI['style'][22 : imageI['style'].index("'", 22)]
 					else:
