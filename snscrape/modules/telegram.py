@@ -1,12 +1,14 @@
 import bs4
 import datetime
 import logging
+import re
 import snscrape.base
 import typing
 import urllib.parse
 
 
 logger = logging.getLogger(__name__)
+_SINGLE_MEDIA_LINK_PATTERN = re.compile(r'^https://t\.me/[^/]+/\d+\?single$')
 
 
 class LinkPreview(typing.NamedTuple):
@@ -88,6 +90,9 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 						continue
 					if link['href'] == rawUrl or link['href'] == url:
 						# Generic filter of links to the post itself, catches videos, photos, and the date link
+						continue
+					if _SINGLE_MEDIA_LINK_PATTERN.match(link['href']):
+						# Individual photo or video link
 						continue
 					href = urllib.parse.urljoin(pageUrl, link['href'])
 					if href not in outlinks:
