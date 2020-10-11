@@ -89,7 +89,7 @@ class Scraper:
 			except requests.exceptions.RequestException as exc:
 				if attempt < self._retries:
 					retrying = ', retrying'
-					level = logging.WARNING
+					level = logging.INFO
 				else:
 					retrying = ''
 					level = logging.ERROR
@@ -107,7 +107,7 @@ class Scraper:
 				else:
 					if attempt < self._retries:
 						retrying = ', retrying'
-						level = logging.WARNING
+						level = logging.INFO
 					else:
 						retrying = ''
 						level = logging.ERROR
