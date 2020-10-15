@@ -1,3 +1,4 @@
+import dataclasses
 import datetime
 import logging
 import re
@@ -13,7 +14,8 @@ logger = logging.getLogger(__name__)
 
 # Most of these fields should never be None, but due to broken data, they sometimes are anyway...
 
-class Submission(typing.NamedTuple, snscrape.base.Item):
+@dataclasses.dataclass
+class Submission(snscrape.base.Item):
 	author: typing.Optional[str] # E.g. submission hf7k6
 	created: datetime.datetime
 	id: str
@@ -27,7 +29,8 @@ class Submission(typing.NamedTuple, snscrape.base.Item):
 		return self.url
 
 
-class Comment(typing.NamedTuple, snscrape.base.Item):
+@dataclasses.dataclass
+class Comment(snscrape.base.Item):
 	author: typing.Optional[str]
 	body: str
 	created: datetime.datetime

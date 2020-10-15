@@ -1,4 +1,5 @@
 import bs4
+import dataclasses
 import datetime
 import logging
 import snscrape.base
@@ -10,7 +11,8 @@ logger = logging.getLogger(__name__)
 _userDoesNotExist = object()
 
 
-class Post(typing.NamedTuple, snscrape.base.Item):
+@dataclasses.dataclass
+class Post(snscrape.base.Item):
 	url: str
 	id: str
 	user: typing.Optional['User']
@@ -29,7 +31,8 @@ class Post(typing.NamedTuple, snscrape.base.Item):
 		return self.url
 
 
-class User(typing.NamedTuple, snscrape.base.Entity):
+@dataclasses.dataclass
+class User(snscrape.base.Entity):
 	screenname: str
 	uid: int
 	verified: bool

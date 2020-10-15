@@ -1,3 +1,4 @@
+import dataclasses
 import datetime
 import hashlib
 import json
@@ -10,7 +11,8 @@ import typing
 logger = logging.getLogger(__name__)
 
 
-class InstagramPost(typing.NamedTuple, snscrape.base.Item):
+@dataclasses.dataclass
+class InstagramPost(snscrape.base.Item):
 	cleanUrl: str
 	dirtyUrl: str
 	date: datetime.datetime
@@ -27,7 +29,8 @@ class InstagramPost(typing.NamedTuple, snscrape.base.Item):
 		return self.cleanUrl
 
 
-class User(typing.NamedTuple, snscrape.base.Entity):
+@dataclasses.dataclass
+class User(snscrape.base.Entity):
 	username: str
 	name: typing.Optional[str]
 	followers: int

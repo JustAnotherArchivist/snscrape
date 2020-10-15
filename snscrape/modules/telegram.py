@@ -1,4 +1,5 @@
 import bs4
+import dataclasses
 import datetime
 import logging
 import re
@@ -11,7 +12,8 @@ logger = logging.getLogger(__name__)
 _SINGLE_MEDIA_LINK_PATTERN = re.compile(r'^https://t\.me/[^/]+/\d+\?single$')
 
 
-class LinkPreview(typing.NamedTuple):
+@dataclasses.dataclass
+class LinkPreview:
 	href: str
 	siteName: typing.Optional[str] = None
 	title: typing.Optional[str] = None
@@ -19,7 +21,8 @@ class LinkPreview(typing.NamedTuple):
 	image: typing.Optional[str] = None
 
 
-class TelegramPost(typing.NamedTuple, snscrape.base.Item):
+@dataclasses.dataclass
+class TelegramPost(snscrape.base.Item):
 	url: str
 	date: datetime.datetime
 	content: str
@@ -31,7 +34,8 @@ class TelegramPost(typing.NamedTuple, snscrape.base.Item):
 		return self.url
 
 
-class Channel(typing.NamedTuple, snscrape.base.Entity):
+@dataclasses.dataclass
+class Channel(snscrape.base.Entity):
 	username: str
 	title: str
 	verified: bool

@@ -1,4 +1,5 @@
 import bs4
+import dataclasses
 import datetime
 import email.utils
 import itertools
@@ -17,7 +18,8 @@ logger = logging.getLogger(__name__)
 _API_AUTHORIZATION_HEADER = 'Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs=1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA'
 
 
-class Tweet(typing.NamedTuple, snscrape.base.Item):
+@dataclasses.dataclass
+class Tweet(snscrape.base.Item):
 	url: str
 	date: datetime.datetime
 	content: str
@@ -49,39 +51,45 @@ class Medium:
 	pass
 
 
-class Photo(typing.NamedTuple, Medium):
+@dataclasses.dataclass
+class Photo(Medium):
 	previewUrl: str
 	fullUrl: str
 	type: str = 'photo'
 
 
-class VideoVariant(typing.NamedTuple):
+@dataclasses.dataclass
+class VideoVariant:
 	contentType: str
 	url: str
 	bitrate: typing.Optional[int]
 
 
-class Video(typing.NamedTuple, Medium):
+@dataclasses.dataclass
+class Video(Medium):
 	thumbnailUrl: str
 	variants: typing.List[VideoVariant]
 	duration: float
 	type: str = 'video'
 
 
-class Gif(typing.NamedTuple, Medium):
+@dataclasses.dataclass
+class Gif(Medium):
 	thumbnailUrl: str
 	variants: typing.List[VideoVariant]
 	type: str = 'gif'
 
 
-class DescriptionURL(typing.NamedTuple):
+@dataclasses.dataclass
+class DescriptionURL:
 	text: str
 	url: str
 	tcourl: str
 	indices: typing.Tuple[int, int]
 
 
-class User(typing.NamedTuple, snscrape.base.Entity):
+@dataclasses.dataclass
+class User(snscrape.base.Entity):
 	# Most fields can be None if they're not known.
 
 	username: str

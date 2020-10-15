@@ -1,4 +1,5 @@
 import bs4
+import dataclasses
 import datetime
 import json
 import logging
@@ -11,7 +12,8 @@ import urllib.parse
 logger = logging.getLogger(__name__)
 
 
-class FacebookPost(typing.NamedTuple, snscrape.base.Item):
+@dataclasses.dataclass
+class FacebookPost(snscrape.base.Item):
 	cleanUrl: str
 	dirtyUrl: str
 	date: datetime.datetime
@@ -23,7 +25,8 @@ class FacebookPost(typing.NamedTuple, snscrape.base.Item):
 		return self.cleanUrl
 
 
-class User(typing.NamedTuple, snscrape.base.Entity):
+@dataclasses.dataclass
+class User(snscrape.base.Entity):
 	username: str
 	pageId: int
 	name: str

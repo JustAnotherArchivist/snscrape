@@ -2,7 +2,6 @@ import argparse
 import contextlib
 import datetime
 import inspect
-import json
 import logging
 import requests.models
 # Imported in parse_args() after setting up the logger:
@@ -226,26 +225,6 @@ def configure_logging(verbosity, dumpLocals_):
 	rootLogger.addHandler(handler)
 
 
-def json_serialise_datetime(obj):
-	if isinstance(obj, (datetime.datetime, datetime.date)):
-		return obj.isoformat()
-	raise TypeError(f'Object of type {type(obj)} is not JSON serializable')
-
-
-def namedtuple_to_dict_recursive(obj):
-	# Convert a NamedTuple to a dict; also converts NamedTuples in its values to dicts
-	if (isinstance(obj, tuple) and hasattr(obj, '_asdict')) or isinstance(obj, dict):
-		if isinstance(obj, tuple):
-			obj = obj._asdict()
-		for key, value in obj.items():
-			obj[key] = namedtuple_to_dict_recursive(value)
-		return obj
-	elif isinstance(obj, (tuple, list)):
-		return type(obj)(namedtuple_to_dict_recursive(value) for value in obj)
-	else:
-		return obj
-
-
 def main():
 	setup_logging()
 	args = parse_args()
@@ -256,7 +235,7 @@ def main():
 	with _dump_locals_on_exception():
 		if args.withEntity and (entity := scraper.entity):
 			if args.jsonl:
-				print(json.dumps(namedtuple_to_dict_recursive(entity), default = json_serialise_datetime))
+				print(entity.json())
 			else:
 				print(entity)
 		if args.maxResults == 0:
@@ -267,7 +246,7 @@ def main():
 				logger.info(f'Exiting due to reaching older results than {args.since}')
 				break
 			if args.jsonl:
-				print(json.dumps(namedtuple_to_dict_recursive(item), default = json_serialise_datetime))
+				print(item.json())
 			elif args.format is not None:
 				print(args.format.format(**item._asdict()))
 			else:

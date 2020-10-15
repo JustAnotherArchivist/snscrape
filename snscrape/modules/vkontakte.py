@@ -1,5 +1,6 @@
 import bs4
 import collections
+import dataclasses
 import datetime
 import itertools
 import logging
@@ -11,7 +12,8 @@ import urllib.parse
 logger = logging.getLogger(__name__)
 
 
-class VKontaktePost(typing.NamedTuple, snscrape.base.Item):
+@dataclasses.dataclass
+class VKontaktePost(snscrape.base.Item):
 	url: str
 	date: datetime.datetime
 	content: str
@@ -20,7 +22,8 @@ class VKontaktePost(typing.NamedTuple, snscrape.base.Item):
 		return self.url
 
 
-class User(typing.NamedTuple, snscrape.base.Entity):
+@dataclasses.dataclass
+class User(snscrape.base.Entity):
 	username: str
 	name: str
 	verified: bool

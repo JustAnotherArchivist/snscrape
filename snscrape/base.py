@@ -1,5 +1,8 @@
 import abc
+import dataclasses
+import datetime
 import functools
+import json
 import logging
 import requests
 import time
@@ -8,7 +11,28 @@ import time
 logger = logging.getLogger(__name__)
 
 
-class Item:
+def _json_serialise_datetime(obj):
+	'''A JSON serialiser that converts datetime.datetime and datetime.date objects to ISO-8601 strings.'''
+	if isinstance(obj, (datetime.datetime, datetime.date)):
+		return obj.isoformat()
+	raise TypeError(f'Object of type {type(obj)} is not JSON serializable')
+
+
+@dataclasses.dataclass
+class _JSONDataclass:
+	'''A base class for dataclasses for conversion to JSON'''
+
+	def json(self):
+		'''Convert the object to a JSON string'''
+		out = dataclasses.asdict(self)
+		for key, value in out.items():
+			if isinstance(value, _JSONDataclass):
+				out[key] = value.json()
+		return json.dumps(out, default = _json_serialise_datetime)
+
+
+@dataclasses.dataclass
+class Item(_JSONDataclass):
 	'''An abstract base class for an item returned by the scraper's get_items generator.
 
 	An item can really be anything. The string representation should be useful for the CLI output (e.g. a direct URL for the item).'''
@@ -18,7 +42,8 @@ class Item:
 		pass
 
 
-class Entity:
+@dataclasses.dataclass
+class Entity(_JSONDataclass):
 	'''An abstract base class for an entity returned by the scraper's entity property.
 
 	An entity is typically the account of a person or organisation. The string representation should be the preferred direct URL to the entity's page on the network.'''
