@@ -1,6 +1,5 @@
 import argparse
 import contextlib
-import dataclasses
 import datetime
 import inspect
 import logging
@@ -156,6 +155,22 @@ def parse_datetime_arg(arg):
 	raise argparse.ArgumentTypeError(f'Cannot parse {arg!r} into a datetime object')
 
 
+def parse_format(arg):
+	# Replace '{' by '{0.' to use properties of the item, but keep '{{' intact
+	parts = arg.split('{')
+	out = ''
+	it = iter(zip(parts, parts[1:]))
+	for part, nextPart in it:
+		out += part
+		if nextPart == '': # Double brace
+			out += '{{'
+			next(it)
+		else: # Single brace
+			out += '{0.'
+	out += parts[-1]
+	return out
+
+
 def parse_args():
 	import snscrape.base
 	import snscrape.modules
@@ -169,7 +184,7 @@ def parse_args():
 		help = 'When the connection fails or the server returns an unexpected response, retry up to N times with an exponential backoff')
 	parser.add_argument('-n', '--max-results', dest = 'maxResults', type = lambda x: int(x) if int(x) >= 0 else parser.error('--max-results N must be zero or positive'), metavar = 'N', help = 'Only return the first N results')
 	group = parser.add_mutually_exclusive_group(required = False)
-	group.add_argument('-f', '--format', dest = 'format', type = str, default = None, help = 'Output format')
+	group.add_argument('-f', '--format', dest = 'format', type = parse_format, default = None, help = 'Output format')
 	group.add_argument('--jsonl', dest = 'jsonl', action = 'store_true', default = False, help = 'Output JSONL')
 	parser.add_argument('--with-entity', dest = 'withEntity', action = 'store_true', default = False, help = 'Include the entity (e.g. user, channel) as the first output item')
 	parser.add_argument('--since', type = parse_datetime_arg, metavar = 'DATETIME', help = 'Only return results newer than DATETIME')
@@ -251,7 +266,7 @@ def main():
 			if args.jsonl:
 				print(item.json())
 			elif args.format is not None:
-				print(args.format.format(**dataclasses.asdict(item)))
+				print(args.format.format(item))
 			else:
 				print(item)
 			if args.progress and i % 100 == 0:
