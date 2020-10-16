@@ -1,5 +1,6 @@
 import argparse
 import contextlib
+import dataclasses
 import datetime
 import inspect
 import logging
@@ -250,7 +251,7 @@ def main():
 			if args.jsonl:
 				print(item.json())
 			elif args.format is not None:
-				print(args.format.format(**item._asdict()))
+				print(args.format.format(**dataclasses.asdict(item)))
 			else:
 				print(item)
 			if args.progress and i % 100 == 0:
