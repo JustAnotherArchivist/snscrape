@@ -12,7 +12,6 @@ import string
 import time
 import typing
 import urllib.parse
-import warnings
 
 
 logger = logging.getLogger(__name__)
@@ -41,20 +40,9 @@ class Tweet(snscrape.base.Item):
 	quotedTweet: typing.Optional['Tweet'] = None
 	mentionedUsers: typing.Optional[typing.List['User']] = None
 
-	@property
-	def username(self):
-		warnings.warn('username is deprecated, use user.username instead', FutureWarning)
-		return self.user.username
-
-	@property
-	def outlinksss(self):
-		warnings.warn('outlinksss is deprecated, use outlinks instead', FutureWarning)
-		return ' '.join(self.outlinks)
-
-	@property
-	def tcooutlinksss(self):
-		warnings.warn('tcooutlinksss is deprecated, use tcooutlinks instead', FutureWarning)
-		return ' '.join(self.tcooutlinks)
+	username = snscrape.base._DeprecatedProperty('username', lambda self: self.user.username, 'user.username')
+	outlinksss = snscrape.base._DeprecatedProperty('outlinksss', lambda self: ' '.join(self.outlinks), 'outlinks')
+	tcooutlinksss = snscrape.base._DeprecatedProperty('tcooutlinksss', lambda self: ' '.join(self.tcooutlinks), 'tcooutlinks')
 
 	def __str__(self):
 		return self.url

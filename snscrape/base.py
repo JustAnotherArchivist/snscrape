@@ -6,9 +6,21 @@ import json
 import logging
 import requests
 import time
+import warnings
 
 
 logger = logging.getLogger(__name__)
+
+
+class _DeprecatedProperty:
+	def __init__(self, name, repl, replStr):
+		self.name = name
+		self.repl = repl
+		self.replStr = replStr
+
+	def __get__(self, obj, objType):
+		warnings.warn(f'{self.name} is deprecated, use {self.replStr} instead', FutureWarning, stacklevel = 2)
+		return self.repl(obj)
 
 
 def _json_serialise_datetime(obj):

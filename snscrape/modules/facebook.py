@@ -7,7 +7,6 @@ import re
 import snscrape.base
 import typing
 import urllib.parse
-import warnings
 
 
 logger = logging.getLogger(__name__)
@@ -21,10 +20,7 @@ class FacebookPost(snscrape.base.Item):
 	content: typing.Optional[str]
 	outlinks: list
 
-	@property
-	def outlinksss(self):
-		warnings.warn('outlinksss is deprecated, use outlinks instead', FutureWarning)
-		return ' '.join(self.outlinks)
+	outlinksss = snscrape.base._DeprecatedProperty('outlinksss', lambda self: ' '.join(self.outlinks), 'outlinks')
 
 	def __str__(self):
 		return self.cleanUrl
