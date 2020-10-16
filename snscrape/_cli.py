@@ -8,6 +8,7 @@ import requests.models
 #import snscrape.base
 #import snscrape.modules
 #import snscrape.version
+import sys
 import tempfile
 
 
@@ -171,6 +172,7 @@ def parse_args():
 	group.add_argument('--jsonl', dest = 'jsonl', action = 'store_true', default = False, help = 'Output JSONL')
 	parser.add_argument('--with-entity', dest = 'withEntity', action = 'store_true', default = False, help = 'Include the entity (e.g. user, channel) as the first output item')
 	parser.add_argument('--since', type = parse_datetime_arg, metavar = 'DATETIME', help = 'Only return results newer than DATETIME')
+	parser.add_argument('--progress', action = 'store_true', default = False, help = 'Report progress on stderr')
 
 	subparsers = parser.add_subparsers(dest = 'scraper', help = 'The scraper you want to use')
 	classes = snscrape.base.Scraper.__subclasses__()
@@ -251,8 +253,14 @@ def main():
 				print(args.format.format(**item._asdict()))
 			else:
 				print(item)
+			if args.progress and i % 100 == 0:
+				print(f'Scraping, {i} results so far', file = sys.stderr)
 			if args.maxResults and i >= args.maxResults:
 				logger.info(f'Exiting after {i} results')
+				if args.progress:
+					print(f'Stopped scraping after {i} results due to --max-results', file = sys.stderr)
 				break
 		else:
 			logger.info(f'Done, found {i} results')
+			if args.progress:
+				print(f'Finished, {i} results', file = sys.stderr)
