@@ -33,12 +33,13 @@ class InstagramPost(snscrape.base.Item):
 class User(snscrape.base.Entity):
 	username: str
 	name: typing.Optional[str]
-	followers: int
-	followersGranularity: snscrape.base.Granularity
-	following: int
-	followingGranularity: snscrape.base.Granularity
-	posts: int
-	postsGranularity: snscrape.base.Granularity
+	followers: snscrape.base.IntWithGranularity
+	following: snscrape.base.IntWithGranularity
+	posts: snscrape.base.IntWithGranularity
+
+	followersGranularity = snscrape.base._DeprecatedProperty('followersGranularity', lambda self: self.followers.granularity, 'followers.granularity')
+	followingGranularity = snscrape.base._DeprecatedProperty('followingGranularity', lambda self: self.following.granularity, 'following.granularity')
+	postsGranularity = snscrape.base._DeprecatedProperty('postsGranularity', lambda self: self.posts.granularity, 'posts.granularity')
 
 	def __str__(self):
 		return f'https://www.instagram.com/{self.username}/'
@@ -204,18 +205,15 @@ class InstagramUserScraper(InstagramCommonScraper):
 			else:
 				return int(s.replace(',', '')), 1
 
-		followers, followersGranularity = parse_num(m.group(1))
-		following, followingGranularity = parse_num(m.group(2))
-		posts, postsGranularity = parse_num(m.group(3))
+		followers = snscrape.base.IntWithGranularity(*parse_num(m.group(1)))
+		following = snscrape.base.IntWithGranularity(*parse_num(m.group(2)))
+		posts = snscrape.base.IntWithGranularity(*parse_num(m.group(3)))
 		return User(
 			username = m.group(5) or m.group(6),
 			name = m.group(4) or None,
 			followers = followers,
-			followersGranularity = followersGranularity,
 			following = following,
-			followingGranularity = followingGranularity,
 			posts = posts,
-			postsGranularity = postsGranularity,
 		  )
 
 

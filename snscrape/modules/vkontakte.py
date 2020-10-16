@@ -29,16 +29,17 @@ class User(snscrape.base.Entity):
 	verified: bool
 	description: typing.Optional[str] = None
 	websites: typing.Optional[typing.List[str]] = None
-	followers: typing.Optional[int] = None
-	followersGranularity: typing.Optional[snscrape.base.Granularity] = None
-	posts: typing.Optional[int] = None
-	postsGranularity: typing.Optional[snscrape.base.Granularity] = None
-	photos: typing.Optional[int] = None
-	photosGranularity: typing.Optional[snscrape.base.Granularity] = None
-	tags: typing.Optional[int] = None
-	tagsGranularity: typing.Optional[snscrape.base.Granularity] = None
-	following: typing.Optional[int] = None
-	followingGranularity: typing.Optional[snscrape.base.Granularity] = None
+	followers: typing.Optional[snscrape.base.IntWithGranularity] = None
+	posts: typing.Optional[snscrape.base.IntWithGranularity] = None
+	photos: typing.Optional[snscrape.base.IntWithGranularity] = None
+	tags: typing.Optional[snscrape.base.IntWithGranularity] = None
+	following: typing.Optional[snscrape.base.IntWithGranularity] = None
+
+	followersGranularity = snscrape.base._DeprecatedProperty('followersGranularity', lambda self: self.followers.granularity, 'followers.granularity')
+	postsGranularity = snscrape.base._DeprecatedProperty('postsGranularity', lambda self: self.posts.granularity, 'posts.granularity')
+	photosGranularity = snscrape.base._DeprecatedProperty('photosGranularity', lambda self: self.photos.granularity, 'photos.granularity')
+	tagsGranularity = snscrape.base._DeprecatedProperty('tagsGranularity', lambda self: self.tags.granularity, 'tags.granularity')
+	followingGranularity = snscrape.base._DeprecatedProperty('followingGranularity', lambda self: self.following.granularity, 'following.granularity')
 
 	def __str__(self):
 		return f'https://vk.com/{self.username}'
@@ -204,16 +205,16 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 				if label in ('follower', 'post', 'photo', 'tag'):
 					label = f'{label}s'
 				if label in ('followers', 'posts', 'photos', 'tags'):
-					kwargs[label], kwargs[f'{label}Granularity'] = count, granularity
+					kwargs[label] = snscrape.base.IntWithGranularity(count, granularity)
 
 		if (idolsDiv := soup.find('div', id = 'profile_idols')):
 			if (topDiv := idolsDiv.find('div', class_ = 'header_top')) and topDiv.find('span', class_ = 'header_label').text == 'Following':
-				kwargs['following'], kwargs['followingGranularity'] = parse_num(topDiv.find('span', class_ = 'header_count').text)
+				kwargs['following'] = snscrape.base.IntWithGranularity(*parse_num(topDiv.find('span', class_ = 'header_count').text))
 
 		# On public pages, this is where followers are listed
 		if (followersDiv := soup.find('div', id = 'public_followers')):
 			if (topDiv := followersDiv.find('div', class_ = 'header_top')) and topDiv.find('span', class_ = 'header_label').text == 'Followers':
-				kwargs['followers'], kwargs['followersGranularity'] = parse_num(topDiv.find('span', class_ = 'header_count').text)
+				kwargs['followers'] = snscrape.base.IntWithGranularity(*parse_num(topDiv.find('span', class_ = 'header_count').text))
 
 		return User(**kwargs)
 

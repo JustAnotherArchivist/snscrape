@@ -43,14 +43,15 @@ class Channel(snscrape.base.Entity):
 	photo: str
 	description: typing.Optional[str] = None
 	members: typing.Optional[int] = None
-	photos: typing.Optional[int] = None
-	photosGranularity: typing.Optional[snscrape.base.Granularity] = None
-	videos: typing.Optional[int] = None
-	videosGranularity: typing.Optional[snscrape.base.Granularity] = None
-	links: typing.Optional[int] = None
-	linksGranularity: typing.Optional[snscrape.base.Granularity] = None
-	files: typing.Optional[int] = None
-	filesGranularity: typing.Optional[snscrape.base.Granularity] = None
+	photos: typing.Optional[snscrape.base.IntWithGranularity] = None
+	videos: typing.Optional[snscrape.base.IntWithGranularity] = None
+	links: typing.Optional[snscrape.base.IntWithGranularity] = None
+	files: typing.Optional[snscrape.base.IntWithGranularity] = None
+
+	photosGranularity = snscrape.base._DeprecatedProperty('photosGranularity', lambda self: self.photos.granularity, 'photos.granularity')
+	videosGranularity = snscrape.base._DeprecatedProperty('videosGranularity', lambda self: self.videos.granularity, 'videos.granularity')
+	linksGranularity = snscrape.base._DeprecatedProperty('linksGranularity', lambda self: self.links.granularity, 'links.granularity')
+	filesGranularity = snscrape.base._DeprecatedProperty('filesGranularity', lambda self: self.files.granularity, 'files.granularity')
 
 	def __str__(self):
 		return f'https://t.me/s/{self.username}'
@@ -186,7 +187,7 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 				# Already extracted more accurately from /channel, skip
 				continue
 			elif type_ in ('photos', 'videos', 'links', 'files'):
-				kwargs[type_], kwargs[f'{type_}Granularity'] = value, granularity
+				kwargs[type_] = snscrape.base.IntWithGranularity(value, granularity)
 
 		return Channel(**kwargs)
 

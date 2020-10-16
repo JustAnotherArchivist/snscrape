@@ -37,9 +37,13 @@ class _JSONDataclass:
 	def json(self):
 		'''Convert the object to a JSON string'''
 		out = dataclasses.asdict(self)
-		for key, value in out.items():
+		for key, value in list(out.items()): # Modifying the dict below, so make a copy first
 			if isinstance(value, _JSONDataclass):
 				out[key] = value.json()
+			elif isinstance(value, IntWithGranularity):
+				out[key] = int(value)
+				assert f'{key}.granularity' not in out, f'Granularity collision on {key}.granularity'
+				out[f'{key}.granularity'] = value.granularity
 		return json.dumps(out, default = _json_serialise_datetime)
 
 
@@ -65,10 +69,18 @@ class Entity(_JSONDataclass):
 		pass
 
 
-Granularity = int
-'''Type of fields storing the unit/granularity of numbers.
+class IntWithGranularity(int):
+	'''A number with an associated granularity
 
-For example, a granularity of 1000 means that the SNS returned something like '42k' and the last three significant digits are unknown.'''
+	For example, an IntWithGranularity(42000, 1000) represents a number on the order of 42000 with two significant digits, i.e. something counted with a granularity of 1000.'''
+
+	def __new__(cls, value, granularity, *args, **kwargs):
+		obj = super().__new__(cls, value, *args, **kwargs)
+		obj.granularity = granularity
+		return obj
+
+	def __reduce__(self):
+		return (IntWithGranularity, (int(self), self.granularity))
 
 
 class URLItem(Item):
