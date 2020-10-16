@@ -101,7 +101,7 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 			logger.info('Wall has no posts')
 			return
 		ownerID = newestPost.attrs['data-post-id'].split('_')[0]
-		# If there is a pinned post, we need its ID for the pagination requests; we also need to keep the post around so it can be inserted into the stream at the right point
+		# If there is a pinned post, we need its ID for the pagination requests
 		if 'post_fixed' in newestPost.attrs['class']:
 			fixedPostID = int(newestPost.attrs['id'].split('_')[1])
 		else:
