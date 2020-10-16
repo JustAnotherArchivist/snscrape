@@ -6,6 +6,7 @@ import re
 import snscrape.base
 import typing
 import urllib.parse
+import warnings
 
 
 logger = logging.getLogger(__name__)
@@ -27,8 +28,12 @@ class TelegramPost(snscrape.base.Item):
 	date: datetime.datetime
 	content: str
 	outlinks: list
-	outlinksss: str # deprecated, use outlinks instead
 	linkPreview: typing.Optional[LinkPreview] = None
+
+	@property
+	def outlinksss(self):
+		warnings.warn('outlinksss is deprecated, use outlinks instead', FutureWarning)
+		return ' '.join(self.outlinks)
 
 	def __str__(self):
 		return self.url
@@ -101,11 +106,9 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 					href = urllib.parse.urljoin(pageUrl, link['href'])
 					if href not in outlinks:
 						outlinks.append(href)
-				outlinksss = ' '.join(outlinks)
 			else:
 				content = None
 				outlinks = []
-				outlinksss = ''
 			linkPreview = None
 			if (linkPreviewA := post.find('a', class_ = 'tgme_widget_message_link_preview')):
 				kwargs = {}
@@ -122,7 +125,7 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 					else:
 						self.logger.warning(f'Could not process link preview image on {url}')
 				linkPreview = LinkPreview(**kwargs)
-			yield TelegramPost(url = url, date = date, content = content, outlinks = outlinks, outlinksss = outlinksss, linkPreview = linkPreview)
+			yield TelegramPost(url = url, date = date, content = content, outlinks = outlinks, linkPreview = linkPreview)
 
 	def get_items(self):
 		r, soup = self._initial_page()

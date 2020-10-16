@@ -7,6 +7,7 @@ import re
 import snscrape.base
 import typing
 import urllib.parse
+import warnings
 
 
 logger = logging.getLogger(__name__)
@@ -19,7 +20,11 @@ class FacebookPost(snscrape.base.Item):
 	date: datetime.datetime
 	content: typing.Optional[str]
 	outlinks: list
-	outlinksss: str # deprecated, use outlinks instead
+
+	@property
+	def outlinksss(self):
+		warnings.warn('outlinksss is deprecated, use outlinks instead', FutureWarning)
+		return ' '.join(self.outlinks)
 
 	def __str__(self):
 		return self.cleanUrl
@@ -150,7 +155,7 @@ class FacebookCommonScraper(snscrape.base.Scraper):
 				outlink = query['u'][0]
 				if outlink.startswith('http://') or outlink.startswith('https://') and outlink not in outlinks:
 					outlinks.append(outlink)
-			yield FacebookPost(cleanUrl = cleanUrl, dirtyUrl = dirtyUrl, date = date, content = content, outlinks = outlinks, outlinksss = ' '.join(outlinks))
+			yield FacebookPost(cleanUrl = cleanUrl, dirtyUrl = dirtyUrl, date = date, content = content, outlinks = outlinks)
 
 
 class FacebookUserAndCommunityScraper(FacebookCommonScraper):

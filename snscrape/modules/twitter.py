@@ -12,6 +12,7 @@ import string
 import time
 import typing
 import urllib.parse
+import warnings
 
 
 logger = logging.getLogger(__name__)
@@ -25,12 +26,9 @@ class Tweet(snscrape.base.Item):
 	content: str
 	renderedContent: str
 	id: int
-	username: str # Deprecated, use user['username'] instead
 	user: 'User'
 	outlinks: list
-	outlinksss: str # Deprecated, use outlinks instead
 	tcooutlinks: list
-	tcooutlinksss: str # Deprecated, use tcooutlinks instead
 	replyCount: int
 	retweetCount: int
 	likeCount: int
@@ -42,6 +40,21 @@ class Tweet(snscrape.base.Item):
 	retweetedTweet: typing.Optional['Tweet'] = None
 	quotedTweet: typing.Optional['Tweet'] = None
 	mentionedUsers: typing.Optional[typing.List['User']] = None
+
+	@property
+	def username(self):
+		warnings.warn('username is deprecated, use user.username instead', FutureWarning)
+		return self.user.username
+
+	@property
+	def outlinksss(self):
+		warnings.warn('outlinksss is deprecated, use outlinks instead', FutureWarning)
+		return ' '.join(self.outlinks)
+
+	@property
+	def tcooutlinksss(self):
+		warnings.warn('tcooutlinksss is deprecated, use tcooutlinks instead', FutureWarning)
+		return ' '.join(self.tcooutlinks)
 
 	def __str__(self):
 		return self.url
@@ -302,14 +315,11 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 		kwargs['id'] = tweet['id'] if 'id' in tweet else int(tweet['id_str'])
 		kwargs['content'] = tweet['full_text']
 		kwargs['renderedContent'] = self._render_text_with_urls(tweet['full_text'], tweet['entities'].get('urls'))
-		kwargs['username'] = obj['globalObjects']['users'][tweet['user_id_str']]['screen_name']
 		kwargs['user'] = self._user_to_user(obj['globalObjects']['users'][tweet['user_id_str']])
 		kwargs['date'] = email.utils.parsedate_to_datetime(tweet['created_at'])
 		kwargs['outlinks'] = [u['expanded_url'] for u in tweet['entities']['urls']] if 'urls' in tweet['entities'] else []
-		kwargs['outlinksss'] = ' '.join(kwargs['outlinks'])
 		kwargs['tcooutlinks'] = [u['url'] for u in tweet['entities']['urls']] if 'urls' in tweet['entities'] else []
-		kwargs['tcooutlinksss'] = ' '.join(kwargs['tcooutlinks'])
-		kwargs['url'] = f'https://twitter.com/{kwargs["username"]}/status/{kwargs["id"]}'
+		kwargs['url'] = f'https://twitter.com/{obj["globalObjects"]["users"][tweet["user_id_str"]]["screen_name"]}/status/{kwargs["id"]}'
 		kwargs['replyCount'] = tweet['reply_count']
 		kwargs['retweetCount'] = tweet['retweet_count']
 		kwargs['likeCount'] = tweet['favorite_count']
