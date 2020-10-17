@@ -95,7 +95,10 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 	def _post_div_to_item(self, post, isCopy = False):
 		url = urllib.parse.urljoin(self._baseUrl, post.find('a', class_ = 'post_link' if not isCopy else 'published_by_date')['href'])
 		assert url.startswith('https://vk.com/wall') and '_' in url and url[-1] != '_' and url.rsplit('_', 1)[1].strip('0123456789') == ''
-		dateSpan = post.find('div', class_ = 'post_date' if not isCopy else 'copy_post_date').find('span', class_ = 'rel_date')
+		if not isCopy:
+			dateSpan = post.find('div', class_ = 'post_date').find('span', class_ = 'rel_date')
+		else:
+			dateSpan = post.find('div', class_ = 'copy_post_date').find('a', class_ = 'published_by_date')
 		textDiv = post.find('div', class_ = 'wall_post_text')
 		outlinks = [h for a in textDiv.find_all('a') if (h := self._away_a_to_url(a))] if textDiv else []
 		if (mediaLinkDiv := post.find('div', class_ = 'media_link')) and \
