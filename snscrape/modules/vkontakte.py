@@ -5,9 +5,24 @@ import datetime
 import itertools
 import json
 import logging
+import re
 import snscrape.base
 import typing
 import urllib.parse
+try:
+	import zoneinfo
+except ImportError:
+	# Python 3.8 support; nowadays, Europe/Moscow is always UTC+3, but it's more complicated before 2014, so need proper zone info
+	import pytz
+	def timezone(s):
+		return pytz.timezone(s)
+	def localised_datetime(tz, *args, **kwargs):
+		return tz.localize(datetime.datetime(*args, **kwargs))
+else:
+	def timezone(s):
+		return zoneinfo.ZoneInfo(s)
+	def localised_datetime(tz, *args, **kwargs):
+		return datetime.datetime(*args, tzinfo = tz, **kwargs)
 
 
 logger = logging.getLogger(__name__)
@@ -16,7 +31,7 @@ logger = logging.getLogger(__name__)
 @dataclasses.dataclass
 class VKontaktePost(snscrape.base.Item):
 	url: str
-	date: datetime.datetime
+	date: typing.Optional[typing.Union[datetime.datetime, datetime.date]]
 	content: str
 	outlinks: typing.Optional[typing.List[str]] = None
 	photos: typing.Optional[typing.List['Photo']] = None
@@ -92,6 +107,38 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 			return urllib.parse.unquote(a['href'][13 : end])
 		return None
 
+	def _date_span_to_date(self, dateSpan):
+		if not dateSpan:
+			return None
+		if 'time' in dateSpan.attrs:
+			return datetime.datetime.fromtimestamp(int(dateSpan['time']), datetime.timezone.utc)
+		months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+		if (match := re.match(r'^(?P<date>today|yesterday|(?P<day1>\d+)\s+(?P<month1>' + '|'.join(months) + ')|(?P<month2>' + '|'.join(months) + r')\s+(?P<day2>\d+),\s+(?P<year2>\d{4}))\s+at\s+(?P<hour>\d+):(?P<minute>\d+)\s+(?P<ampm>[ap]m)$', dateSpan.text)):
+			# Datetime information down to minutes
+			tz = timezone('Europe/Moscow')
+			if match.group('date') in ('today', 'yesterday'):
+				date = datetime.datetime.now(tz = tz)
+				if match.group('date') == 'yesterday':
+					date -= datetime.timedelta(days = 1)
+				year, month, day = date.year, date.month, date.day
+			else:
+				year = int(match.group('year2') or datetime.datetime.now(tz = tz).year)
+				month = months.index(match.group('month1') or match.group('month2')) + 1
+				day = int(match.group('day1') or match.group('day2'))
+			hour = int(match.group('hour'))
+			# Damn AM/PM...
+			if hour == 12:
+				hour -= 12
+			if match.group('ampm') == 'pm':
+				hour += 12
+			minute = int(match.group('minute'))
+			return localised_datetime(tz, year, month, day, hour, minute)
+		if (match := re.match(r'^(?P<day>\d+)\s+(?P<month>' + '|'.join(months) + r')\s+(?P<year>\d{4})$', dateSpan.text)):
+			# Date only
+			return datetime.date(int(match.group('year')), months.index(match.group('month')) + 1, int(match.group('day')))
+		if dateSpan.text != 'video': # Silently ignore video reposts which have no original date attached
+			logger.warning(f'Could not parse date string: {dateSpan.text!r}')
+
 	def _post_div_to_item(self, post, isCopy = False):
 		url = urllib.parse.urljoin(self._baseUrl, post.find('a', class_ = 'post_link' if not isCopy else 'published_by_date')['href'])
 		assert (url.startswith('https://vk.com/wall') or isCopy and url.startswith('https://vk.com/video')) and '_' in url and url[-1] != '_' and url.rsplit('_', 1)[1].strip('0123456789') == ''
@@ -154,7 +201,7 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 		quotedPost = self._post_div_to_item(quoteDiv, isCopy = True) if (quoteDiv := post.find('div', class_ = 'copy_quote')) else None
 		return VKontaktePost(
 		  url = url,
-		  date = datetime.datetime.fromtimestamp(int(dateSpan['time']), datetime.timezone.utc) if dateSpan and 'time' in dateSpan else None,
+		  date = self._date_span_to_date(dateSpan),
 		  content = textDiv.text if textDiv else None,
 		  outlinks = outlinks or None,
 		  photos = photos or None,

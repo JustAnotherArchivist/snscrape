@@ -15,7 +15,12 @@ setuptools.setup(
 	packages = ['snscrape', 'snscrape.modules'],
 	setup_requires = ['setuptools_scm'],
 	use_scm_version = True,
-	install_requires = ['requests[socks]', 'lxml', 'beautifulsoup4'],
+	install_requires = [
+		'requests[socks]',
+		'lxml',
+		'beautifulsoup4',
+		'pytz; python_version < "3.9.0"',
+	],
 	python_requires = '~=3.8',
 	entry_points = {
 		'console_scripts': [
