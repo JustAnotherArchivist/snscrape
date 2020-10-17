@@ -1,7 +1,8 @@
 # snscrape
-snscrape is a scraper for social networking services (SNS). It scrapes things like user profiles, hashtags, or searches and returns the discovered items, e.g. the relevant posts.                  
+snscrape is a scraper for social networking services (SNS). It scrapes things like user profiles, hashtags, or searches and returns the discovered items, e.g. the relevant posts.
 
 The following services are currently supported:
+
 * Facebook: user profiles, groups, and communities (aka visitor posts)
 * Instagram: user profiles, hashtags, and locations
 * Reddit: users, subreddits, and searches (via Pushshift)
@@ -27,7 +28,8 @@ To get all tweets by Jason Scott (@textfiles):
 
     snscrape twitter-user textfiles
 
-It's usually useful to redirect the output to a file for further processing, e.g. in bash using the filename `@textfiles-tweets`:
+It's usually useful to redirect the output to a file for further processing, e.g. in bash using the filename `twitter-@textfiles`:
+
 ```bash
 snscrape twitter-user textfiles >twitter-@textfiles
 ```
