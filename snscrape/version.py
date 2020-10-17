@@ -1,7 +1,7 @@
-import pkg_resources
+import importlib.metadata
 
 
 try:
-	__version__ = pkg_resources.get_distribution('snscrape').version
-except pkg_resources.DistributionNotFound:
+	__version__ = importlib.metadata.version('snscrape')
+except importlib.metadata.PackageNotFoundError:
 	__version__ = None
