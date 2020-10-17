@@ -94,7 +94,7 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 
 	def _post_div_to_item(self, post, isCopy = False):
 		url = urllib.parse.urljoin(self._baseUrl, post.find('a', class_ = 'post_link' if not isCopy else 'published_by_date')['href'])
-		assert url.startswith('https://vk.com/wall') and '_' in url and url[-1] != '_' and url.rsplit('_', 1)[1].strip('0123456789') == ''
+		assert (url.startswith('https://vk.com/wall') or isCopy and url.startswith('https://vk.com/video')) and '_' in url and url[-1] != '_' and url.rsplit('_', 1)[1].strip('0123456789') == ''
 		if not isCopy:
 			dateSpan = post.find('div', class_ = 'post_date').find('span', class_ = 'rel_date')
 		else:
