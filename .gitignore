@@ -1,0 +1,4 @@
+__pycache__/
+/dist/
+/snscrape.egg-info/
+/.eggs/
