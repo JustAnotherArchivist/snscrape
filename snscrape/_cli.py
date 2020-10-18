@@ -1,5 +1,6 @@
 import argparse
 import contextlib
+import dataclasses
 import datetime
 import inspect
 import logging
@@ -42,7 +43,7 @@ class Logger(logging.Logger):
 			super().log(level, *args, **kwargs)
 
 
-def _requests_preparedrequest_repr(name, request):
+def _requests_request_repr(name, request):
 	ret = []
 	ret.append(repr(request))
 	ret.append(f'\n  {name}.method = {request.method}')
@@ -50,9 +51,10 @@ def _requests_preparedrequest_repr(name, request):
 	ret.append(f'\n  {name}.headers = \\')
 	for field in request.headers:
 		ret.append(f'\n    {field} = {_repr("_", request.headers[field])}')
-	if request.body:
-		ret.append(f'\n  {name}.body = ')
-		ret.append(_repr('_', request.body).replace('\n', '\n  '))
+	for attr in ('body', 'params', 'data'):
+		if hasattr(request, attr) and getattr(request, attr):
+			ret.append(f'\n  {name}.{attr} = ')
+			ret.append(_repr('_', getattr(request, attr)).replace('\n', '\n  '))
 	return ''.join(ret)
 
 
@@ -79,8 +81,17 @@ def _requests_response_repr(name, response, withHistory = True):
 def _repr(name, value):
 	if type(value) is requests.models.Response:
 		return _requests_response_repr(name, value)
-	if type(value) is requests.models.PreparedRequest:
-		return _requests_preparedrequest_repr(name, value)
+	if type(value) in (requests.models.PreparedRequest, requests.models.Request):
+		return _requests_request_repr(name, value)
+	if isinstance(value, dict):
+		return f'{name} = <{type(value).__module__}.{type(value).__name__}>\n  ' + \
+		       '\n  '.join(_repr(f'{name}[{k!r}]', k) + ' = ' + _repr(f'{name}[{k!r}]', v).replace('\n', '\n  ') for k, v in value.items())
+	if isinstance(value, (list, tuple)) and not all(isinstance(v, (int, str)) for v in value):
+		return f'{name} <{type(value).__module__}.{type(value).__name__}>\n  ' + \
+		       '\n  '.join(_repr(f'{name}[{i}]', v).replace('\n', '\n  ') for i, v in enumerate(value))
+	if dataclasses.is_dataclass(value):
+		return f'{name} = <{type(value).__module__}.{type(value).__name__}>\n  ' + \
+		       '\n  '.join(_repr(f'{name}.{f.name}', f.name) + ' = ' + _repr(f'{name}.{f.name}', getattr(value, f.name)).replace('\n', '\n  ') for f in dataclasses.fields(value))
 	valueRepr = repr(value)
 	if '\n' in valueRepr:
 		return ''.join(['\\\n  ', valueRepr.replace('\n', '\n  ')])
