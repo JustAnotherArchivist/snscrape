@@ -2,7 +2,7 @@ This is snscrape's integration test suite. It is designed to catch regressions i
 
 * The same code is used for capturing the current data and for running regression and live tests against that data.
 * Be warned that the test suite makes a lot of requests against the target services. You may get banned if you run it too frequently.
-* The data is stored in one file per test in the `data/` subdirectory.
+* The data is stored in one file per test in the `data/` subdirectory (configurable with the `SNSCRAPE_TEST_DATA_DIR` environment variable).
 * The test suite is based around unittest. Execute `python3 -m unittest discover` in this directory to run it.
 * To generate the data files, define the `SNSCRAPE_TEST_CAPTURE` environment variable (with any value).
 * For coverage data, replace `python3` with `coverage run` in the above command, then use `coverage report --show-missing` for display.

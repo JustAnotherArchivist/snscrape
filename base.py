@@ -13,6 +13,7 @@ import unittest
 
 
 isCapture = os.environ.get('SNSCRAPE_TEST_CAPTURE', None) is not None
+dataDir = os.environ.get('SNSCRAPE_TEST_DATA_DIR', os.path.join(os.path.dirname(__file__), 'data'))
 JSON_MARKER_PICKLED = 'be72ba74-4543-468c-86f9-c6900de95d58'
 JSON_MARKER_DEQUE = '557c81d2-46fc-4925-8969-609b52a8dd40'
 
@@ -150,8 +151,8 @@ def filter_attributes(o, skipAttributes: dict[type, tuple[str]]):
 
 class TestCase(unittest.TestCase):
 	def run_scraper(self, scraperClass, *args, **kwargs):
-		global isCapture
-		fn = os.path.join(os.path.dirname(__file__), 'data', f'{self.id()}.json')
+		global dataDir, isCapture
+		fn = os.path.join(dataDir, f'{self.id()}.json')
 		liveEqualityTestSkipAttributes = kwargs.pop('liveEqualityTestSkipAttributes', {})
 		if isCapture:
 			startTime = time.time()
