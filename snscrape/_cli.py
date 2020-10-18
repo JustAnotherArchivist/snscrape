@@ -202,7 +202,7 @@ def parse_args():
 	parser.add_argument('--since', type = parse_datetime_arg, metavar = 'DATETIME', help = 'Only return results newer than DATETIME')
 	parser.add_argument('--progress', action = 'store_true', default = False, help = 'Report progress on stderr')
 
-	subparsers = parser.add_subparsers(dest = 'scraper', help = 'The scraper you want to use')
+	subparsers = parser.add_subparsers(dest = 'scraper', help = 'The scraper you want to use', required = True)
 	classes = snscrape.base.Scraper.__subclasses__()
 	for cls in classes:
 		if cls.name is not None:
@@ -212,10 +212,6 @@ def parse_args():
 		classes.extend(cls.__subclasses__())
 
 	args = parser.parse_args()
-
-	# http://bugs.python.org/issue16308 / https://bugs.python.org/issue26510 (fixed in Python 3.7)
-	if not args.scraper:
-		raise RuntimeError('Error: no scraper specified')
 
 	if not args.withEntity and args.maxResults == 0:
 		parser.error('--max-results 0 is only valid when used with --with-entity')
