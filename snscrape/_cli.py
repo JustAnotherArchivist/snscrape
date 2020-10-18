@@ -1,4 +1,5 @@
 import argparse
+import collections
 import contextlib
 import dataclasses
 import datetime
@@ -45,7 +46,7 @@ class Logger(logging.Logger):
 
 def _requests_request_repr(name, request):
 	ret = []
-	ret.append(repr(request))
+	ret.append(f'{name} = {request!r}')
 	ret.append(f'\n  {name}.method = {request.method}')
 	ret.append(f'\n  {name}.url = {request.url}')
 	ret.append(f'\n  {name}.headers = \\')
@@ -60,7 +61,7 @@ def _requests_request_repr(name, request):
 
 def _requests_response_repr(name, response, withHistory = True):
 	ret = []
-	ret.append(repr(response))
+	ret.append(f'{name} = {response!r}')
 	ret.append(f'\n  {name}.url = {response.url}')
 	ret.append(f'\n  {name}.request = ')
 	ret.append(_repr('_', response.request).replace('\n', '\n  '))
@@ -85,14 +86,14 @@ def _repr(name, value):
 		return _requests_request_repr(name, value)
 	if isinstance(value, dict):
 		return f'{name} = <{type(value).__module__}.{type(value).__name__}>\n  ' + \
-		       '\n  '.join(_repr(f'{name}[{k!r}]', k) + ' = ' + _repr(f'{name}[{k!r}]', v).replace('\n', '\n  ') for k, v in value.items())
-	if isinstance(value, (list, tuple)) and not all(isinstance(v, (int, str)) for v in value):
-		return f'{name} <{type(value).__module__}.{type(value).__name__}>\n  ' + \
+		       '\n  '.join(_repr(f'{name}[{k!r}]', v).replace('\n', '\n  ') for k, v in value.items())
+	if isinstance(value, (list, tuple, collections.deque)) and not all(isinstance(v, (int, str)) for v in value):
+		return f'{name} = <{type(value).__module__}.{type(value).__name__}>\n  ' + \
 		       '\n  '.join(_repr(f'{name}[{i}]', v).replace('\n', '\n  ') for i, v in enumerate(value))
 	if dataclasses.is_dataclass(value):
 		return f'{name} = <{type(value).__module__}.{type(value).__name__}>\n  ' + \
 		       '\n  '.join(_repr(f'{name}.{f.name}', f.name) + ' = ' + _repr(f'{name}.{f.name}', getattr(value, f.name)).replace('\n', '\n  ') for f in dataclasses.fields(value))
-	valueRepr = repr(value)
+	valueRepr = f'{name} = {value!r}'
 	if '\n' in valueRepr:
 		return ''.join(['\\\n  ', valueRepr.replace('\n', '\n  ')])
 	return valueRepr
