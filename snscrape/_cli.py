@@ -5,7 +5,7 @@ import dataclasses
 import datetime
 import inspect
 import logging
-import requests.models
+import requests
 # Imported in parse_args() after setting up the logger:
 #import snscrape.base
 #import snscrape.modules
@@ -80,9 +80,9 @@ def _requests_response_repr(name, response, withHistory = True):
 
 
 def _repr(name, value):
-	if type(value) is requests.models.Response:
+	if type(value) is requests.Response:
 		return _requests_response_repr(name, value)
-	if type(value) in (requests.models.PreparedRequest, requests.models.Request):
+	if type(value) in (requests.PreparedRequest, requests.Request):
 		return _requests_request_repr(name, value)
 	if isinstance(value, dict):
 		return f'{name} = <{type(value).__module__}.{type(value).__name__}>\n  ' + \
