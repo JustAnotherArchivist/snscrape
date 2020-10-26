@@ -24,6 +24,7 @@ class Tweet(snscrape.base.Item):
 	date: datetime.datetime
 	content: str
 	renderedContent: str
+	hashtags: str
 	id: int
 	user: 'User'
 	outlinks: list
@@ -33,6 +34,8 @@ class Tweet(snscrape.base.Item):
 	likeCount: int
 	quoteCount: int
 	conversationId: int
+	in_reply_to_user_id_str: str
+	in_reply_to_status_id_str: str
 	lang: str
 	source: str
 	media: typing.Optional[typing.List['Medium']] = None
@@ -301,8 +304,11 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 		# Transforms a Twitter API tweet object into a Tweet
 		kwargs = {}
 		kwargs['id'] = tweet['id'] if 'id' in tweet else int(tweet['id_str'])
+		kwargs['in_reply_to_user_id_str'] = tweet['in_reply_to_user_id_str'] 
+		kwargs['in_reply_to_status_id_str'] = tweet['in_reply_to_status_id_str']
 		kwargs['content'] = tweet['full_text']
 		kwargs['renderedContent'] = self._render_text_with_urls(tweet['full_text'], tweet['entities'].get('urls'))
+		kwargs['hashtags'] = [t['text'] for t in tweet['entities']['hashtags']] if 'hashtags' in tweet['entities'] else [] 
 		kwargs['user'] = self._user_to_user(obj['globalObjects']['users'][tweet['user_id_str']])
 		kwargs['date'] = email.utils.parsedate_to_datetime(tweet['created_at'])
 		kwargs['outlinks'] = [u['expanded_url'] for u in tweet['entities']['urls']] if 'urls' in tweet['entities'] else []
