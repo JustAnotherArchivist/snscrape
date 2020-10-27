@@ -37,7 +37,7 @@ class Tweet(snscrape.base.Item):
 	source: str
 	inReplyToUserId: typing.Optional[int] = None
 	inReplyToStatusId: typing.Optional[int] = None
-	hashtags: typing.Optional[typing.List['Medium']] = None
+	hashtags: typing.Optional[typing.List['Tweet']] = None
 	media: typing.Optional[typing.List['Medium']] = None
 	retweetedTweet: typing.Optional['Tweet'] = None
 	quotedTweet: typing.Optional['Tweet'] = None
@@ -320,7 +320,7 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 		kwargs['source'] = tweet['source']
 		kwargs['inReplyToUserId'] = tweet['in_reply_to_user_id'] if 'in_reply_to_user_id' in tweet else int(tweet['in_reply_to_user_id_str']) 
 		kwargs['inReplyToStatusId'] = tweet['in_reply_to_status_id'] if 'in_reply_to_status_id' in tweet else int(tweet['in_reply_to_status_id_str'])
-		kwargs['hashtags'] = [u['text'] for u in tweet['entities']['hashtags']] if 'hashtags' in tweet['entities'] else None 
+		kwargs['hashtags'] = [t['text'] for t in tweet['entities']['hashtags']] if 'hashtags' in tweet['entities'] else None 
 		if 'extended_entities' in tweet and 'media' in tweet['extended_entities']:
 			media = []
 			for medium in tweet['extended_entities']['media']:
