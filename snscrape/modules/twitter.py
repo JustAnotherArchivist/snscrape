@@ -35,6 +35,8 @@ class Tweet(snscrape.base.Item):
 	conversationId: int
 	lang: str
 	source: str
+	sourceUrl: typing.Optional[str] = None
+	sourceLabel: typing.Optional[str] = None
 	media: typing.Optional[typing.List['Medium']] = None
 	retweetedTweet: typing.Optional['Tweet'] = None
 	quotedTweet: typing.Optional['Tweet'] = None
@@ -315,6 +317,10 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 		kwargs['conversationId'] = tweet['conversation_id'] if 'conversation_id' in tweet else int(tweet['conversation_id_str'])
 		kwargs['lang'] = tweet['lang']
 		kwargs['source'] = tweet['source']
+		if (match := re.search(r'href=[\'"]?([^\'" >]+)', tweet['source'])):
+			kwargs['sourceUrl'] = match.group(1)
+		if (match := re.search(r'>([^<]*)<', tweet['source'])):
+			kwargs['sourceLabel'] = match.group(1)
 		if 'extended_entities' in tweet and 'media' in tweet['extended_entities']:
 			media = []
 			for medium in tweet['extended_entities']['media']:
