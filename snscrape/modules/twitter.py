@@ -43,7 +43,6 @@ class Tweet(snscrape.base.Item):
 	quotedTweet: typing.Optional['Tweet'] = None
 	mentionedUsers: typing.Optional[typing.List['User']] = None
 
-
 	username = snscrape.base._DeprecatedProperty('username', lambda self: self.user.username, 'user.username')
 	outlinksss = snscrape.base._DeprecatedProperty('outlinksss', lambda self: ' '.join(self.outlinks), 'outlinks')
 	tcooutlinksss = snscrape.base._DeprecatedProperty('tcooutlinksss', lambda self: ' '.join(self.tcooutlinks), 'tcooutlinks')
@@ -360,7 +359,6 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 			User(username = u['screen_name'], displayname = u['name'], id = u['id'] if 'id' in u else int(u['id_str'])) \
 			for u in tweet['entities']['user_mentions']
 		  ] if 'user_mentions' in tweet['entities'] and tweet['entities']['user_mentions'] else None
-		
 		return Tweet(**kwargs)
 
 	def _render_text_with_urls(self, text, urls):
