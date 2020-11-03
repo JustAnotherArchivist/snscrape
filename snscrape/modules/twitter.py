@@ -477,6 +477,8 @@ class TwitterUserScraper(TwitterSearchScraper):
 		self._ensure_guest_token(f'https://twitter.com/{self._username}')
 		params = {'variables': json.dumps({'screen_name': self._username, 'withHighlightedLabel': True}, separators = (',', ':'))}
 		obj = self._get_api_data('https://api.twitter.com/graphql/-xfUfZsnR_zqjFd-IfrN5A/UserByScreenName', params = urllib.parse.urlencode(params, quote_via=urllib.parse.quote))
+		if not obj['data']:
+			return None
 		user = obj['data']['user']
 		rawDescription = user['legacy']['description']
 		description = self._render_text_with_urls(rawDescription, user['legacy']['entities']['description']['urls'])
