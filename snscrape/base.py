@@ -1,4 +1,5 @@
 import abc
+import copy
 import dataclasses
 import datetime
 import functools
@@ -19,6 +20,8 @@ class _DeprecatedProperty:
 		self.replStr = replStr
 
 	def __get__(self, obj, objType):
+		if obj is None: # if the access is through the class using _DeprecatedProperty rather than an instance of the class:
+			return self
 		warnings.warn(f'{self.name} is deprecated, use {self.replStr} instead', FutureWarning, stacklevel = 2)
 		return self.repl(obj)
 
@@ -30,17 +33,35 @@ def _json_serialise_datetime(obj):
 	raise TypeError(f'Object of type {type(obj)} is not JSON serializable')
 
 
+def _json_dataclass_to_dict(obj):
+	if isinstance(obj, _JSONDataclass) or dataclasses.is_dataclass(obj):
+		out = {}
+		for field in dataclasses.fields(obj):
+			out[field.name] = _json_dataclass_to_dict(getattr(obj, field.name))
+		# Add in (non-deprecated) properties
+		for k in dir(obj):
+			if isinstance(getattr(type(obj), k, None), property):
+				out[k] = _json_dataclass_to_dict(getattr(obj, k))
+		return out
+	elif isinstance(obj, (tuple, list)):
+		return type(obj)(_json_dataclass_to_dict(x) for x in obj)
+	elif isinstance(obj, dict):
+		return {_json_dataclass_to_dict(k): _json_dataclass_to_dict(v) for k, v in obj.items()}
+	elif isinstance(obj, set):
+		return {_json_dataclass_to_dict(v) for v in obj}
+	else:
+		return copy.deepcopy(obj)
+
+
 @dataclasses.dataclass
 class _JSONDataclass:
 	'''A base class for dataclasses for conversion to JSON'''
 
 	def json(self):
 		'''Convert the object to a JSON string'''
-		out = dataclasses.asdict(self)
+		out = _json_dataclass_to_dict(self)
 		for key, value in list(out.items()): # Modifying the dict below, so make a copy first
-			if isinstance(value, _JSONDataclass):
-				out[key] = value.json()
-			elif isinstance(value, IntWithGranularity):
+			if isinstance(value, IntWithGranularity):
 				out[key] = int(value)
 				assert f'{key}.granularity' not in out, f'Granularity collision on {key}.granularity'
 				out[f'{key}.granularity'] = value.granularity
