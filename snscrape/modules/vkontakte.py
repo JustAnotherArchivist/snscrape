@@ -140,7 +140,11 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 			logger.warning(f'Could not parse date string: {dateSpan.text!r}')
 
 	def _post_div_to_item(self, post, isCopy = False):
-		url = urllib.parse.urljoin(self._baseUrl, post.find('a', class_ = 'post_link' if not isCopy else 'published_by_date')['href'])
+		postLink = post.find('a', class_ = 'post_link' if not isCopy else 'published_by_date')
+		if not postLink:
+			logger.warning(f'Skipping post without link: {str(post)[:200]!r}')
+			return
+		url = urllib.parse.urljoin(self._baseUrl, postLink['href'])
 		assert (url.startswith('https://vk.com/wall') or (isCopy and (url.startswith('https://vk.com/video') or url.startswith('https://vk.com/photo')))) and '_' in url and url[-1] != '_' and url.rsplit('_', 1)[1].strip('0123456789') == ''
 		if not isCopy:
 			dateSpan = post.find('div', class_ = 'post_date').find('span', class_ = 'rel_date')
