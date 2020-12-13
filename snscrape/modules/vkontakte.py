@@ -136,12 +136,12 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 		if (match := re.match(r'^(?P<day>\d+)\s+(?P<month>' + '|'.join(months) + r')\s+(?P<year>\d{4})$', dateSpan.text)):
 			# Date only
 			return datetime.date(int(match.group('year')), months.index(match.group('month')) + 1, int(match.group('day')))
-		if dateSpan.text != 'video': # Silently ignore video reposts which have no original date attached
+		if dateSpan.text not in ('video', 'photo'): # Silently ignore video and photo reposts which have no original date attached
 			logger.warning(f'Could not parse date string: {dateSpan.text!r}')
 
 	def _post_div_to_item(self, post, isCopy = False):
 		url = urllib.parse.urljoin(self._baseUrl, post.find('a', class_ = 'post_link' if not isCopy else 'published_by_date')['href'])
-		assert (url.startswith('https://vk.com/wall') or isCopy and url.startswith('https://vk.com/video')) and '_' in url and url[-1] != '_' and url.rsplit('_', 1)[1].strip('0123456789') == ''
+		assert (url.startswith('https://vk.com/wall') or (isCopy and (url.startswith('https://vk.com/video') or url.startswith('https://vk.com/photo')))) and '_' in url and url[-1] != '_' and url.rsplit('_', 1)[1].strip('0123456789') == ''
 		if not isCopy:
 			dateSpan = post.find('div', class_ = 'post_date').find('span', class_ = 'rel_date')
 		else:
