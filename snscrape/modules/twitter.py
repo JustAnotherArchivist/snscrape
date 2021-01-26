@@ -85,7 +85,7 @@ class Gif(Medium):
 
 @dataclasses.dataclass
 class DescriptionURL:
-	text: str
+	text: typing.Optional[str]
 	url: str
 	tcourl: str
 	indices: typing.Tuple[int, int]
@@ -369,7 +369,8 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 		urlsSorted = sorted(urls, key = lambda x: x['indices'][0]) # Ensure that they're in left to right appearance order
 		assert all(url['indices'][1] <= nextUrl['indices'][0] for url, nextUrl in zip(urls, urls[1:])), 'broken URL indices'
 		for url, nextUrl in itertools.zip_longest(urls, urls[1:]):
-			out.append(url['display_url'])
+			if 'display_url' in url:
+				out.append(url['display_url'])
 			out.append(text[url['indices'][1] : nextUrl['indices'][0] if nextUrl is not None else None])
 		return ''.join(out)
 
@@ -380,7 +381,7 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 		kwargs['id'] = user['id'] if 'id' in user else int(user['id_str'])
 		kwargs['description'] = self._render_text_with_urls(user['description'], user['entities']['description'].get('urls'))
 		kwargs['rawDescription'] = user['description']
-		kwargs['descriptionUrls'] = [{'text': x['display_url'], 'url': x['expanded_url'], 'tcourl': x['url'], 'indices': tuple(x['indices'])} for x in user['entities']['description'].get('urls', [])]
+		kwargs['descriptionUrls'] = [{'text': x.get('display_url'), 'url': x['expanded_url'], 'tcourl': x['url'], 'indices': tuple(x['indices'])} for x in user['entities']['description'].get('urls', [])]
 		kwargs['verified'] = user.get('verified')
 		kwargs['created'] = email.utils.parsedate_to_datetime(user['created_at'])
 		kwargs['followersCount'] = user['followers_count']
@@ -488,7 +489,7 @@ class TwitterUserScraper(TwitterSearchScraper):
 			id = user['rest_id'],
 			description = description,
 			rawDescription = rawDescription,
-			descriptionUrls = [{'text': x['display_url'], 'url': x['expanded_url'], 'tcourl': x['url'], 'indices': tuple(x['indices'])} for x in user['legacy']['entities']['description']['urls']],
+			descriptionUrls = [{'text': x.get('display_url'), 'url': x['expanded_url'], 'tcourl': x['url'], 'indices': tuple(x['indices'])} for x in user['legacy']['entities']['description']['urls']],
 			verified = user['legacy']['verified'],
 			created = email.utils.parsedate_to_datetime(user['legacy']['created_at']),
 			followersCount = user['legacy']['followers_count'],
