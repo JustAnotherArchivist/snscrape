@@ -207,7 +207,7 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 			self._unset_guest_token()
 			self._ensure_guest_token()
 			return False, 'rate-limited'
-		if r.headers.get('content-type').replace(' ', '') != 'application/json;charset=utf-8':
+		if r.headers.get('content-type', '').replace(' ', '') != 'application/json;charset=utf-8':
 			return False, 'content type is not JSON'
 		if r.status_code != 200:
 			return False, 'non-200 status code'
