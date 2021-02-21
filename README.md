@@ -41,7 +41,7 @@ To get the latest 100 tweets with the hashtag #archiveteam:
 Other noteworthy options are:
 
 * `--format` to customise the output format.
-* `--jsonl` to get output as JSONL. This includes all information extracted by snscrape (e.g. message content, datetime, images; details vary by the module and scraper).
+* `--jsonl` to get output as JSONL. This includes all information extracted by snscrape (e.g. message content, datetime, images; details vary by the module and scraper). This is only possible in the development version!
 * `--with-entity` to get an item on the entity being scraped, e.g. the user or channel. This is not supported on all scrapers. (You can use this together with `--max-results 0` to only fetch the entity info.)
 
 `snscrape --help` or `snscrape <module> --help` provides details on the available options. `snscrape --help` also lists all available modules.
