@@ -11,6 +11,8 @@ The following services are currently supported:
 * VKontakte: user profiles
 * Weibo (Sina Weibo): user profiles
 
+**Please note that some features listed here may only be available in the current development version of snscrape.**
+
 ## Requirements
 snscrape requires Python 3.8 or higher. The Python package dependencies are installed automatically when you install snscrape.
 
