@@ -41,6 +41,8 @@ class Tweet(snscrape.base.Item):
 	retweetedTweet: typing.Optional['Tweet'] = None
 	quotedTweet: typing.Optional['Tweet'] = None
 	mentionedUsers: typing.Optional[typing.List['User']] = None
+	coordinates: typing.Optional['Coordinates'] = None
+	place: typing.Optional[str] = None
 
 	username = snscrape.base._DeprecatedProperty('username', lambda self: self.user.username, 'user.username')
 	outlinksss = snscrape.base._DeprecatedProperty('outlinksss', lambda self: ' '.join(self.outlinks), 'outlinks')
@@ -89,6 +91,12 @@ class DescriptionURL:
 	url: str
 	tcourl: str
 	indices: typing.Tuple[int, int]
+
+
+@dataclasses.dataclass
+class Coordinates:
+	longitude: float
+	latitude: float
 
 
 @dataclasses.dataclass
@@ -359,6 +367,22 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 			User(username = u['screen_name'], displayname = u['name'], id = u['id'] if 'id' in u else int(u['id_str'])) \
 			for u in tweet['entities']['user_mentions']
 		  ] if 'user_mentions' in tweet['entities'] and tweet['entities']['user_mentions'] else None
+
+		# https://developer.twitter.com/en/docs/tutorials/filtering-tweets-by-location
+		if tweet['coordinates']:
+			# coordinates root key (if present) presents coordinates in the form [LONGITUDE, LATITUDE]
+			if (coords := tweet['coordinates']['coordinates']) and len(coords) == 2:
+				kwargs['coordinates'] = Coordinates(coords[0], coords[1])
+		elif tweet['geo']:
+			# coordinates root key (if present) presents coordinates in the form [LATITUDE, LONGITUDE]
+			if (coords := tweet['geo']['coordinates']) and len(coords) == 2:
+				kwargs['coordinates'] = Coordinates(coords[1], coords[0])
+		if tweet['place']:
+			kwargs['place'] = tweet['place']['full_name']
+			if 'coordinates' not in kwargs and tweet['place']['bounding_box'] and (coords := tweet['place']['bounding_box']['coordinates']):
+				# Take the first (longitude, latitude) couple of the "place square"
+				firstPoint = coords[0]
+				kwargs['coordinates'] = Coordinates(firstPoint[0], firstPoint[1])
 		return Tweet(**kwargs)
 
 	def _render_text_with_urls(self, text, urls):
