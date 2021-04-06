@@ -379,10 +379,9 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 				kwargs['coordinates'] = Coordinates(coords[1], coords[0])
 		if tweet['place']:
 			kwargs['place'] = tweet['place']['full_name']
-			if 'coordinates' not in kwargs and tweet['place']['bounding_box'] and (coords := tweet['place']['bounding_box']['coordinates']):
+			if 'coordinates' not in kwargs and tweet['place']['bounding_box'] and (coords := tweet['place']['bounding_box']['coordinates']) and coords[0] and len(coords[0][0]) == 2:
 				# Take the first (longitude, latitude) couple of the "place square"
-				firstPoint = coords[0]
-				kwargs['coordinates'] = Coordinates(firstPoint[0], firstPoint[1])
+				kwargs['coordinates'] = Coordinates(coords[0][0][0], coords[0][0][1])
 		return Tweet(**kwargs)
 
 	def _render_text_with_urls(self, text, urls):
