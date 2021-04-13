@@ -369,15 +369,15 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 		  ] if 'user_mentions' in tweet['entities'] and tweet['entities']['user_mentions'] else None
 
 		# https://developer.twitter.com/en/docs/tutorials/filtering-tweets-by-location
-		if tweet['coordinates']:
+		if tweet.get('coordinates'):
 			# coordinates root key (if present) presents coordinates in the form [LONGITUDE, LATITUDE]
 			if (coords := tweet['coordinates']['coordinates']) and len(coords) == 2:
 				kwargs['coordinates'] = Coordinates(coords[0], coords[1])
-		elif tweet['geo']:
+		elif tweet.get('geo'):
 			# coordinates root key (if present) presents coordinates in the form [LATITUDE, LONGITUDE]
 			if (coords := tweet['geo']['coordinates']) and len(coords) == 2:
 				kwargs['coordinates'] = Coordinates(coords[1], coords[0])
-		if tweet['place']:
+		if tweet.get('place'):
 			kwargs['place'] = tweet['place']['full_name']
 			if 'coordinates' not in kwargs and tweet['place']['bounding_box'] and (coords := tweet['place']['bounding_box']['coordinates']) and coords[0] and len(coords[0][0]) == 2:
 				# Take the first (longitude, latitude) couple of the "place square"
