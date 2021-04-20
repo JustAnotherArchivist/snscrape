@@ -195,6 +195,7 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 			'User-Agent': self._userAgent,
 			'Authorization': _API_AUTHORIZATION_HEADER,
 			'Referer': self._baseUrl,
+			'Accept-Language': 'en-US,en;q=0.5',
 		}
 
 	def _ensure_guest_token(self, url = None):
