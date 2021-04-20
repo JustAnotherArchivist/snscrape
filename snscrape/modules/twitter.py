@@ -42,7 +42,7 @@ class Tweet(snscrape.base.Item):
 	quotedTweet: typing.Optional['Tweet'] = None
 	mentionedUsers: typing.Optional[typing.List['User']] = None
 	coordinates: typing.Optional['Coordinates'] = None
-	place: typing.Optional[str] = None
+	place: typing.Optional['Place'] = None
 
 	username = snscrape.base._DeprecatedProperty('username', lambda self: self.user.username, 'user.username')
 	outlinksss = snscrape.base._DeprecatedProperty('outlinksss', lambda self: ' '.join(self.outlinks), 'outlinks')
@@ -97,6 +97,15 @@ class DescriptionURL:
 class Coordinates:
 	longitude: float
 	latitude: float
+
+
+@dataclasses.dataclass
+class Place:
+	fullName: str
+	name: str
+	type: str
+	country: str
+	countryCode: str
 
 
 @dataclasses.dataclass
@@ -378,7 +387,7 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 			if (coords := tweet['geo']['coordinates']) and len(coords) == 2:
 				kwargs['coordinates'] = Coordinates(coords[1], coords[0])
 		if tweet.get('place'):
-			kwargs['place'] = tweet['place']['full_name']
+			kwargs['place'] = Place(tweet['place']['full_name'], tweet['place']['name'], tweet['place']['place_type'], tweet['place']['country'], tweet['place']['country_code'])
 			if 'coordinates' not in kwargs and tweet['place']['bounding_box'] and (coords := tweet['place']['bounding_box']['coordinates']) and coords[0] and len(coords[0][0]) == 2:
 				# Take the first (longitude, latitude) couple of the "place square"
 				kwargs['coordinates'] = Coordinates(coords[0][0][0], coords[0][0][1])
