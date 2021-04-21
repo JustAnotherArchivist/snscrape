@@ -19,6 +19,7 @@ class InstagramPost(snscrape.base.Item):
 	content: str
 	thumbnailUrl: str
 	displayUrl: str
+	mediaUrls: []
 	username: str
 	likes: int
 	comments: int
@@ -87,13 +88,22 @@ class InstagramCommonScraper(snscrape.base.Scraper):
 			username = node['node']['owner']['username'] if 'username' in node['node']['owner'] else ''
 			usernameQuery = '?taken-by=' + username
 			cleanUrl = f'https://www.instagram.com/p/{code}/'
+			displayUrl = node['node']['display_url']
+			mediaUrls = []
+			mediaUrls.append(displayUrl)
+			if node['node'].get('edge_sidecar_to_children') != None:
+				mediaUrlsData = node['node']['edge_sidecar_to_children']['edges']
+				for mediaData in mediaUrlsData:
+					if mediaData['node']['__typename'] == 'GraphImage':
+						mediaUrls.append(mediaData['node']['display_url'])
 			yield InstagramPost(
 			  cleanUrl = cleanUrl,
 			  dirtyUrl = f'{cleanUrl}{usernameQuery}',
 			  date = datetime.datetime.fromtimestamp(node['node']['taken_at_timestamp'], datetime.timezone.utc),
 			  content = node['node']['edge_media_to_caption']['edges'][0]['node']['text'] if len(node['node']['edge_media_to_caption']['edges']) else None,
 			  thumbnailUrl = node['node']['thumbnail_src'],
-			  displayUrl = node['node']['display_url'],
+			  displayUrl = displayUrl,
+				mediaUrls = mediaUrls,
 			  username = username,
 			  likes = node['node']['edge_media_preview_like']['count'],
 			  comments = node['node']['edge_media_to_comment']['count'],
