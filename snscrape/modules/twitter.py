@@ -60,7 +60,6 @@ class Medium:
 class Photo(Medium):
 	previewUrl: str
 	fullUrl: str
-	type: str = 'photo'
 
 
 @dataclasses.dataclass
@@ -75,14 +74,12 @@ class Video(Medium):
 	thumbnailUrl: str
 	variants: typing.List[VideoVariant]
 	duration: float
-	type: str = 'video'
 
 
 @dataclasses.dataclass
 class Gif(Medium):
 	thumbnailUrl: str
 	variants: typing.List[VideoVariant]
-	type: str = 'gif'
 
 
 @dataclasses.dataclass
