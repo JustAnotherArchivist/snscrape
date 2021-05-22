@@ -138,50 +138,6 @@ class User(snscrape.base.Entity):
 		return self.url
 
 
-class TwitterOldDesignScraper(snscrape.base.Scraper):
-	def _feed_to_items(self, feed):
-		for tweet in feed:
-			username = tweet.find('span', 'username').find('b').text
-			tweetID = tweet['data-item-id']
-			url = f'https://twitter.com/{username}/status/{tweetID}'
-
-			date = None
-			if (timestampA := tweet.find('a', 'tweet-timestamp')):
-				timestampSpan = timestampA.find('span', '_timestamp')
-				if timestampSpan and timestampSpan.has_attr('data-time'):
-					date = datetime.datetime.fromtimestamp(int(timestampSpan['data-time']), datetime.timezone.utc)
-			if not date:
-				logger.warning(f'Failed to extract date for {url}')
-
-			content = None
-			outlinks = []
-			tcooutlinks = []
-			if (contentP := tweet.find('p', 'tweet-text')):
-				content = contentP.text
-				for a in contentP.find_all('a'):
-					if a.has_attr('href') and not a['href'].startswith('/') and (not a.has_attr('class') or 'u-hidden' not in a['class']):
-						if a.has_attr('data-expanded-url'):
-							outlinks.append(a['data-expanded-url'])
-						else:
-							logger.warning(f'Ignoring link without expanded URL on {url}: {a["href"]}')
-						tcooutlinks.append(a['href'])
-			else:
-				logger.warning(f'Failed to extract content for {url}')
-			if (card := tweet.find('div', 'card2')) and 'has-autoplayable-media' not in card['class']:
-				for div in card.find_all('div'):
-					if div.has_attr('data-card-url'):
-						outlinks.append(div['data-card-url'])
-						tcooutlinks.append(div['data-card-url'])
-			outlinks = list(dict.fromkeys(outlinks)) # Deduplicate in case the same link was shared more than once within this tweet; may change order on Python 3.6 or older
-			tcooutlinks = list(dict.fromkeys(tcooutlinks))
-			yield Tweet(url, date, content, tweetID, username, outlinks, ' '.join(outlinks), tcooutlinks, ' '.join(tcooutlinks))
-
-	def _check_json_callback(self, r):
-		if r.headers.get('content-type') != 'application/json;charset=utf-8':
-			return False, f'content type is not JSON'
-		return True, None
-
-
 class TwitterAPIScraper(snscrape.base.Scraper):
 	def __init__(self, baseUrl, **kwargs):
 		super().__init__(**kwargs)
@@ -628,70 +584,6 @@ class TwitterHashtagScraper(TwitterSearchScraper):
 	@classmethod
 	def from_args(cls, args):
 		return cls(args.hashtag, retries = args.retries)
-
-
-class TwitterThreadScraper(TwitterOldDesignScraper):
-	name = 'twitter-thread'
-
-	def __init__(self, tweetID = None, **kwargs):
-		if tweetID is not None and tweetID.strip('0123456789') != '':
-			raise ValueError('Invalid tweet ID, must be numeric')
-		super().__init__(**kwargs)
-		self._tweetID = tweetID
-
-	def get_items(self):
-		headers = {'User-Agent': f'Opera/9.80 (Windows NT 6.1; WOW64) Presto/2.12.388 Version/12.18 Bot'}
-
-		# Fetch the page of the last tweet in the thread
-		r = self._get(f'https://twitter.com/user/status/{self._tweetID}', headers = headers)
-		soup = bs4.BeautifulSoup(r.text, 'lxml')
-
-		# Extract tweets on that page in the correct order; first, the tweet that was supplied, then the ancestors with pagination if necessary
-		tweet = soup.find('div', 'ThreadedConversation--permalinkTweetWithAncestors')
-		if tweet:
-			tweet = tweet.find('div', 'tweet')
-		if not tweet:
-			logger.warning('Tweet does not exist, is not a thread, or does not have ancestors')
-			return
-		items = list(self._feed_to_items([tweet]))
-		assert len(items) == 1
-		yield items[0]
-		username = items[0].username
-
-		ancestors = soup.find('div', 'ThreadedConversation--ancestors')
-		if not ancestors:
-			logger.warning('Tweet does not have ancestors despite claiming to')
-			return
-		feed = reversed(ancestors.find_all('li', 'js-stream-item'))
-		yield from self._feed_to_items(feed)
-
-		# If necessary, iterate through pagination until reaching the initial tweet
-		streamContainer = ancestors.find('div', 'stream-container')
-		if not streamContainer.has_attr('data-max-position') or streamContainer['data-max-position'] == '':
-			return
-		minPosition = streamContainer['data-max-position']
-		while True:
-			r = self._get(
-				f'https://twitter.com/i/{username}/conversation/{self._tweetID}?include_available_features=1&include_entities=1&min_position={minPosition}',
-				headers = headers,
-				responseOkCallback = self._check_json_callback
-			  )
-
-			obj = json.loads(r.text)
-			soup = bs4.BeautifulSoup(obj['items_html'], 'lxml')
-			feed = reversed(soup.find_all('li', 'js-stream-item'))
-			yield from self._feed_to_items(feed)
-			if not obj['has_more_items']:
-				break
-			minPosition = obj['max_position']
-
-	@classmethod
-	def setup_parser(cls, subparser):
-		subparser.add_argument('tweetID', help = 'A tweet ID of the last tweet in a thread')
-
-	@classmethod
-	def from_args(cls, args):
-		return cls(tweetID = args.tweetID, retries = args.retries)
 
 
 class TwitterListPostsScraper(TwitterSearchScraper):
