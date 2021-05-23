@@ -451,10 +451,11 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 class TwitterSearchScraper(TwitterAPIScraper):
 	name = 'twitter-search'
 
-	def __init__(self, query, cursor = None, **kwargs):
+	def __init__(self, query, cursor = None, top = False, **kwargs):
 		super().__init__(baseUrl = 'https://twitter.com/search?' + urllib.parse.urlencode({'f': 'live', 'lang': 'en', 'q': query, 'src': 'spelling_expansion_revert_click'}), **kwargs)
 		self._query = query  # Note: may get replaced by subclasses when using user ID resolution
 		self._cursor = cursor
+		self._top = top
 
 	def _check_scroll_response(self, r):
 		if r.status_code == 429:
@@ -501,17 +502,22 @@ class TwitterSearchScraper(TwitterAPIScraper):
 		params = paginationParams.copy()
 		del params['cursor']
 
+		if self._top:
+			del params['tweet_search_mode']
+			del paginationParams['tweet_search_mode']
+
 		for obj in self._iter_api_data('https://api.twitter.com/2/search/adaptive.json', params, paginationParams):
 			yield from self._instructions_to_tweets(obj)
 
 	@classmethod
 	def setup_parser(cls, subparser):
 		subparser.add_argument('--cursor', metavar = 'CURSOR')
+		subparser.add_argument('--top', action = 'store_true', default = False, help = 'Enable fetching top tweets instead of live/chronological')
 		subparser.add_argument('query', help = 'A Twitter search string')
 
 	@classmethod
 	def from_args(cls, args):
-		return cls(args.query, cursor = args.cursor, retries = args.retries)
+		return cls(args.query, cursor = args.cursor, top = args.top, retries = args.retries)
 
 
 class TwitterUserScraper(TwitterSearchScraper):
