@@ -113,7 +113,7 @@ class User(snscrape.base.Entity):
 
 	username: str
 	displayname: str
-	id: str # Seems to always be numeric, but the API returns it as a string, so it might also contain other things in the future
+	id: int
 	description: typing.Optional[str] = None # Description as it's displayed on the web interface with URLs replaced
 	rawDescription: typing.Optional[str] = None # Raw description with the URL(s) intact
 	descriptionUrls: typing.Optional[typing.List[DescriptionURL]] = None
