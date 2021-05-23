@@ -42,6 +42,8 @@ class Tweet(snscrape.base.Item):
 	media: typing.Optional[typing.List['Medium']] = None
 	retweetedTweet: typing.Optional['Tweet'] = None
 	quotedTweet: typing.Optional['Tweet'] = None
+	inReplyToTweetId: typing.Optional[int] = None
+	inReplyToUser: typing.Optional['User'] = None
 	mentionedUsers: typing.Optional[typing.List['User']] = None
 	coordinates: typing.Optional['Coordinates'] = None
 	place: typing.Optional['Place'] = None
@@ -112,8 +114,8 @@ class User(snscrape.base.Entity):
 	# Most fields can be None if they're not known.
 
 	username: str
-	displayname: str
 	id: int
+	displayname: typing.Optional[str] = None
 	description: typing.Optional[str] = None # Description as it's displayed on the web interface with URLs replaced
 	rawDescription: typing.Optional[str] = None # Raw description with the URL(s) intact
 	descriptionUrls: typing.Optional[typing.List[DescriptionURL]] = None
@@ -368,8 +370,19 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 		kwargs['retweetedTweet'] = self._tweet_to_tweet(obj['globalObjects']['tweets'][tweet['retweeted_status_id_str']], obj) if 'retweeted_status_id_str' in tweet else None
 		if 'quoted_status_id_str' in tweet and tweet['quoted_status_id_str'] in obj['globalObjects']['tweets']:
 			kwargs['quotedTweet'] = self._tweet_to_tweet(obj['globalObjects']['tweets'][tweet['quoted_status_id_str']], obj)
+		if (inReplyToTweetId := tweet.get('in_reply_to_status_id_str')):
+			kwargs['inReplyToTweetId'] = int(inReplyToTweetId)
+			inReplyToUserId = int(tweet['in_reply_to_user_id_str'])
+			if inReplyToUserId == kwargs['user'].id:
+				kwargs['inReplyToUser'] = kwargs['user']
+			elif tweet['entities'].get('user_mentions'):
+				for u in tweet['entities']['user_mentions']:
+					if u['id_str'] == tweet['in_reply_to_user_id_str']:
+						kwargs['inReplyToUser'] = User(username = u['screen_name'], id = u['id'] if 'id' in u else int(u['id_str']), displayname = u['name'])
+			if 'inReplyToUser' not in kwargs:
+				kwargs['inReplyToUser'] = User(username = tweet['in_reply_to_screen_name'], id = inReplyToUserId)
 		kwargs['mentionedUsers'] = [
-			User(username = u['screen_name'], displayname = u['name'], id = u['id'] if 'id' in u else int(u['id_str'])) \
+			User(username = u['screen_name'], id = u['id'] if 'id' in u else int(u['id_str']), displayname = u['name']) \
 			for u in tweet['entities']['user_mentions']
 		  ] if 'user_mentions' in tweet['entities'] and tweet['entities']['user_mentions'] else None
 
@@ -405,8 +418,8 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 	def _user_to_user(self, user):
 		kwargs = {}
 		kwargs['username'] = user['screen_name']
-		kwargs['displayname'] = user['name']
 		kwargs['id'] = user['id'] if 'id' in user else int(user['id_str'])
+		kwargs['displayname'] = user['name']
 		kwargs['description'] = self._render_text_with_urls(user['description'], user['entities']['description'].get('urls'))
 		kwargs['rawDescription'] = user['description']
 		kwargs['descriptionUrls'] = [{'text': x.get('display_url'), 'url': x['expanded_url'], 'tcourl': x['url'], 'indices': tuple(x['indices'])} for x in user['entities']['description'].get('urls', [])]
@@ -521,8 +534,8 @@ class TwitterUserScraper(TwitterSearchScraper):
 		description = self._render_text_with_urls(rawDescription, user['legacy']['entities']['description']['urls'])
 		return User(
 			username = user['legacy']['screen_name'],
-			displayname = user['legacy']['name'],
 			id = user['rest_id'],
+			displayname = user['legacy']['name'],
 			description = description,
 			rawDescription = rawDescription,
 			descriptionUrls = [{'text': x.get('display_url'), 'url': x['expanded_url'], 'tcourl': x['url'], 'indices': tuple(x['indices'])} for x in user['legacy']['entities']['description']['urls']],
