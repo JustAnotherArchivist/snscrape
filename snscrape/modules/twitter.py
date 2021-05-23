@@ -467,7 +467,7 @@ class TwitterSearchScraper(TwitterAPIScraper):
 		return True, None
 
 	def get_items(self):
-		params = {
+		paginationParams = {
 			'include_profile_interstitial_type': '1',
 			'include_blocking': '1',
 			'include_blocked_by': '1',
@@ -493,13 +493,13 @@ class TwitterSearchScraper(TwitterAPIScraper):
 			'tweet_search_mode': 'live',
 			'count': '100',
 			'query_source': 'spelling_expansion_revert_click',
+			'cursor': None,
+			'pc': '1',
+			'spelling_corrections': '1',
+			'ext': 'ext=mediaStats%2ChighlightedLabel',
 		}
-		paginationParams = params.copy()
-		paginationParams['cursor'] = None
-		for d in (params, paginationParams):
-			d['pc'] = '1'
-			d['spelling_corrections'] = '1'
-			d['ext'] = 'ext=mediaStats%2ChighlightedLabel'
+		params = paginationParams.copy()
+		del params['cursor']
 
 		for obj in self._iter_api_data('https://api.twitter.com/2/search/adaptive.json', params, paginationParams):
 			yield from self._instructions_to_tweets(obj)
@@ -598,7 +598,7 @@ class TwitterProfileScraper(TwitterUserScraper):
 			userId = self.entity.id
 		else:
 			userId = self._username
-		params = {
+		paginationParams = {
 			'include_profile_interstitial_type': '1',
 			'include_blocking': '1',
 			'include_blocked_by': '1',
@@ -623,11 +623,11 @@ class TwitterProfileScraper(TwitterUserScraper):
 			'include_tweet_replies': 'true',
 			'userId': userId,
 			'count': '100',
+			'cursor': None,
+			'ext': 'ext=mediaStats%2ChighlightedLabel',
 		}
-		paginationParams = params.copy()
-		paginationParams['cursor'] = None
-		for d in (params, paginationParams):
-			d['ext'] = 'ext=mediaStats%2ChighlightedLabel'
+		params = paginationParams.copy()
+		del params['cursor']
 
 		for obj in self._iter_api_data(f'https://api.twitter.com/2/timeline/profile/{userId}.json', params, paginationParams):
 			yield from self._instructions_to_tweets(obj)
