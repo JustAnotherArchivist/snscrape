@@ -47,6 +47,8 @@ class Tweet(snscrape.base.Item):
 	mentionedUsers: typing.Optional[typing.List['User']] = None
 	coordinates: typing.Optional['Coordinates'] = None
 	place: typing.Optional['Place'] = None
+	hashtags: typing.Optional[typing.List[str]] = None
+	cashtags: typing.Optional[typing.List[str]] = None
 
 	username = snscrape.base._DeprecatedProperty('username', lambda self: self.user.username, 'user.username')
 	outlinksss = snscrape.base._DeprecatedProperty('outlinksss', lambda self: ' '.join(self.outlinks), 'outlinks')
@@ -400,6 +402,10 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 			if 'coordinates' not in kwargs and tweet['place']['bounding_box'] and (coords := tweet['place']['bounding_box']['coordinates']) and coords[0] and len(coords[0][0]) == 2:
 				# Take the first (longitude, latitude) couple of the "place square"
 				kwargs['coordinates'] = Coordinates(coords[0][0][0], coords[0][0][1])
+		if tweet['entities'].get('hashtags'):
+			kwargs['hashtags'] = [o['text'] for o in tweet['entities']['hashtags']]
+		if tweet['entities'].get('symbols'):
+			kwargs['cashtags'] = [o['text'] for o in tweet['entities']['symbols']]
 		return Tweet(**kwargs)
 
 	def _render_text_with_urls(self, text, urls):
