@@ -28,8 +28,6 @@ class Tweet(snscrape.base.Item):
 	renderedContent: str
 	id: int
 	user: 'User'
-	outlinks: list
-	tcooutlinks: list
 	replyCount: int
 	retweetCount: int
 	likeCount: int
@@ -39,6 +37,8 @@ class Tweet(snscrape.base.Item):
 	source: str
 	sourceUrl: typing.Optional[str] = None
 	sourceLabel: typing.Optional[str] = None
+	outlinks: typing.Optional[typing.List[str]] = None
+	tcooutlinks: typing.Optional[typing.List[str]] = None
 	media: typing.Optional[typing.List['Medium']] = None
 	retweetedTweet: typing.Optional['Tweet'] = None
 	quotedTweet: typing.Optional['Tweet'] = None
@@ -51,8 +51,8 @@ class Tweet(snscrape.base.Item):
 	cashtags: typing.Optional[typing.List[str]] = None
 
 	username = snscrape.base._DeprecatedProperty('username', lambda self: self.user.username, 'user.username')
-	outlinksss = snscrape.base._DeprecatedProperty('outlinksss', lambda self: ' '.join(self.outlinks), 'outlinks')
-	tcooutlinksss = snscrape.base._DeprecatedProperty('tcooutlinksss', lambda self: ' '.join(self.tcooutlinks), 'tcooutlinks')
+	outlinksss = snscrape.base._DeprecatedProperty('outlinksss', lambda self: ' '.join(self.outlinks) if self.outlinks else '', 'outlinks')
+	tcooutlinksss = snscrape.base._DeprecatedProperty('tcooutlinksss', lambda self: ' '.join(self.tcooutlinks) if self.tcooutlinks else '', 'tcooutlinks')
 
 	def __str__(self):
 		return self.url
@@ -324,8 +324,9 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 		kwargs['renderedContent'] = self._render_text_with_urls(tweet['full_text'], tweet['entities'].get('urls'))
 		kwargs['user'] = self._user_to_user(obj['globalObjects']['users'][tweet['user_id_str']])
 		kwargs['date'] = email.utils.parsedate_to_datetime(tweet['created_at'])
-		kwargs['outlinks'] = [u['expanded_url'] for u in tweet['entities']['urls']] if 'urls' in tweet['entities'] else []
-		kwargs['tcooutlinks'] = [u['url'] for u in tweet['entities']['urls']] if 'urls' in tweet['entities'] else []
+		if tweet['entities'].get('urls'):
+			kwargs['outlinks'] = [u['expanded_url'] for u in tweet['entities']['urls']]
+			kwargs['tcooutlinks'] = [u['url'] for u in tweet['entities']['urls']]
 		kwargs['url'] = f'https://twitter.com/{obj["globalObjects"]["users"][tweet["user_id_str"]]["screen_name"]}/status/{kwargs["id"]}'
 		kwargs['replyCount'] = tweet['reply_count']
 		kwargs['retweetCount'] = tweet['retweet_count']
@@ -356,7 +357,7 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 				elif medium['type'] == 'video' or medium['type'] == 'animated_gif':
 					variants = []
 					for variant in medium['video_info']['variants']:
-						variants.append(VideoVariant(contentType = variant['content_type'], url = variant['url'], bitrate = variant.get('bitrate') or None))
+						variants.append(VideoVariant(contentType = variant['content_type'], url = variant['url'], bitrate = variant.get('bitrate')))
 					mKwargs = {
 						'thumbnailUrl': medium['media_url_https'],
 						'variants': variants,
@@ -369,7 +370,8 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 					media.append(cls(**mKwargs))
 			if media:
 				kwargs['media'] = media
-		kwargs['retweetedTweet'] = self._tweet_to_tweet(obj['globalObjects']['tweets'][tweet['retweeted_status_id_str']], obj) if 'retweeted_status_id_str' in tweet else None
+		if 'retweeted_status_id_str' in tweet:
+			kwargs['retweetedTweet'] = self._tweet_to_tweet(obj['globalObjects']['tweets'][tweet['retweeted_status_id_str']], obj)
 		if 'quoted_status_id_str' in tweet and tweet['quoted_status_id_str'] in obj['globalObjects']['tweets']:
 			kwargs['quotedTweet'] = self._tweet_to_tweet(obj['globalObjects']['tweets'][tweet['quoted_status_id_str']], obj)
 		if (inReplyToTweetId := tweet.get('in_reply_to_status_id_str')):
@@ -383,10 +385,8 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 						kwargs['inReplyToUser'] = User(username = u['screen_name'], id = u['id'] if 'id' in u else int(u['id_str']), displayname = u['name'])
 			if 'inReplyToUser' not in kwargs:
 				kwargs['inReplyToUser'] = User(username = tweet['in_reply_to_screen_name'], id = inReplyToUserId)
-		kwargs['mentionedUsers'] = [
-			User(username = u['screen_name'], id = u['id'] if 'id' in u else int(u['id_str']), displayname = u['name']) \
-			for u in tweet['entities']['user_mentions']
-		  ] if 'user_mentions' in tweet['entities'] and tweet['entities']['user_mentions'] else None
+		if tweet['entities'].get('user_mentions'):
+			kwargs['mentionedUsers'] = [User(username = u['screen_name'], id = u['id'] if 'id' in u else int(u['id_str']), displayname = u['name']) for u in tweet['entities']['user_mentions']]
 
 		# https://developer.twitter.com/en/docs/tutorials/filtering-tweets-by-location
 		if tweet.get('coordinates'):
@@ -428,7 +428,8 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 		kwargs['displayname'] = user['name']
 		kwargs['description'] = self._render_text_with_urls(user['description'], user['entities']['description'].get('urls'))
 		kwargs['rawDescription'] = user['description']
-		kwargs['descriptionUrls'] = [{'text': x.get('display_url'), 'url': x['expanded_url'], 'tcourl': x['url'], 'indices': tuple(x['indices'])} for x in user['entities']['description'].get('urls', [])]
+		if user['entities']['description'].get('urls'):
+			kwargs['descriptionUrls'] = [{'text': x.get('display_url'), 'url': x['expanded_url'], 'tcourl': x['url'], 'indices': tuple(x['indices'])} for x in user['entities']['description']['urls']]
 		kwargs['verified'] = user.get('verified')
 		kwargs['created'] = email.utils.parsedate_to_datetime(user['created_at'])
 		kwargs['followersCount'] = user['followers_count']
@@ -439,7 +440,8 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 		kwargs['mediaCount'] = user['media_count']
 		kwargs['location'] = user['location']
 		kwargs['protected'] = user.get('protected')
-		kwargs['linkUrl'] = (user['entities']['url']['urls'][0].get('expanded_url') or user.get('url')) if 'url' in user['entities'] else None
+		if 'url' in user['entities']:
+			kwargs['linkUrl'] = (user['entities']['url']['urls'][0].get('expanded_url') or user.get('url'))
 		kwargs['linkTcourl'] = user.get('url')
 		kwargs['profileImageUrl'] = user['profile_image_url_https']
 		kwargs['profileBannerUrl'] = user.get('profile_banner_url')
