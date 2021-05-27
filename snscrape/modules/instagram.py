@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 class InstagramPost(snscrape.base.Item):
 	url: str
 	date: datetime.datetime
-	content: str
+	content: typing.Optional[str]
 	thumbnailUrl: str
 	displayUrl: str
 	username: typing.Optional[str]
