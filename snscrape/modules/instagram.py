@@ -13,8 +13,7 @@ logger = logging.getLogger(__name__)
 
 @dataclasses.dataclass
 class InstagramPost(snscrape.base.Item):
-	cleanUrl: str
-	dirtyUrl: str
+	url: str
 	date: datetime.datetime
 	content: str
 	thumbnailUrl: str
@@ -26,7 +25,7 @@ class InstagramPost(snscrape.base.Item):
 	isVideo: bool
 
 	def __str__(self):
-		return self.cleanUrl
+		return self.url
 
 
 @dataclasses.dataclass
@@ -85,11 +84,9 @@ class InstagramCommonScraper(snscrape.base.Scraper):
 		for node in response[self._responseContainer][self._edgeXToMedia]['edges']:
 			code = node['node']['shortcode']
 			username = node['node']['owner']['username'] if 'username' in node['node']['owner'] else None
-			usernameQuery = '?taken-by=' + (username or '')
-			cleanUrl = f'https://www.instagram.com/p/{code}/'
+			url = f'https://www.instagram.com/p/{code}/'
 			yield InstagramPost(
-			  cleanUrl = cleanUrl,
-			  dirtyUrl = f'{cleanUrl}{usernameQuery}',
+			  url = url,
 			  date = datetime.datetime.fromtimestamp(node['node']['taken_at_timestamp'], datetime.timezone.utc),
 			  content = node['node']['edge_media_to_caption']['edges'][0]['node']['text'] if len(node['node']['edge_media_to_caption']['edges']) else None,
 			  thumbnailUrl = node['node']['thumbnail_src'],
