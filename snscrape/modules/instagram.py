@@ -19,7 +19,7 @@ class InstagramPost(snscrape.base.Item):
 	content: str
 	thumbnailUrl: str
 	displayUrl: str
-	username: str
+	username: typing.Optional[str]
 	likes: int
 	comments: int
 	commentsDisabled: bool
@@ -84,8 +84,8 @@ class InstagramCommonScraper(snscrape.base.Scraper):
 	def _response_to_items(self, response):
 		for node in response[self._responseContainer][self._edgeXToMedia]['edges']:
 			code = node['node']['shortcode']
-			username = node['node']['owner']['username'] if 'username' in node['node']['owner'] else ''
-			usernameQuery = '?taken-by=' + username
+			username = node['node']['owner']['username'] if 'username' in node['node']['owner'] else None
+			usernameQuery = '?taken-by=' + (username or '')
 			cleanUrl = f'https://www.instagram.com/p/{code}/'
 			yield InstagramPost(
 			  cleanUrl = cleanUrl,
