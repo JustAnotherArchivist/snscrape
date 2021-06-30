@@ -79,11 +79,21 @@ def _requests_response_repr(name, response, withHistory = True):
 	return ''.join(ret)
 
 
+def _requests_exception_repr(name, exc):
+	ret = []
+	ret.append(f'{name} = {exc!r}')
+	ret.append(f'\n  ' + _repr(f'{name}.request', exc.request).replace('\n', '\n  '))
+	ret.append(f'\n  ' + _repr(f'{name}.response', exc.response).replace('\n', '\n  '))
+	return ''.join(ret)
+
+
 def _repr(name, value):
 	if type(value) is requests.Response:
 		return _requests_response_repr(name, value)
 	if type(value) in (requests.PreparedRequest, requests.Request):
 		return _requests_request_repr(name, value)
+	if isinstance(value, requests.exceptions.RequestException):
+		return _requests_exception_repr(name, value)
 	if isinstance(value, dict):
 		return f'{name} = <{type(value).__module__}.{type(value).__name__}>\n  ' + \
 		       '\n  '.join(_repr(f'{name}[{k!r}]', v).replace('\n', '\n  ') for k, v in value.items())
