@@ -80,6 +80,7 @@ class Video(Medium):
 	thumbnailUrl: str
 	variants: typing.List[VideoVariant]
 	duration: float
+	views: typing.Optional[int] = None
 
 
 @dataclasses.dataclass
@@ -364,6 +365,8 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 					}
 					if medium['type'] == 'video':
 						mKwargs['duration'] = medium['video_info']['duration_millis'] / 1000
+						if (ext := medium['ext']) and (mediaStats := ext['mediaStats']) and isinstance(r := mediaStats['r'], dict) and 'ok' in r and isinstance(r['ok'], dict):
+							mKwargs['views'] = int(r['ok']['viewCount'])
 						cls = Video
 					elif medium['type'] == 'animated_gif':
 						cls = Gif
@@ -497,7 +500,7 @@ class TwitterSearchScraper(TwitterAPIScraper):
 			'cursor': None,
 			'pc': '1',
 			'spelling_corrections': '1',
-			'ext': 'ext=mediaStats%2ChighlightedLabel',
+			'ext': 'mediaStats,highlightedLabel',
 		}
 		params = paginationParams.copy()
 		del params['cursor']
@@ -630,7 +633,7 @@ class TwitterProfileScraper(TwitterUserScraper):
 			'userId': userId,
 			'count': '100',
 			'cursor': None,
-			'ext': 'ext=mediaStats%2ChighlightedLabel',
+			'ext': 'mediaStats,highlightedLabel',
 		}
 		params = paginationParams.copy()
 		del params['cursor']
@@ -703,7 +706,7 @@ class TwitterTweetScraper(TwitterAPIScraper):
 			'count': '20',
 			'cursor': None,
 			'include_ext_has_birdwatch_notes': 'false',
-			'ext': 'mediaStats%2ChighlightedLabel',
+			'ext': 'mediaStats,highlightedLabel',
 		}
 		params = paginationParams.copy()
 		del params['cursor']
