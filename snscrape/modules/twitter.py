@@ -226,6 +226,7 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 		else:
 			dir = 'bottom'
 		stopOnEmptyResponse = False
+		emptyResponsesOnCursor = 0
 		while True:
 			logger.info(f'Retrieving scroll page {cursor}')
 			obj = self._get_api_data(endpoint, reqParams)
@@ -253,7 +254,13 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 						newBottomCursorAndStop = (entry['content']['operation']['cursor']['value'], entry['content']['operation']['cursor'].get('stopOnEmptyResponse', False))
 			if bottomCursorAndStop is None and newBottomCursorAndStop is not None:
 				bottomCursorAndStop = newBottomCursorAndStop
-			if not newCursor or newCursor == cursor or (stopOnEmptyResponse and self._count_tweets(obj) == 0):
+			if newCursor == cursor and self._count_tweets(obj) == 0:
+				# Twitter sometimes returns the same cursor as requested and no results even though there are more results.
+				# When this happens, retry the same cursor up to the retries setting.
+				emptyResponsesOnCursor += 1
+				if emptyResponsesOnCursor > self._retries:
+					break
+			if not newCursor or (stopOnEmptyResponse and self._count_tweets(obj) == 0):
 				# End of pagination
 				if promptCursor is not None:
 					newCursor = promptCursor
@@ -263,6 +270,8 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 					bottomCursorAndStop = None
 				else:
 					break
+			if newCursor != cursor:
+				emptyResponsesOnCursor = 0
 			cursor = newCursor
 			reqParams = paginationParams.copy()
 			reqParams['cursor'] = cursor
