@@ -518,7 +518,7 @@ class TwitterSearchScraper(TwitterAPIScraper):
 			del params['tweet_search_mode']
 			del paginationParams['tweet_search_mode']
 
-		for obj in self._iter_api_data('https://api.twitter.com/2/search/adaptive.json', params, paginationParams):
+		for obj in self._iter_api_data('https://api.twitter.com/2/search/adaptive.json', params, paginationParams, cursor = self._cursor):
 			yield from self._instructions_to_tweets(obj)
 
 	@classmethod
