@@ -168,6 +168,11 @@ class Scraper:
 					level = logging.ERROR
 				logger.log(level, f'Error retrieving {req.url}: {exc!r}{retrying}')
 			else:
+				redirected = f' (redirected to {r.url})' if r.history else ''
+				logger.info(f'Retrieved {req.url}{redirected}: {r.status_code}')
+				if r.history:
+					for i, redirect in enumerate(r.history):
+						logger.debug('... request {i}: {redirect.request.url}: {r.status_code} (Location: {r.headers.get("Location")})')
 				if responseOkCallback is not None:
 					success, msg = responseOkCallback(r)
 				else:
