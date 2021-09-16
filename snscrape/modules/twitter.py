@@ -136,6 +136,7 @@ class User(snscrape.base.Entity):
 	linkTcourl: typing.Optional[str] = None
 	profileImageUrl: typing.Optional[str] = None
 	profileBannerUrl: typing.Optional[str] = None
+	label: typing.Optional[str] = None
 
 	@property
 	def url(self):
@@ -457,6 +458,9 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 		kwargs['linkTcourl'] = user.get('url')
 		kwargs['profileImageUrl'] = user['profile_image_url_https']
 		kwargs['profileBannerUrl'] = user.get('profile_banner_url')
+		if 'label' in user['ext']['highlightedLabel']['r']['ok']:
+			kwargs['label'] = user['ext']['highlightedLabel']['r']['ok']['label']['description']
+		
 		return User(**kwargs)
 
 
