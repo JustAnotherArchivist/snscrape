@@ -459,7 +459,7 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 		kwargs['linkTcourl'] = user.get('url')
 		kwargs['profileImageUrl'] = user['profile_image_url_https']
 		kwargs['profileBannerUrl'] = user.get('profile_banner_url')
-		if 'label' in user['ext']['highlightedLabel']['r']['ok']:
+		if 'ext' in user and 'label' in user['ext']['highlightedLabel']['r']['ok']:
 			kwargs['label'] = user['ext']['highlightedLabel']['r']['ok']['label']['description']
 			kwargs['labelUrl'] = user['ext']['highlightedLabel']['r']['ok']['label']['url']['url']
 		
