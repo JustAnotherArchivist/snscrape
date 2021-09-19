@@ -462,7 +462,6 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 		if 'ext' in user and 'label' in user['ext']['highlightedLabel']['r']['ok']:
 			kwargs['label'] = user['ext']['highlightedLabel']['r']['ok']['label']['description']
 			kwargs['labelUrl'] = user['ext']['highlightedLabel']['r']['ok']['label']['url']['url']
-		
 		return User(**kwargs)
 
 
