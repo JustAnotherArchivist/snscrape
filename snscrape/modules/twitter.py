@@ -584,6 +584,8 @@ class TwitterUserScraper(TwitterSearchScraper):
 			linkTcourl = user['legacy'].get('url'),
 			profileImageUrl = user['legacy']['profile_image_url_https'],
 			profileBannerUrl = user['legacy'].get('profile_banner_url'),
+			label = user['affiliates_highlighted_label']['label']['description'] if user['affiliates_highlighted_label'] else None,
+			labelUrl = user['affiliates_highlighted_label']['label']['url']['url'] if user['affiliates_highlighted_label'] else None,
 		  )
 
 	def get_items(self):
