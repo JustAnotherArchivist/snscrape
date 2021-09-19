@@ -136,6 +136,8 @@ class User(snscrape.base.Entity):
 	linkTcourl: typing.Optional[str] = None
 	profileImageUrl: typing.Optional[str] = None
 	profileBannerUrl: typing.Optional[str] = None
+	label: typing.Optional[str] = None
+	labelUrl: typing.Optional[str] = None
 
 	@property
 	def url(self):
@@ -457,6 +459,9 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 		kwargs['linkTcourl'] = user.get('url')
 		kwargs['profileImageUrl'] = user['profile_image_url_https']
 		kwargs['profileBannerUrl'] = user.get('profile_banner_url')
+		if 'ext' in user and 'label' in user['ext']['highlightedLabel']['r']['ok']:
+			kwargs['label'] = user['ext']['highlightedLabel']['r']['ok']['label']['description']
+			kwargs['labelUrl'] = user['ext']['highlightedLabel']['r']['ok']['label']['url']['url']
 		return User(**kwargs)
 
 
@@ -579,6 +584,8 @@ class TwitterUserScraper(TwitterSearchScraper):
 			linkTcourl = user['legacy'].get('url'),
 			profileImageUrl = user['legacy']['profile_image_url_https'],
 			profileBannerUrl = user['legacy'].get('profile_banner_url'),
+			label = user['affiliates_highlighted_label']['label']['description'] if user['affiliates_highlighted_label'] else None,
+			labelUrl = user['affiliates_highlighted_label']['label']['url']['url'] if user['affiliates_highlighted_label'] else None,
 		  )
 
 	def get_items(self):
