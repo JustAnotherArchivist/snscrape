@@ -154,6 +154,13 @@ class UserLabel:
 	longDescription: typing.Optional[str] = None
 
 
+@dataclasses.dataclass
+class Trend(snscrape.base.Item):
+	name: str
+	domainContext: str
+	metaDescription: typing.Optional[str] = None
+
+
 class ScrollDirection(enum.Enum):
 	TOP = enum.auto()
 	BOTTOM = enum.auto()
@@ -791,3 +798,58 @@ class TwitterListPostsScraper(TwitterSearchScraper):
 	@classmethod
 	def from_args(cls, args):
 		return cls(args.list, retries = args.retries)
+
+
+class TwitterTrendsScraper(TwitterAPIScraper):
+	name = 'twitter-trends'
+
+	def __init__(self, **kwargs):
+		super().__init__('https://twitter.com/i/trends', **kwargs)
+
+	def get_items(self):
+		params = {
+			'include_profile_interstitial_type': '1',
+			'include_blocking': '1',
+			'include_blocked_by': '1',
+			'include_followed_by': '1',
+			'include_want_retweets': '1',
+			'include_mute_edge': '1',
+			'include_can_dm': '1',
+			'include_can_media_tag': '1',
+			'skip_status': '1',
+			'cards_platform': 'Web-12',
+			'include_cards': '1',
+			'include_ext_alt_text': 'true',
+			'include_quote_count': 'true',
+			'include_reply_count': '1',
+			'tweet_mode': 'extended',
+			'include_entities': 'true',
+			'include_user_entities': 'true',
+			'include_ext_media_color': 'true',
+			'include_ext_media_availability': 'true',
+			'send_error_codes': 'true',
+			'simple_quoted_tweet': 'true',
+			'count': '20',
+			'candidate_source': 'trends',
+			'include_page_configuration': 'false',
+			'entity_tokens': 'false',
+			'ext': 'mediaStats,highlightedLabel,voiceInfo',
+		}
+		obj = self._get_api_data('https://twitter.com/i/api/2/guide.json', params)
+		for instruction in obj['timeline']['instructions']:
+			if not 'addEntries' in instruction:
+				continue
+			for entry in instruction['addEntries']['entries']:
+				if entry['entryId'] != 'trends':
+					continue
+				for item in entry['content']['timelineModule']['items']:
+					trend = item['item']['content']['trend']
+					yield Trend(name = trend['name'], metaDescription = trend['trendMetadata'].get('metaDescription'), domainContext = trend['trendMetadata']['domainContext'])
+
+	@classmethod
+	def setup_parser(cls, subparser):
+		pass
+
+	@classmethod
+	def from_args(cls, args):
+		return cls(retries = args.retries)
