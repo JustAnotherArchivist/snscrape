@@ -160,6 +160,9 @@ class Trend(snscrape.base.Item):
 	domainContext: str
 	metaDescription: typing.Optional[str] = None
 
+	def __str__(self):
+		return f'https://twitter.com/search?q={urllib.parse.quote(self.name)}'
+
 
 class ScrollDirection(enum.Enum):
 	TOP = enum.auto()
