@@ -136,8 +136,7 @@ class User(snscrape.base.Entity):
 	linkTcourl: typing.Optional[str] = None
 	profileImageUrl: typing.Optional[str] = None
 	profileBannerUrl: typing.Optional[str] = None
-	label: typing.Optional[str] = None
-	labelUrl: typing.Optional[str] = None
+	label: typing.Optional['UserLabel'] = None
 
 	@property
 	def url(self):
@@ -145,6 +144,14 @@ class User(snscrape.base.Entity):
 
 	def __str__(self):
 		return self.url
+
+
+@dataclasses.dataclass
+class UserLabel:
+	description: str
+	url: typing.Optional[str] = None
+	badgeUrl: typing.Optional[str] = None
+	longDescription: typing.Optional[str] = None
 
 
 class ScrollDirection(enum.Enum):
@@ -459,10 +466,20 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 		kwargs['linkTcourl'] = user.get('url')
 		kwargs['profileImageUrl'] = user['profile_image_url_https']
 		kwargs['profileBannerUrl'] = user.get('profile_banner_url')
-		if 'ext' in user and 'label' in user['ext']['highlightedLabel']['r']['ok']:
-			kwargs['label'] = user['ext']['highlightedLabel']['r']['ok']['label']['description']
-			kwargs['labelUrl'] = user['ext']['highlightedLabel']['r']['ok']['label']['url']['url']
+		if 'ext' in user and (label := user['ext']['highlightedLabel']['r']['ok'].get('label')):
+			kwargs['label'] = self._user_label_to_user_label(label)
 		return User(**kwargs)
+
+	def _user_label_to_user_label(self, label):
+		labelKwargs = {}
+		labelKwargs['description'] = label['description']
+		if 'url' in label and 'url' in label['url']:
+			labelKwargs['url'] = label['url']['url']
+		if 'badge' in label and 'url' in label['badge']:
+			labelKwargs['badgeUrl'] = label['badge']['url']
+		if 'longDescription' in label and 'text' in label['longDescription']:
+			labelKwargs['longDescription'] = label['longDescription']['text']
+		return UserLabel(**labelKwargs)
 
 
 class TwitterSearchScraper(TwitterAPIScraper):
@@ -563,6 +580,9 @@ class TwitterUserScraper(TwitterSearchScraper):
 		user = obj['data']['user']
 		rawDescription = user['legacy']['description']
 		description = self._render_text_with_urls(rawDescription, user['legacy']['entities']['description']['urls'])
+		label = None
+		if (labelO := user['affiliates_highlighted_label'].get('label')):
+			label = self._user_label_to_user_label(labelO)
 		return User(
 			username = user['legacy']['screen_name'],
 			id = user['rest_id'],
@@ -584,8 +604,7 @@ class TwitterUserScraper(TwitterSearchScraper):
 			linkTcourl = user['legacy'].get('url'),
 			profileImageUrl = user['legacy']['profile_image_url_https'],
 			profileBannerUrl = user['legacy'].get('profile_banner_url'),
-			label = user['affiliates_highlighted_label']['label']['description'] if user['affiliates_highlighted_label'] else None,
-			labelUrl = user['affiliates_highlighted_label']['label']['url']['url'] if user['affiliates_highlighted_label'] else None,
+			label = label,
 		  )
 
 	def get_items(self):
