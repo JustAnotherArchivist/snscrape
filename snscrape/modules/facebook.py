@@ -207,7 +207,7 @@ class FacebookUserAndCommunityScraper(FacebookCommonScraper):
 
 	@classmethod
 	def from_args(cls, args):
-		return cls(args.username, retries = args.retries)
+		return cls._construct(args, args.username)
 
 
 class FacebookUserScraper(FacebookUserAndCommunityScraper):
@@ -358,4 +358,4 @@ class FacebookGroupScraper(FacebookCommonScraper):
 
 	@classmethod
 	def from_args(cls, args):
-		return cls(args.group, retries = args.retries)
+		return cls._construct(args, args.group)

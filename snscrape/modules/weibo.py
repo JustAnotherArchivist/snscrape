@@ -149,4 +149,4 @@ class WeiboUserScraper(snscrape.base.Scraper):
 		else:
 			uid = None
 			name = args.user
-		return cls(name = name, uid = uid, retries = args.retries)
+		return cls._construct(args, name = name, uid = uid)

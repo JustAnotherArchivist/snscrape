@@ -560,7 +560,7 @@ class TwitterSearchScraper(TwitterAPIScraper):
 
 	@classmethod
 	def from_args(cls, args):
-		return cls(args.query, cursor = args.cursor, top = args.top, retries = args.retries)
+		return cls._construct(args, args.query, cursor = args.cursor, top = args.top)
 
 
 class TwitterUserScraper(TwitterSearchScraper):
@@ -640,7 +640,7 @@ class TwitterUserScraper(TwitterSearchScraper):
 
 	@classmethod
 	def from_args(cls, args):
-		return cls(args.username, args.isUserId, retries = args.retries)
+		return cls._construct(args, args.username, args.isUserId)
 
 
 class TwitterProfileScraper(TwitterUserScraper):
@@ -699,7 +699,7 @@ class TwitterHashtagScraper(TwitterSearchScraper):
 
 	@classmethod
 	def from_args(cls, args):
-		return cls(args.hashtag, retries = args.retries)
+		return cls._construct(args, args.hashtag)
 
 
 class TwitterTweetScraperMode(enum.Enum):
@@ -783,7 +783,7 @@ class TwitterTweetScraper(TwitterAPIScraper):
 
 	@classmethod
 	def from_args(cls, args):
-		return cls(args.tweetId, TwitterTweetScraperMode.from_args(args), retries = args.retries)
+		return cls._construct(args, args.tweetId, TwitterTweetScraperMode.from_args(args))
 
 
 class TwitterListPostsScraper(TwitterSearchScraper):
@@ -799,7 +799,7 @@ class TwitterListPostsScraper(TwitterSearchScraper):
 
 	@classmethod
 	def from_args(cls, args):
-		return cls(args.list, retries = args.retries)
+		return cls._construct(args, args.list)
 
 
 class TwitterTrendsScraper(TwitterAPIScraper):
@@ -847,11 +847,3 @@ class TwitterTrendsScraper(TwitterAPIScraper):
 				for item in entry['content']['timelineModule']['items']:
 					trend = item['item']['content']['trend']
 					yield Trend(name = trend['name'], metaDescription = trend['trendMetadata'].get('metaDescription'), domainContext = trend['trendMetadata']['domainContext'])
-
-	@classmethod
-	def setup_parser(cls, subparser):
-		pass
-
-	@classmethod
-	def from_args(cls, args):
-		return cls(retries = args.retries)

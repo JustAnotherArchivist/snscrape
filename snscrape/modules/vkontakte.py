@@ -370,5 +370,5 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 
 	@classmethod
 	def from_args(cls, args):
-		return cls(args.username, retries = args.retries)
+		return cls._construct(args, args.username)
 

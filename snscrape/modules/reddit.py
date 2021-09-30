@@ -222,7 +222,7 @@ def _make_scraper(name_, validationFunc, apiField):
 
 		@classmethod
 		def from_args(cls, args):
-			return cls(getattr(args, name_), submissions = not args.noSubmissions, comments = not args.noComments, before = args.before, after = args.after, retries = args.retries)
+			return cls._construct(args, getattr(args, name_), submissions = not args.noSubmissions, comments = not args.noComments, before = args.before, after = args.after)
 
 	Scraper.__name__ = f'Reddit{name_.capitalize()}Scraper'
 	Scraper.__qualname__ = Scraper.__name__

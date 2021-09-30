@@ -178,7 +178,7 @@ class InstagramUserScraper(InstagramCommonScraper):
 
 	@classmethod
 	def from_args(cls, args):
-		return cls('User', args.username, retries = args.retries)
+		return cls._construct(args, 'User', args.username)
 
 	def _get_entity(self):
 		r = self._initial_page()
@@ -223,7 +223,7 @@ class InstagramHashtagScraper(InstagramCommonScraper):
 
 	@classmethod
 	def from_args(cls, args):
-		return cls('Hashtag', args.hashtag, retries = args.retries)
+		return cls._construct(args, 'Hashtag', args.hashtag)
 
 
 class InstagramLocationScraper(InstagramCommonScraper):
@@ -235,4 +235,4 @@ class InstagramLocationScraper(InstagramCommonScraper):
 
 	@classmethod
 	def from_args(cls, args):
-		return cls('Location', args.locationid, retries = args.retries)
+		return cls._construct(args, 'Location', args.locationid)

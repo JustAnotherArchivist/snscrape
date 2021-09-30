@@ -207,11 +207,13 @@ class Scraper:
 		return self._request('POST', *args, **kwargs)
 
 	@classmethod
-	@abc.abstractmethod
 	def setup_parser(cls, subparser):
 		pass
 
 	@classmethod
-	@abc.abstractmethod
 	def from_args(cls, args):
-		pass
+		return cls._construct(args)
+
+	@classmethod
+	def _construct(cls, argparseArgs, *args, **kwargs):
+		return cls(*args, **kwargs, retries = argparseArgs.retries)

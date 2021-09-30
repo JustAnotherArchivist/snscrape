@@ -197,4 +197,4 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 
 	@classmethod
 	def from_args(cls, args):
-		return cls(args.channel, retries = args.retries)
+		return cls._construct(args, args.channel)
