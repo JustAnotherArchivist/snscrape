@@ -26,14 +26,14 @@ If you want to use the development version:
     pip3 install git+https://github.com/JustAnotherArchivist/snscrape.git
 
 ## Usage
-To get all tweets by Jason Scott (@textfiles):
+To get all tweets by Elon Musk (@elonmusk):
 
-    snscrape twitter-user textfiles
+    snscrape twitter-user elonmusk
 
-It's usually useful to redirect the output to a file for further processing, e.g. in bash using the filename `twitter-@textfiles`:
+It's usually useful to redirect the output to a file for further processing, e.g. in bash using the filename `twitter-@elonmusk`:
 
 ```bash
-snscrape twitter-user textfiles >twitter-@textfiles
+snscrape twitter-user elonmusk >twitter-@elonmusk
 ```
 
 To get the latest 100 tweets with the hashtag #archiveteam:
