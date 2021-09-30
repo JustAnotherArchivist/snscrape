@@ -1,4 +1,3 @@
-import bs4
 import collections
 import dataclasses
 import datetime

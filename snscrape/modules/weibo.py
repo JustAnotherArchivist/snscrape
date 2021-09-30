@@ -1,10 +1,7 @@
-import bs4
 import dataclasses
-import datetime
 import logging
 import snscrape.base
 import typing
-import urllib.parse
 
 
 logger = logging.getLogger(__name__)
