@@ -26,7 +26,23 @@ If you want to use the development version:
     pip3 install git+https://github.com/JustAnotherArchivist/snscrape.git
 
 ## Usage
-To get all tweets by Jason Scott (@textfiles):
+### CLI
+The generic syntax of snscrape's CLI is:
+
+    snscrape [GLOBAL-OPTIONS] SCRAPER-NAME [SCRAPER-OPTIONS] [SCRAPER-ARGUMENTS...]
+
+`snscrape --help` and `snscrape SCRAPER-NAME --help` provide details on the options and arguments. `snscrape --help` also lists all available scrapers.
+
+The default output of the CLI is the URL of each result.
+
+Some noteworthy global options are:
+
+* `--jsonl` to get output as JSONL. This includes all information extracted by snscrape (e.g. message content, datetime, images; details vary by scraper).
+* `--max-results NUMBER` to only return the first `NUMBER` results.
+* `--with-entity` to get an item on the entity being scraped, e.g. the user or channel. This is not supported on all scrapers. (You can use this together with `--max-results 0` to only fetch the entity info.)
+
+#### Examples
+Collect all tweets by Jason Scott (@textfiles):
 
     snscrape twitter-user textfiles
 
@@ -40,14 +56,7 @@ To get the latest 100 tweets with the hashtag #archiveteam:
 
     snscrape --max-results 100 twitter-hashtag archiveteam
 
-Other noteworthy options are:
-
-* `--format` to customise the output format.
-* `--jsonl` to get output as JSONL. This includes all information extracted by snscrape (e.g. message content, datetime, images; details vary by the module and scraper).
-* `--with-entity` to get an item on the entity being scraped, e.g. the user or channel. This is not supported on all scrapers. (You can use this together with `--max-results 0` to only fetch the entity info.)
-
-`snscrape --help` or `snscrape <module> --help` provides details on the available options. `snscrape --help` also lists all available modules.
-
+### Library
 It is also possible to use snscrape as a library in Python, but this is currently undocumented.
 
 ## Issue reporting
