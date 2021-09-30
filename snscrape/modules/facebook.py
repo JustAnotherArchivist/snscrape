@@ -167,7 +167,7 @@ class FacebookUserAndCommunityScraper(FacebookCommonScraper):
 			logger.info('Retrieving initial data')
 			r = self._get(self._baseUrl, headers = self._headers)
 			if r.status_code not in (200, 404):
-				raise snscrape.base.ScraperException('Got status code {r.status_code}')
+				raise snscrape.base.ScraperException(f'Got status code {r.status_code}')
 			self._initialPage = r
 			self._initialPageSoup = bs4.BeautifulSoup(r.text, 'lxml')
 		return self._initialPage, self._initialPageSoup
@@ -316,7 +316,7 @@ class FacebookGroupScraper(FacebookCommonScraper):
 			logger.warning('Group does not exist')
 			return
 		elif r.status_code != 200:
-			raise snscrape.base.ScraperException('Got status code {r.status_code}')
+			raise snscrape.base.ScraperException(f'Got status code {r.status_code}')
 
 		if 'content:{pagelet_group_mall:{container_id:"' not in r.text:
 			raise snscrape.base.ScraperException('Code container ID marker not found (does the group exist?)')
