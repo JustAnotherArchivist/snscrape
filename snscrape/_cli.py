@@ -212,14 +212,17 @@ def parse_args():
 	parser.add_argument('--since', type = parse_datetime_arg, metavar = 'DATETIME', help = 'Only return results newer than DATETIME')
 	parser.add_argument('--progress', action = 'store_true', default = False, help = 'Report progress on stderr')
 
-	subparsers = parser.add_subparsers(dest = 'scraper', help = 'The scraper you want to use', required = True)
+	subparsers = parser.add_subparsers(dest = 'scraper', metavar = 'SCRAPER', title = 'scrapers', required = True)
 	classes = snscrape.base.Scraper.__subclasses__()
+	scrapers = {}
 	for cls in classes:
 		if cls.name is not None:
-			subparser = subparsers.add_parser(cls.name, formatter_class = argparse.ArgumentDefaultsHelpFormatter)
-			cls.setup_parser(subparser)
-			subparser.set_defaults(cls = cls)
+			scrapers[cls.name] = cls
 		classes.extend(cls.__subclasses__())
+	for scraper, cls in sorted(scrapers.items()):
+		subparser = subparsers.add_parser(cls.name, help = '', formatter_class = argparse.ArgumentDefaultsHelpFormatter)
+		cls.setup_parser(subparser)
+		subparser.set_defaults(cls = cls)
 
 	args = parser.parse_args()
 
