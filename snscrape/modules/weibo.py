@@ -139,7 +139,7 @@ class WeiboUserScraper(snscrape.base.Scraper):
 
 	@classmethod
 	def setup_parser(cls, subparser):
-		subparser.add_argument('user', help = 'A user name or ID')
+		subparser.add_argument('user', type = snscrape.base.nonempty_string('user'), help = 'A user name or ID')
 
 	@classmethod
 	def from_args(cls, args):

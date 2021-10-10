@@ -218,7 +218,7 @@ def _make_scraper(name_, validationFunc, apiField):
 		@classmethod
 		def setup_parser(cls, subparser):
 			super()._setup_parser_opts(subparser)
-			subparser.add_argument(name_)
+			subparser.add_argument(name_, type = snscrape.base.nonempty_string(name_))
 
 		@classmethod
 		def from_args(cls, args):

@@ -495,6 +495,8 @@ class TwitterSearchScraper(TwitterAPIScraper):
 	name = 'twitter-search'
 
 	def __init__(self, query, cursor = None, top = False, **kwargs):
+		if not query.strip():
+			raise ValueError('empty query')
 		super().__init__(baseUrl = 'https://twitter.com/search?' + urllib.parse.urlencode({'f': 'live', 'lang': 'en', 'q': query, 'src': 'spelling_expansion_revert_click'}), **kwargs)
 		self._query = query  # Note: may get replaced by subclasses when using user ID resolution
 		self._cursor = cursor
@@ -511,6 +513,8 @@ class TwitterSearchScraper(TwitterAPIScraper):
 		return True, None
 
 	def get_items(self):
+		if not self._query.strip():
+			raise ValueError('empty query')
 		paginationParams = {
 			'include_profile_interstitial_type': '1',
 			'include_blocking': '1',
@@ -556,7 +560,7 @@ class TwitterSearchScraper(TwitterAPIScraper):
 	def setup_parser(cls, subparser):
 		subparser.add_argument('--cursor', metavar = 'CURSOR')
 		subparser.add_argument('--top', action = 'store_true', default = False, help = 'Enable fetching top tweets instead of live/chronological')
-		subparser.add_argument('query', help = 'A Twitter search string')
+		subparser.add_argument('query', type = snscrape.base.nonempty_string('query'), help = 'A Twitter search string')
 
 	@classmethod
 	def from_args(cls, args):
@@ -695,7 +699,7 @@ class TwitterHashtagScraper(TwitterSearchScraper):
 
 	@classmethod
 	def setup_parser(cls, subparser):
-		subparser.add_argument('hashtag', help = 'A Twitter hashtag (without #)')
+		subparser.add_argument('hashtag', type = snscrape.base.nonempty_string('hashtag'), help = 'A Twitter hashtag (without #)')
 
 	@classmethod
 	def from_args(cls, args):
@@ -795,7 +799,7 @@ class TwitterListPostsScraper(TwitterSearchScraper):
 
 	@classmethod
 	def setup_parser(cls, subparser):
-		subparser.add_argument('list', help = 'A Twitter list ID or a string of the form "username/listname" (replace spaces with dashes)')
+		subparser.add_argument('list', type = snscrape.base.nonempty_string('list'), help = 'A Twitter list ID or a string of the form "username/listname" (replace spaces with dashes)')
 
 	@classmethod
 	def from_args(cls, args):

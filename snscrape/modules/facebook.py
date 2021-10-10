@@ -203,7 +203,7 @@ class FacebookUserAndCommunityScraper(FacebookCommonScraper):
 
 	@classmethod
 	def setup_parser(cls, subparser):
-		subparser.add_argument('username', help = 'A Facebook username or user ID')
+		subparser.add_argument('username', type = snscrape.base.nonempty_string('username'), help = 'A Facebook username or user ID')
 
 	@classmethod
 	def from_args(cls, args):
@@ -354,7 +354,7 @@ class FacebookGroupScraper(FacebookCommonScraper):
 
 	@classmethod
 	def setup_parser(cls, subparser):
-		subparser.add_argument('group', help = 'A group name or ID')
+		subparser.add_argument('group', type = snscrape.base.nonempty_string('group'), help = 'A group name or ID')
 
 	@classmethod
 	def from_args(cls, args):

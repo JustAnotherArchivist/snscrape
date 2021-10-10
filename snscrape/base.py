@@ -217,3 +217,13 @@ class Scraper:
 	@classmethod
 	def _construct(cls, argparseArgs, *args, **kwargs):
 		return cls(*args, **kwargs, retries = argparseArgs.retries)
+
+
+def nonempty_string(name):
+	def f(s):
+		s = s.strip()
+		if s:
+			return s
+		raise ValueError('must not be an empty string')
+	f.__name__ = name
+	return f

@@ -174,7 +174,7 @@ class InstagramUserScraper(InstagramCommonScraper):
 
 	@classmethod
 	def setup_parser(cls, subparser):
-		subparser.add_argument('username', help = 'An Instagram username (no leading @)')
+		subparser.add_argument('username', type = snscrape.base.nonempty_string('username'), help = 'An Instagram username (no leading @)')
 
 	@classmethod
 	def from_args(cls, args):
@@ -219,7 +219,7 @@ class InstagramHashtagScraper(InstagramCommonScraper):
 
 	@classmethod
 	def setup_parser(cls, subparser):
-		subparser.add_argument('hashtag', help = 'An Instagram hashtag (no leading #)')
+		subparser.add_argument('hashtag', type = snscrape.base.nonempty_string('hashtag'), help = 'An Instagram hashtag (no leading #)')
 
 	@classmethod
 	def from_args(cls, args):

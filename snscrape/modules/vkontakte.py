@@ -366,7 +366,7 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 
 	@classmethod
 	def setup_parser(cls, subparser):
-		subparser.add_argument('username', help = 'A VK username')
+		subparser.add_argument('username', type = snscrape.base.nonempty_string('username'), help = 'A VK username')
 
 	@classmethod
 	def from_args(cls, args):
