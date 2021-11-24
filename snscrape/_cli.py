@@ -100,7 +100,7 @@ def _repr(name, value):
 	if isinstance(value, (list, tuple, collections.deque)) and not all(isinstance(v, (int, str)) for v in value):
 		return f'{name} = <{type(value).__module__}.{type(value).__name__}>\n  ' + \
 		       '\n  '.join(_repr(f'{name}[{i}]', v).replace('\n', '\n  ') for i, v in enumerate(value))
-	if dataclasses.is_dataclass(value):
+	if dataclasses.is_dataclass(value) and not isinstance(value, type):
 		return f'{name} = <{type(value).__module__}.{type(value).__name__}>\n  ' + \
 		       '\n  '.join(_repr(f'{name}.{f.name}', f.name) + ' = ' + _repr(f'{name}.{f.name}', getattr(value, f.name)).replace('\n', '\n  ') for f in dataclasses.fields(value))
 	valueRepr = f'{name} = {value!r}'
