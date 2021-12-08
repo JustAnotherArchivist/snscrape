@@ -3,6 +3,7 @@ import collections
 import contextlib
 import dataclasses
 import datetime
+import importlib.metadata
 import inspect
 import logging
 import requests
@@ -193,6 +194,29 @@ def parse_format(arg):
 	return out
 
 
+class CitationAction(argparse.Action):
+	def __init__(self, option_strings, dest = argparse.SUPPRESS, *args, default = argparse.SUPPRESS, **kwargs):
+		super().__init__(option_strings, dest, *args, **kwargs)
+
+	def __call__(self, parser, namespace, values, optionString):
+		try:
+			m = importlib.metadata.metadata('snscrape')
+		except importlib.metadata.PackageNotFoundError:
+			print('Error: could not find snscrape installation. --citation does not work without the package being installed.', file = sys.stderr)
+			parser.exit(1)
+		print(f'Author: {m["author"]}')
+		print(f'Title: {m["name"]}: {m["summary"]}')
+		print(f'URL: {m["home-page"]}')
+		print(f'Version: {m["version"]}')
+		print(f'Date: 2018‒{m["version"].split(".", 3)[3][:4]}')
+
+		if '.dev' in m['version']:
+			print()
+			print('WARNING! You are running a development version. The date range may be incorrect. Please adjust the upper end of the range to the year of the commit.')
+
+		parser.exit()
+
+
 def parse_args():
 	import snscrape.base
 	import snscrape.modules
@@ -200,6 +224,7 @@ def parse_args():
 
 	parser = argparse.ArgumentParser(formatter_class = argparse.ArgumentDefaultsHelpFormatter)
 	parser.add_argument('--version', action = 'version', version = f'snscrape {snscrape.version.__version__}')
+	parser.add_argument('--citation', action = CitationAction, nargs = 0, help = 'Display recommended citation information and exit')
 	parser.add_argument('-v', '--verbose', '--verbosity', dest = 'verbosity', action = 'count', default = 0, help = 'Increase output verbosity')
 	parser.add_argument('--dump-locals', dest = 'dumpLocals', action = 'store_true', default = False, help = 'Dump local variables on serious log messages (warnings or higher)')
 	parser.add_argument('--retry', '--retries', dest = 'retries', type = int, default = 3, metavar = 'N',
