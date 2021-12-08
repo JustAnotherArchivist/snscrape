@@ -1,9 +1,16 @@
+import os.path
 import setuptools
+
+
+with open(os.path.join(os.path.dirname(__file__), 'README.md')) as fp:
+	readme = fp.read()
 
 
 setuptools.setup(
 	name = 'snscrape',
 	description = 'A social networking service scraper',
+	long_description = readme,
+	long_description_content_type = 'text/markdown',
 	author = 'JustAnotherArchivist',
 	url = 'https://github.com/JustAnotherArchivist/snscrape',
 	classifiers = [
