@@ -33,7 +33,7 @@ release = 'v0.4.0.20211208'
 extensions = [
     'sphinx.ext.napoleon',
     'sphinx.ext.autodoc',
-    'sphinx_autodoc_typehints'
+    # 'sphinx_autodoc_typehints'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -44,16 +44,25 @@ templates_path = ['_templates']
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
-# -- Autodoc and Napoleon options --------------------------------------------
-napoleon_use_params = True
+# -- Custom extension options ------------------------------------------------
+
+# Put type hint in description instead of signature
+# Note: the docstrings are overridden if autodoc_typehints is used
+autodoc_typehints = 'description'
+
+# Set 'both' to use both class and __init__ docstrings.
 autoclass_content = 'both'
+
+# Might want to look at it:
+# https://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html#confval-autodoc_type_aliases
+# autodoc_type_aliases = {}
 
 # -- Options for HTML output -------------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'alabaster'
+html_theme = 'nature'
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,

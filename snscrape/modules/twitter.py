@@ -21,6 +21,10 @@ _API_AUTHORIZATION_HEADER = 'Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOu
 
 @dataclasses.dataclass
 class Tweet(snscrape.base.Item):
+	"""An object representing one tweet.
+	
+	Most fields can be None if not known.
+	"""
 	url: str
 	date: datetime.datetime
 	content: str
@@ -113,8 +117,11 @@ class Place:
 
 @dataclasses.dataclass
 class User(snscrape.base.Entity):
-	# Most fields can be None if they're not known.
-
+	"""An object representing one user.
+	
+	Most fields can be None if not known.
+	"""
+	
 	username: str
 	id: int
 	displayname: typing.Optional[str] = None
@@ -171,6 +178,11 @@ class ScrollDirection(enum.Enum):
 
 class TwitterAPIScraper(snscrape.base.Scraper):
 	def __init__(self, baseUrl, **kwargs):
+		"""Base class for all other Twitter scraper classes.
+		
+		Args:
+			baseUrl: Base URL for endpoint.
+		"""		
 		super().__init__(**kwargs)
 		self._baseUrl = baseUrl
 		self._guestToken = None
@@ -494,7 +506,18 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 class TwitterSearchScraper(TwitterAPIScraper):
 	name = 'twitter-search'
 
-	def __init__(self, query, cursor = None, top = False, **kwargs):
+	def __init__(self, query: str, cursor = None, top = False, **kwargs):
+		"""Scraper class, designed to scrape Twitter through specific search query.
+
+		Args:
+			query: Search query. Must not be empty.
+			cursor: cursor. Defaults to None.
+			top: top. Defaults to False.
+		
+		Raises:
+			ValueError: When query is empty (including whitespace-only and empty strings).
+		
+		"""		
 		if not query.strip():
 			raise ValueError('empty query')
 		super().__init__(baseUrl = 'https://twitter.com/search?' + urllib.parse.urlencode({'f': 'live', 'lang': 'en', 'q': query, 'src': 'spelling_expansion_revert_click'}), **kwargs)
@@ -512,7 +535,20 @@ class TwitterSearchScraper(TwitterAPIScraper):
 			return False, f'non-200 status code'
 		return True, None
 
-	def get_items(self):
+	def get_items(self) -> typing.Iterator[Tweet]:
+		"""Get the tweets according to the specifications given when instantiating this scraper.
+		
+		Raises:
+			ValueError
+		Yields:
+			Individual tweet.
+		Returns:
+			An iterator of tweets.
+
+		Note:
+			This method is a generator. The number of tweets is not known beforehand.
+			Please keep in mind that the scraping results can possibly be a lot of tweets.
+		"""		
 		if not self._query.strip():
 			raise ValueError('empty query')
 		paginationParams = {
@@ -570,7 +606,24 @@ class TwitterSearchScraper(TwitterAPIScraper):
 class TwitterUserScraper(TwitterSearchScraper):
 	name = 'twitter-user'
 
-	def __init__(self, username, isUserId, **kwargs):
+	def __init__(self, username: str, isUserId: bool, **kwargs):
+		"""Scraper class, designed to scrape tweets of a specific user profile.
+		
+		Args:
+			username: Username of the desired profile.
+			isUserId: Set to True if `username` is a string containing an all-numeric user ID,
+				set to False if `username` is a Twitter username.
+		
+		Raises:
+			ValueError: When `username` is not a valid Twitter username or user ID.
+		
+		Note:
+			Twitter username or handle is a string that comes after @ sign.
+			User ID is an all-numeric string.
+
+			Please also note that user ID will internally be resolved into Twitter username.
+		"""
+
 		if not self.is_valid_username(username):
 			raise ValueError('Invalid username')
 		super().__init__(f'from:{username}', **kwargs)
@@ -693,7 +746,12 @@ class TwitterProfileScraper(TwitterUserScraper):
 class TwitterHashtagScraper(TwitterSearchScraper):
 	name = 'twitter-hashtag'
 
-	def __init__(self, hashtag, **kwargs):
+	def __init__(self, hashtag: str, **kwargs):
+		"""Scraper object, designed to scrape Twitter through hashtags.
+		
+		Args:
+			hashtag: Hashtag query, without the # sign.
+		"""		
 		super().__init__(f'#{hashtag}', **kwargs)
 		self._hashtag = hashtag
 
@@ -723,7 +781,7 @@ class TwitterTweetScraperMode(enum.Enum):
 class TwitterTweetScraper(TwitterAPIScraper):
 	name = 'twitter-tweet'
 
-	def __init__(self, tweetId, mode, **kwargs):
+	def __init__(self, tweetId: int, mode: str, **kwargs):
 		self._tweetId = tweetId
 		self._mode = mode
 		super().__init__(f'https://twitter.com/i/web/{self._tweetId}', **kwargs)

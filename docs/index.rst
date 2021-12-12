@@ -10,6 +10,26 @@ Welcome to snscrape's documentation!
    :maxdepth: 2
    :caption: Contents:
 
+.. module:: snscrape.modules.twitter
+
+Entity objects
+--------------
+
+.. autoclass:: Tweet
+   :members:
+
+.. autoclass:: User
+
+Scraper classes
+---------------
+
+.. autoclass:: TwitterSearchScraper
+   :members:
+
+.. autoclass:: TwitterUserScraper
+
+.. autoclass:: TwitterHashtagScraper
+
 Indices and tables
 ==================
 
