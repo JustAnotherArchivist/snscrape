@@ -604,7 +604,7 @@ class TwitterSearchScraper(TwitterAPIScraper):
 class TwitterUserScraper(TwitterSearchScraper):
 	name = 'twitter-user'
 
-	def __init__(self, username, isUserId, **kwargs):
+	def __init__(self, username, isUserId = False, **kwargs):
 		if not self.is_valid_username(username):
 			raise ValueError('Invalid username')
 		super().__init__(f'from:{username}', **kwargs)
@@ -757,7 +757,7 @@ class TwitterTweetScraperMode(enum.Enum):
 class TwitterTweetScraper(TwitterAPIScraper):
 	name = 'twitter-tweet'
 
-	def __init__(self, tweetId, mode, **kwargs):
+	def __init__(self, tweetId, mode = TwitterTweetScraperMode.SINGLE, **kwargs):
 		self._tweetId = tweetId
 		self._mode = mode
 		super().__init__(f'https://twitter.com/i/web/{self._tweetId}', **kwargs)
