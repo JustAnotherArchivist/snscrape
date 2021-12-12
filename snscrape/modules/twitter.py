@@ -17,6 +17,7 @@ import urllib.parse
 
 logger = logging.getLogger(__name__)
 _API_AUTHORIZATION_HEADER = 'Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs=1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA'
+_globalGuestTokenManager = None
 
 
 @dataclasses.dataclass
@@ -176,16 +177,44 @@ class ScrollDirection(enum.Enum):
 	BOTH = enum.auto()
 
 
+class GuestTokenManager:
+	def __init__(self):
+		self._token = None
+		self._setTime = 0.0
+
+	@property
+	def token(self):
+		return self._token
+
+	@token.setter
+	def token(self, token):
+		self._token = token
+		self._setTime = time.time()
+
+	@property
+	def setTime(self):
+		return self._setTime
+
+	def reset(self):
+		self._token = None
+		self._setTime = 0.0
+
+
 class TwitterAPIScraper(snscrape.base.Scraper):
-	def __init__(self, baseUrl, **kwargs):
+	def __init__(self, baseUrl, guestTokenManager = None, **kwargs):
 		"""Base class for all other Twitter scraper classes.
 		
 		Args:
 			baseUrl: Base URL for endpoint.
-		"""		
+		"""	
 		super().__init__(**kwargs)
 		self._baseUrl = baseUrl
-		self._guestToken = None
+		if guestTokenManager is None:
+			global _globalGuestTokenManager
+			if _globalGuestTokenManager is None:
+				_globalGuestTokenManager = GuestTokenManager()
+			guestTokenManager = _globalGuestTokenManager
+		self._guestTokenManager = guestTokenManager
 		self._userAgent = f'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.{random.randint(0, 9999)} Safari/537.{random.randint(0, 99)}'
 		self._apiHeaders = {
 			'User-Agent': self._userAgent,
@@ -194,25 +223,30 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 			'Accept-Language': 'en-US,en;q=0.5',
 		}
 
+	def _check_guest_token_response(self, r):
+		if r.status_code != 200:
+			return False, f'non-200 response ({r.status_code})'
+		if 'document.cookie = decodeURIComponent("gt=' not in r.text and 'gt' not in r.cookies:
+			return False, 'unable to find guest token'
+		return True, None
+
 	def _ensure_guest_token(self, url = None):
-		if self._guestToken is not None:
-			return
-		logger.info('Retrieving guest token')
-		r = self._get(self._baseUrl if url is None else url, headers = {'User-Agent': self._userAgent})
-		if (match := re.search(r'document\.cookie = decodeURIComponent\("gt=(\d+); Max-Age=10800; Domain=\.twitter\.com; Path=/; Secure"\);', r.text)):
-			logger.debug('Found guest token in HTML')
-			self._guestToken = match.group(1)
-		if 'gt' in r.cookies:
-			logger.debug('Found guest token in cookies')
-			self._guestToken = r.cookies['gt']
-		if self._guestToken:
-			self._session.cookies.set('gt', self._guestToken, domain = '.twitter.com', path = '/', secure = True, expires = time.time() + 10800)
-			self._apiHeaders['x-guest-token'] = self._guestToken
-			return
-		raise snscrape.base.ScraperException('Unable to find guest token')
+		if self._guestTokenManager.token is None:
+			logger.info('Retrieving guest token')
+			r = self._get(self._baseUrl if url is None else url, headers = {'User-Agent': self._userAgent}, responseOkCallback = self._check_guest_token_response)
+			if (match := re.search(r'document\.cookie = decodeURIComponent\("gt=(\d+); Max-Age=10800; Domain=\.twitter\.com; Path=/; Secure"\);', r.text)):
+				logger.debug('Found guest token in HTML')
+				self._guestTokenManager.token = match.group(1)
+			if 'gt' in r.cookies:
+				logger.debug('Found guest token in cookies')
+				self._guestTokenManager.token = r.cookies['gt']
+			assert self._guestTokenManager.token
+		logger.debug(f'Using guest token {self._guestTokenManager.token}')
+		self._session.cookies.set('gt', self._guestTokenManager.token, domain = '.twitter.com', path = '/', secure = True, expires = self._guestTokenManager.setTime + 10800)
+		self._apiHeaders['x-guest-token'] = self._guestTokenManager.token
 
 	def _unset_guest_token(self):
-		self._guestToken = None
+		self._guestTokenManager.reset()
 		del self._session.cookies['gt']
 		del self._apiHeaders['x-guest-token']
 
@@ -606,13 +640,13 @@ class TwitterSearchScraper(TwitterAPIScraper):
 class TwitterUserScraper(TwitterSearchScraper):
 	name = 'twitter-user'
 
-	def __init__(self, username: str, isUserId: bool, **kwargs):
+	def __init__(self, username, isUserId = False, **kwargs):
 		"""Scraper class, designed to scrape tweets of a specific user profile.
 		
 		Args:
 			username: Username of the desired profile.
 			isUserId: Set to True if `username` is a string containing an all-numeric user ID,
-				set to False if `username` is a Twitter username.
+				set to False if `username` is a Twitter username. Defaults to False.
 		
 		Raises:
 			ValueError: When `username` is not a valid Twitter username or user ID.
@@ -623,7 +657,6 @@ class TwitterUserScraper(TwitterSearchScraper):
 
 			Please also note that user ID will internally be resolved into Twitter username.
 		"""
-
 		if not self.is_valid_username(username):
 			raise ValueError('Invalid username')
 		super().__init__(f'from:{username}', **kwargs)
@@ -781,7 +814,7 @@ class TwitterTweetScraperMode(enum.Enum):
 class TwitterTweetScraper(TwitterAPIScraper):
 	name = 'twitter-tweet'
 
-	def __init__(self, tweetId: int, mode: str, **kwargs):
+	def __init__(self, tweetId, mode = TwitterTweetScraperMode.SINGLE, **kwargs):
 		self._tweetId = tweetId
 		self._mode = mode
 		super().__init__(f'https://twitter.com/i/web/{self._tweetId}', **kwargs)
