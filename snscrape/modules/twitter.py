@@ -203,7 +203,7 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 				_globalGuestTokenManager = GuestTokenManager()
 			guestTokenManager = _globalGuestTokenManager
 		self._guestTokenManager = guestTokenManager
-		self._userAgent = f'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.{random.randint(0, 9999)} Safari/537.{random.randint(0, 99)}'
+		self._set_random_user_agent()
 		self._apiHeaders = {
 			'User-Agent': self._userAgent,
 			'Authorization': _API_AUTHORIZATION_HEADER,
@@ -211,10 +211,15 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 			'Accept-Language': 'en-US,en;q=0.5',
 		}
 
+	def _set_random_user_agent(self):
+		self._userAgent = f'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.{random.randint(0, 9999)} Safari/537.{random.randint(0, 99)}'
+
 	def _check_guest_token_response(self, r):
 		if r.status_code != 200:
+			self._set_random_user_aget()
 			return False, f'non-200 response ({r.status_code})'
 		if 'document.cookie = decodeURIComponent("gt=' not in r.text and 'gt' not in r.cookies:
+			self._set_random_user_aget()
 			return False, 'unable to find guest token'
 		return True, None
 
