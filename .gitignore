@@ -3,3 +3,4 @@ __pycache__/
 /snscrape.egg-info/
 /.eggs/
 /docs/_build/**
+.vscode/
