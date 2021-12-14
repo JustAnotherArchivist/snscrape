@@ -28,6 +28,7 @@ class _DeprecatedProperty:
 
 def _json_serialise_datetime(obj):
 	'''A JSON serialiser that converts datetime.datetime and datetime.date objects to ISO-8601 strings.'''
+
 	if isinstance(obj, (datetime.datetime, datetime.date)):
 		return obj.isoformat()
 	raise TypeError(f'Object of type {type(obj)} is not JSON serializable')
@@ -62,6 +63,7 @@ class _JSONDataclass:
 
 	def json(self):
 		'''Convert the object to a JSON string'''
+
 		out = _json_dataclass_to_dict(self)
 		for key, value in list(out.items()): # Modifying the dict below, so make a copy first
 			if isinstance(value, IntWithGranularity):
@@ -75,7 +77,8 @@ class _JSONDataclass:
 class Item(_JSONDataclass):
 	'''An abstract base class for an item returned by the scraper's get_items generator.
 
-	An item can really be anything. The string representation should be useful for the CLI output (e.g. a direct URL for the item).'''
+	An item can really be anything. The string representation should be useful for the CLI output (e.g. a direct URL for the item).
+	'''
 
 	@abc.abstractmethod
 	def __str__(self):
@@ -86,7 +89,8 @@ class Item(_JSONDataclass):
 class Entity(_JSONDataclass):
 	'''An abstract base class for an entity returned by the scraper's entity property.
 
-	An entity is typically the account of a person or organisation. The string representation should be the preferred direct URL to the entity's page on the network.'''
+	An entity is typically the account of a person or organisation. The string representation should be the preferred direct URL to the entity's page on the network.
+	'''
 
 	@abc.abstractmethod
 	def __str__(self):
@@ -96,7 +100,8 @@ class Entity(_JSONDataclass):
 class IntWithGranularity(int):
 	'''A number with an associated granularity
 
-	For example, an IntWithGranularity(42000, 1000) represents a number on the order of 42000 with two significant digits, i.e. something counted with a granularity of 1000.'''
+	For example, an IntWithGranularity(42000, 1000) represents a number on the order of 42000 with two significant digits, i.e. something counted with a granularity of 1000.
+	'''
 
 	def __new__(cls, value, granularity, *args, **kwargs):
 		obj = super().__new__(cls, value, *args, **kwargs)
@@ -137,12 +142,15 @@ class Scraper:
 	@abc.abstractmethod
 	def get_items(self):
 		'''Iterator yielding Items.'''
+
 		pass
 
 	def _get_entity(self):
 		'''Get the entity behind the scraper, if any.
 
-		This is the method implemented by subclasses for doing the actual retrieval/entity object creation. For accessing the scraper's entity, use the entity property.'''
+		This is the method implemented by subclasses for doing the actual retrieval/entity object creation. For accessing the scraper's entity, use the entity property.
+		'''
+
 		return None
 
 	@functools.cached_property
