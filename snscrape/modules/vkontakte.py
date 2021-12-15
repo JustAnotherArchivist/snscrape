@@ -26,6 +26,13 @@ else:
 
 
 logger = logging.getLogger(__name__)
+months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+datePattern = re.compile(r'^(?P<date>today'
+                                  r'|yesterday'
+                                  r'|(?P<day1>\d+)\s+(?P<month1>' + '|'.join(months) + ')(\s+(?P<year1>\d{4}))?'
+                                  r'|(?P<month2>' + '|'.join(months) + r')\s+(?P<day2>\d+),\s+(?P<year2>\d{4})'
+                           ')'
+                          r'\s+at\s+(?P<hour>\d+):(?P<minute>\d+)\s+(?P<ampm>[ap]m)$')
 
 
 @dataclasses.dataclass
@@ -112,8 +119,7 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 			return None
 		if 'time' in dateSpan.attrs:
 			return datetime.datetime.fromtimestamp(int(dateSpan['time']), datetime.timezone.utc)
-		months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-		if (match := re.match(r'^(?P<date>today|yesterday|(?P<day1>\d+)\s+(?P<month1>' + '|'.join(months) + ')|(?P<month2>' + '|'.join(months) + r')\s+(?P<day2>\d+),\s+(?P<year2>\d{4}))\s+at\s+(?P<hour>\d+):(?P<minute>\d+)\s+(?P<ampm>[ap]m)$', dateSpan.text)):
+		if (match := datePattern.match(dateSpan.text)):
 			# Datetime information down to minutes
 			tz = timezone('Europe/Moscow')
 			if match.group('date') in ('today', 'yesterday'):
@@ -122,7 +128,7 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 					date -= datetime.timedelta(days = 1)
 				year, month, day = date.year, date.month, date.day
 			else:
-				year = int(match.group('year2') or datetime.datetime.now(tz = tz).year)
+				year = int(match.group('year1') or match.group('year2') or datetime.datetime.now(tz = tz).year)
 				month = months.index(match.group('month1') or match.group('month2')) + 1
 				day = int(match.group('day1') or match.group('day2'))
 			hour = int(match.group('hour'))
