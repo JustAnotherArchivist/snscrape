@@ -216,10 +216,10 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 
 	def _check_guest_token_response(self, r):
 		if r.status_code != 200:
-			self._set_random_user_aget()
+			self._set_random_user_agent()
 			return False, f'non-200 response ({r.status_code})'
 		if 'document.cookie = decodeURIComponent("gt=' not in r.text and 'gt' not in r.cookies:
-			self._set_random_user_aget()
+			self._set_random_user_agent()
 			return False, 'unable to find guest token'
 		return True, None
 
