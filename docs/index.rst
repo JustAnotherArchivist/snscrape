@@ -27,7 +27,9 @@ Weibo (Sina Weibo) User profile
 CLI usage
 ---------
 
-The generic syntax of snscrape's CLI is: ::
+The generic syntax of snscrape's CLI is:
+
+.. code-block:: console
 
 	snscrape [GLOBAL-OPTIONS] SCRAPER-NAME [SCRAPER-OPTIONS] [SCRAPER-ARGUMENTS...]
 
@@ -43,7 +45,25 @@ Some noteworthy global options are:
 
 **Examples**
 
-.. examples go here
+Collect all tweets by Jason Scott (@textfiles):
+
+.. code-block:: console
+
+	snscrape twitter-user textfiles
+
+It's usually useful to redirect the output to a file for further processing, e.g. in bash using the filename ``twitter-@textfiles``:
+
+.. code-block:: console
+
+	snscrape twitter-user textfiles >twitter-@textfiles
+
+
+To get the latest 100 tweets with the hashtag #archiveteam:
+
+.. code-block:: console
+
+	snscrape --max-results 100 twitter-hashtag archiveteam
+
 
 Library usage
 -------------
@@ -55,13 +75,25 @@ The general idea of steps is:
 #. **Call the scraper's** ``get_item()`` **method.**
 	``get_item()`` is an iterator and yields one item at a time.
 
-Each scraper class provides different options and arguments. Refer to the class signature for more information, e.g. in Jupyter Notebook it can be done via ::
+Each scraper class provides different options and arguments. Refer to the class signature for more information, e.g. in Jupyter Notebook it can be done via::
 
 	?TwitterSearchScraper
 
 **Examples**
 
-.. examples go here
+Collect tweets by searching for "omicron variant", limit the results to first 100 tweets, and save the results to a list:
+
+.. code-block:: python
+
+	from snscrape.modules import TwitterSearchScraper
+	scraper = TwitterSearchScraper('omicron variant')
+
+	result = []
+
+	for i, item in enumerate(scraper.get_items()):
+		result.append(item)
+		if i == 100:
+			break
 
 API reference
 =============
