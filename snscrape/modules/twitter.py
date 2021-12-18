@@ -169,7 +169,8 @@ class UserLabel:
 
 @dataclasses.dataclass
 class Trend(snscrape.base.Item):
-	'''An object representing trend.'''
+	'''An object representing one trend.'''
+
 	name: str
 	domainContext: str
 	metaDescription: typing.Optional[str] = None
@@ -209,6 +210,7 @@ class GuestTokenManager:
 
 class TwitterAPIScraper(snscrape.base.Scraper):
 	'''Base class for all other Twitter scraper classes.'''
+
 	def __init__(self, baseUrl, guestTokenManager = None, **kwargs):
 		'''
 		Args:
@@ -553,6 +555,7 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 
 class TwitterSearchScraper(TwitterAPIScraper):
 	'''Scraper class, designed to scrape Twitter through specific search query.'''
+
 	name = 'twitter-search'
 
 	def __init__(self, query: str, cursor = None, top = False, **kwargs):
@@ -654,6 +657,7 @@ class TwitterSearchScraper(TwitterAPIScraper):
 
 class TwitterUserScraper(TwitterSearchScraper):
 	'''Scraper class, designed to scrape tweets of a specific user profile.'''
+
 	name = 'twitter-user'
 
 	def __init__(self, username, isUserId = False, **kwargs):
@@ -793,6 +797,7 @@ class TwitterProfileScraper(TwitterUserScraper):
 
 class TwitterHashtagScraper(TwitterSearchScraper):
 	'''Scraper object, designed to scrape Twitter through hashtag.'''
+
 	name = 'twitter-hashtag'
 
 	def __init__(self, hashtag: str, **kwargs):
@@ -829,6 +834,7 @@ class TwitterTweetScraperMode(enum.Enum):
 
 class TwitterTweetScraper(TwitterAPIScraper):
 	'''Scraper object designed to scrape a specific tweet or thread surrounding it.'''
+
 	name = 'twitter-tweet'
 
 	def __init__(self, tweetId, mode = TwitterTweetScraperMode.SINGLE, **kwargs):
@@ -839,6 +845,7 @@ class TwitterTweetScraper(TwitterAPIScraper):
 		Yields:
 			Individual tweet.
 		'''
+
 		self._tweetId = tweetId
 		self._mode = mode
 		super().__init__(f'https://twitter.com/i/web/{self._tweetId}', **kwargs)
@@ -907,6 +914,7 @@ class TwitterTweetScraper(TwitterAPIScraper):
 
 class TwitterListPostsScraper(TwitterSearchScraper):
 	'''Scraper object designed to scrape tweets from a Twitter list'''
+
 	name = 'twitter-list-posts'
 
 	def __init__(self, listName, **kwargs):
@@ -914,6 +922,7 @@ class TwitterListPostsScraper(TwitterSearchScraper):
 		Args:
 			listName: A Twitter list ID, or a string in the form "username/listname" (replace spaces with dashes).
 		'''
+
 		super().__init__(f'list:{listName}', **kwargs)
 		self._listName = listName
 
@@ -928,6 +937,7 @@ class TwitterListPostsScraper(TwitterSearchScraper):
 
 class TwitterTrendsScraper(TwitterAPIScraper):
 	'''Scraper object, designed to scrape Twitter trending topics.'''
+
 	name = 'twitter-trends'
 
 	def __init__(self, **kwargs):
@@ -939,6 +949,7 @@ class TwitterTrendsScraper(TwitterAPIScraper):
 		Yields:
 			Individual trending topic.
 		'''
+
 		params = {
 			'include_profile_interstitial_type': '1',
 			'include_blocking': '1',

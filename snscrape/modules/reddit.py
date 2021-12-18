@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 @dataclasses.dataclass
 class Submission(snscrape.base.Item):
 	'''An object representing one Reddit submission post.'''
+
 	author: typing.Optional[str] # E.g. submission hf7k6
 	created: datetime.datetime
 	id: str
@@ -33,6 +34,7 @@ class Submission(snscrape.base.Item):
 @dataclasses.dataclass
 class Comment(snscrape.base.Item):
 	'''An object representing one Reddit comment post.'''
+
 	author: typing.Optional[str]
 	body: str
 	created: datetime.datetime
@@ -50,6 +52,7 @@ class RedditPushshiftScraper(snscrape.base.Scraper):
 
 	Note: Reddit scraper uses Pushshift.
 	'''
+
 	def __init__(self, submissions = True, comments = True, before = None, after = None, **kwargs):
 		super().__init__(**kwargs)
 		self._submissions = submissions
@@ -95,6 +98,7 @@ class RedditPushshiftScraper(snscrape.base.Scraper):
 
 	def _iter_api(self, url, params = None):
 		'''Iterate through the Pushshift API using the 'before' parameter and yield the items.'''
+
 		lowestIdSeen = None
 		if params is None:
 			params = {}

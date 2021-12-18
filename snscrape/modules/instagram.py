@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 @dataclasses.dataclass
 class InstagramPost(snscrape.base.Item):
 	'''An object representing one Instagram post.'''
+
 	url: str
 	date: datetime.datetime
 	content: typing.Optional[str]
@@ -32,6 +33,7 @@ class InstagramPost(snscrape.base.Item):
 @dataclasses.dataclass
 class User(snscrape.base.Entity):
 	'''An object representing one Instagram user.'''
+
 	username: str
 	name: typing.Optional[str]
 	followers: snscrape.base.IntWithGranularity
@@ -48,6 +50,7 @@ class User(snscrape.base.Entity):
 
 class InstagramCommonScraper(snscrape.base.Scraper):
 	'''Base class for all other Instagram scrapers.'''
+
 	def __init__(self, mode, name, **kwargs):
 		super().__init__(**kwargs)
 		if mode not in ('User', 'Hashtag', 'Location'):
@@ -141,6 +144,7 @@ class InstagramCommonScraper(snscrape.base.Scraper):
 		Yields:
 			Individual post.
 		'''
+
 		r = self._initial_page()
 		if r.status_code == 404:
 			logger.warning(f'{self._mode} does not exist')
