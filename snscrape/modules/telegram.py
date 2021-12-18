@@ -23,6 +23,7 @@ class LinkPreview:
 
 @dataclasses.dataclass
 class TelegramPost(snscrape.base.Item):
+	'''An object representing one Telegram post.'''
 	url: str
 	date: datetime.datetime
 	content: str
@@ -37,6 +38,7 @@ class TelegramPost(snscrape.base.Item):
 
 @dataclasses.dataclass
 class Channel(snscrape.base.Entity):
+	'''An object repreenting one Telegram channel.'''
 	username: str
 	title: str
 	verified: bool
@@ -58,9 +60,14 @@ class Channel(snscrape.base.Entity):
 
 
 class TelegramChannelScraper(snscrape.base.Scraper):
+	'''Scraper class designed to scrape posts in Telegram channels'''
 	name = 'telegram-channel'
 
 	def __init__(self, name, **kwargs):
+		'''
+		Args:
+			name: Channel name.
+		'''
 		super().__init__(**kwargs)
 		self._name = name
 		self._headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36'}
