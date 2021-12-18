@@ -95,9 +95,16 @@ class User(snscrape.base.Entity):
 
 
 class VKontakteUserScraper(snscrape.base.Scraper):
+	'''Scraper class designed to scrape for items in a VKontakte user profile.'''
+
 	name = 'vkontakte-user'
 
 	def __init__(self, username, **kwargs):
+		'''
+		Args:
+			username: a VK username.
+		'''
+
 		super().__init__(**kwargs)
 		self._username = username
 		self._baseUrl = f'https://vk.com/{self._username}'
