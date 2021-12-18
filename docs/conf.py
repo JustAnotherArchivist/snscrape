@@ -33,6 +33,7 @@ release = 'v0.4.0.20211208'
 extensions = [
     'sphinx.ext.napoleon',
     'sphinx.ext.autodoc',
+	'sphinx.ext.autosummary',
     # 'sphinx_autodoc_typehints'
 ]
 
@@ -56,6 +57,9 @@ autoclass_content = 'both'
 # Might want to look at it:
 # https://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html#confval-autodoc_type_aliases
 # autodoc_type_aliases = {}
+
+# Turn on autosummary
+autosummary_generate = True
 
 # -- Options for HTML output -------------------------------------------------
 

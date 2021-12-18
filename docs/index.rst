@@ -98,10 +98,7 @@ Collect tweets by searching for "omicron variant", limit the results to first 10
 API reference
 =============
 
-.. toctree::
-	:maxdepth: 2
-
-	api-reference
+:doc:`api-reference`
 
 Indices and tables
 ==================
