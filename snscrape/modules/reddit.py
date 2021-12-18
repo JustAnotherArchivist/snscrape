@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 @dataclasses.dataclass
 class Submission(snscrape.base.Item):
+	'''An object representing one Reddit submission post.'''
 	author: typing.Optional[str] # E.g. submission hf7k6
 	created: datetime.datetime
 	id: str
@@ -31,6 +32,7 @@ class Submission(snscrape.base.Item):
 
 @dataclasses.dataclass
 class Comment(snscrape.base.Item):
+	'''An object representing one Reddit comment post.'''
 	author: typing.Optional[str]
 	body: str
 	created: datetime.datetime
@@ -44,6 +46,10 @@ class Comment(snscrape.base.Item):
 
 
 class RedditPushshiftScraper(snscrape.base.Scraper):
+	'''Base scraper for all other Reddit scraper classes
+
+	Note: Reddit scraper uses Pushshift.
+	'''
 	def __init__(self, submissions = True, comments = True, before = None, after = None, **kwargs):
 		super().__init__(**kwargs)
 		self._submissions = submissions
