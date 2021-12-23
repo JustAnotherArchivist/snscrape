@@ -203,16 +203,17 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 				_globalGuestTokenManager = GuestTokenManager()
 			guestTokenManager = _globalGuestTokenManager
 		self._guestTokenManager = guestTokenManager
-		self._set_random_user_agent()
 		self._apiHeaders = {
-			'User-Agent': self._userAgent,
+			'User-Agent': None,
 			'Authorization': _API_AUTHORIZATION_HEADER,
 			'Referer': self._baseUrl,
 			'Accept-Language': 'en-US,en;q=0.5',
 		}
+		self._set_random_user_agent()
 
 	def _set_random_user_agent(self):
 		self._userAgent = f'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.{random.randint(0, 9999)} Safari/537.{random.randint(0, 99)}'
+		self._apiHeaders['User-Agent'] = self._userAgent
 
 	def _check_guest_token_response(self, r):
 		if r.status_code != 200:
