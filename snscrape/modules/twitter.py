@@ -219,9 +219,6 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 		if r.status_code != 200:
 			self._set_random_user_agent()
 			return False, f'non-200 response ({r.status_code})'
-		if 'document.cookie = decodeURIComponent("gt=' not in r.text and 'gt' not in r.cookies:
-			self._set_random_user_agent()
-			return False, 'unable to find guest token'
 		return True, None
 
 	def _ensure_guest_token(self, url = None):
@@ -234,6 +231,14 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 			if 'gt' in r.cookies:
 				logger.debug('Found guest token in cookies')
 				self._guestTokenManager.token = r.cookies['gt']
+			if not self._guestTokenManager.token:
+				logger.debug('No guest token in response')
+				logger.info('Retrieving guest token via API')
+				r = self._post('https://api.twitter.com/1.1/guest/activate.json', data = b'', headers = self._apiHeaders, responseOkCallback = self._check_guest_token_response)
+				o = r.json()
+				if not o.get('guest_token'):
+					raise snscrape.base.ScraperError('Unable to retrieve guest token')
+				self._guestTokenManager.token = o['guest_token']
 			assert self._guestTokenManager.token
 		logger.debug(f'Using guest token {self._guestTokenManager.token}')
 		self._session.cookies.set('gt', self._guestTokenManager.token, domain = '.twitter.com', path = '/', secure = True, expires = self._guestTokenManager.setTime + 10800)
