@@ -51,39 +51,9 @@ class User(snscrape.base.Entity):
 class InstagramCommonScraper(snscrape.base.Scraper):
 	'''Base class for all other Instagram scrapers.'''
 
-	def __init__(self, mode, name, **kwargs):
+	def __init__(self, **kwargs):
 		super().__init__(**kwargs)
-		if mode not in ('User', 'Hashtag', 'Location'):
-			raise ValueError('Invalid mode')
-		self._mode = mode
-		self._name = name
-
 		self._headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
-
-		if self._mode == 'User':
-			self._initialUrl = f'https://www.instagram.com/{self._name}/'
-			self._pageName = 'ProfilePage'
-			self._responseContainer = 'user'
-			self._edgeXToMedia = 'edge_owner_to_timeline_media'
-			self._pageIDKey = 'id'
-			self._queryHash = 'f2405b236d85e8296cf30347c9f08c2a'
-			self._variablesFormat = '{{"id":"{pageID}","first":50,"after":"{endCursor}"}}'
-		elif self._mode == 'Hashtag':
-			self._initialUrl = f'https://www.instagram.com/explore/tags/{self._name}/'
-			self._pageName = 'TagPage'
-			self._responseContainer = 'hashtag'
-			self._edgeXToMedia = 'edge_hashtag_to_media'
-			self._pageIDKey = 'name'
-			self._queryHash = 'f92f56d47dc7a55b606908374b43a314'
-			self._variablesFormat = '{{"tag_name":"{pageID}","first":50,"after":"{endCursor}"}}'
-		elif self._mode == 'Location':
-			self._initialUrl = f'https://www.instagram.com/explore/locations/{self._name}/'
-			self._pageName = 'LocationsPage'
-			self._responseContainer = 'location'
-			self._edgeXToMedia = 'edge_location_to_media'
-			self._pageIDKey = 'id'
-			self._queryHash = '1b84447a4d8b6d6d0426fefb34514485'
-			self._variablesFormat = '{{"id":"{pageID}","first":50,"after":"{endCursor}"}}'
 		self._initialPage = None
 
 	def _response_to_items(self, response):
@@ -147,12 +117,12 @@ class InstagramCommonScraper(snscrape.base.Scraper):
 
 		r = self._initial_page()
 		if r.status_code == 404:
-			logger.warning(f'{self._mode} does not exist')
+			logger.warning(f'Page does not exist')
 			return
 		response = r._snscrape_json_obj
 		rhxGis = response['rhx_gis'] if 'rhx_gis' in response else ''
 		if response['entry_data'][self._pageName][0]['graphql'][self._responseContainer][self._edgeXToMedia]['count'] == 0:
-			logger.info(f'{self._mode} has no posts')
+			logger.info(f'Page has no posts')
 			return
 		if not response['entry_data'][self._pageName][0]['graphql'][self._responseContainer][self._edgeXToMedia]['edges']:
 			logger.warning('Private account')
@@ -186,13 +156,23 @@ class InstagramCommonScraper(snscrape.base.Scraper):
 class InstagramUserScraper(InstagramCommonScraper):
 	name = 'instagram-user'
 
+	def __init__(self, username, **kwargs):
+		super().__init__(**kwargs)
+		self._initialUrl = f'https://www.instagram.com/{username}/'
+		self._pageName = 'ProfilePage'
+		self._responseContainer = 'user'
+		self._edgeXToMedia = 'edge_owner_to_timeline_media'
+		self._pageIDKey = 'id'
+		self._queryHash = 'f2405b236d85e8296cf30347c9f08c2a'
+		self._variablesFormat = '{{"id":"{pageID}","first":50,"after":"{endCursor}"}}'
+
 	@classmethod
 	def setup_parser(cls, subparser):
 		subparser.add_argument('username', type = snscrape.base.nonempty_string('username'), help = 'An Instagram username (no leading @)')
 
 	@classmethod
 	def from_args(cls, args):
-		return cls._construct(args, 'User', args.username)
+		return cls._construct(args, args.username)
 
 	def _get_entity(self):
 		r = self._initial_page()
@@ -231,17 +211,37 @@ class InstagramUserScraper(InstagramCommonScraper):
 class InstagramHashtagScraper(InstagramCommonScraper):
 	name = 'instagram-hashtag'
 
+	def __init__(self, hashtag, **kwargs):
+		super().__init__(**kwargs)
+		self._initialUrl = f'https://www.instagram.com/explore/tags/{hashtag}/'
+		self._pageName = 'TagPage'
+		self._responseContainer = 'hashtag'
+		self._edgeXToMedia = 'edge_hashtag_to_media'
+		self._pageIDKey = 'name'
+		self._queryHash = 'f92f56d47dc7a55b606908374b43a314'
+		self._variablesFormat = '{{"tag_name":"{pageID}","first":50,"after":"{endCursor}"}}'
+
 	@classmethod
 	def setup_parser(cls, subparser):
 		subparser.add_argument('hashtag', type = snscrape.base.nonempty_string('hashtag'), help = 'An Instagram hashtag (no leading #)')
 
 	@classmethod
 	def from_args(cls, args):
-		return cls._construct(args, 'Hashtag', args.hashtag)
+		return cls._construct(args, args.hashtag)
 
 
 class InstagramLocationScraper(InstagramCommonScraper):
 	name = 'instagram-location'
+
+	def __init__(self, locationId, **kwargs):
+		super().__init__(**kwargs)
+		self._initialUrl = f'https://www.instagram.com/explore/locations/{locationId}/'
+		self._pageName = 'LocationsPage'
+		self._responseContainer = 'location'
+		self._edgeXToMedia = 'edge_location_to_media'
+		self._pageIDKey = 'id'
+		self._queryHash = '1b84447a4d8b6d6d0426fefb34514485'
+		self._variablesFormat = '{{"id":"{pageID}","first":50,"after":"{endCursor}"}}'
 
 	@classmethod
 	def setup_parser(cls, subparser):
@@ -249,4 +249,4 @@ class InstagramLocationScraper(InstagramCommonScraper):
 
 	@classmethod
 	def from_args(cls, args):
-		return cls._construct(args, 'Location', args.locationid)
+		return cls._construct(args, args.locationid)

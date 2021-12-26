@@ -212,33 +212,41 @@ class RedditPushshiftScraper(snscrape.base.Scraper):
 		subparser.add_argument('--after', metavar = 'TIMESTAMP', type = int, help = 'Fetch results after a Unix timestamp')
 
 
-def _make_scraper(name_, validationFunc, apiField):
-	class Scraper(RedditPushshiftScraper):
-		name = f'reddit-{name_}'
+class RedditScraper(RedditPushshiftScraper):
+	def __init__(self, name, **kwargs):
+		super().__init__(**kwargs)
+		self._name = name
+		if not type(self)._validationFunc(self._name):
+			raise ValueError(f'invalid {type(self).name.split("-", 1)[1]} name')
 
-		def __init__(self, name, **kwargs):
-			super().__init__(**kwargs)
-			self._name = name
-			if not validationFunc(self._name):
-				raise ValueError(f'invalid {name_} name')
+	def get_items(self):
+		yield from self._iter_api_submissions_and_comments({type(self)._apiField: self._name})
 
-		def get_items(self):
-			yield from self._iter_api_submissions_and_comments({apiField: self._name})
+	@classmethod
+	def setup_parser(cls, subparser):
+		super()._setup_parser_opts(subparser)
+		name = cls.name.split('-', 1)[1]
+		subparser.add_argument(name, type = snscrape.base.nonempty_string(name))
 
-		@classmethod
-		def setup_parser(cls, subparser):
-			super()._setup_parser_opts(subparser)
-			subparser.add_argument(name_, type = snscrape.base.nonempty_string(name_))
-
-		@classmethod
-		def from_args(cls, args):
-			return cls._construct(args, getattr(args, name_), submissions = not args.noSubmissions, comments = not args.noComments, before = args.before, after = args.after)
-
-	Scraper.__name__ = f'Reddit{name_.capitalize()}Scraper'
-	Scraper.__qualname__ = Scraper.__name__
-	globals()[Scraper.__name__] = Scraper
+	@classmethod
+	def from_args(cls, args):
+		name = cls.name.split('-', 1)[1]
+		return cls._construct(args, getattr(args, name), submissions = not args.noSubmissions, comments = not args.noComments, before = args.before, after = args.after)
 
 
-_make_scraper('user', lambda x: re.match('^[A-Za-z0-9_-]{3,20}$', x), 'author')
-_make_scraper('subreddit', lambda x: re.match('^[A-Za-z0-9][A-Za-z0-9_]{2,20}$', x), 'subreddit')
-_make_scraper('search', lambda x: True, 'q')
+class RedditUserScraper(RedditScraper):
+	name = 'reddit-user'
+	_validationFunc = lambda x: re.match('^[A-Za-z0-9_-]{3,20}$', x)
+	_apiField = 'author'
+
+
+class RedditSubredditScraper(RedditScraper):
+	name = 'reddit-subreddit'
+	_validationFunc = lambda x: re.match('^[A-Za-z0-9][A-Za-z0-9_]{2,20}$', x)
+	_apiField = 'subreddit'
+
+
+class RedditSearchScraper(RedditScraper):
+	name = 'reddit-search'
+	_validationFunc = lambda x: True
+	_apiField = 'q'

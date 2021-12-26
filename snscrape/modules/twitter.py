@@ -226,24 +226,22 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 				_globalGuestTokenManager = GuestTokenManager()
 			guestTokenManager = _globalGuestTokenManager
 		self._guestTokenManager = guestTokenManager
-		self._set_random_user_agent()
 		self._apiHeaders = {
-			'User-Agent': self._userAgent,
+			'User-Agent': None,
 			'Authorization': _API_AUTHORIZATION_HEADER,
 			'Referer': self._baseUrl,
 			'Accept-Language': 'en-US,en;q=0.5',
 		}
+		self._set_random_user_agent()
 
 	def _set_random_user_agent(self):
 		self._userAgent = f'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.{random.randint(0, 9999)} Safari/537.{random.randint(0, 99)}'
+		self._apiHeaders['User-Agent'] = self._userAgent
 
 	def _check_guest_token_response(self, r):
 		if r.status_code != 200:
 			self._set_random_user_agent()
 			return False, f'non-200 response ({r.status_code})'
-		if 'document.cookie = decodeURIComponent("gt=' not in r.text and 'gt' not in r.cookies:
-			self._set_random_user_agent()
-			return False, 'unable to find guest token'
 		return True, None
 
 	def _ensure_guest_token(self, url = None):
@@ -256,6 +254,14 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 			if 'gt' in r.cookies:
 				logger.debug('Found guest token in cookies')
 				self._guestTokenManager.token = r.cookies['gt']
+			if not self._guestTokenManager.token:
+				logger.debug('No guest token in response')
+				logger.info('Retrieving guest token via API')
+				r = self._post('https://api.twitter.com/1.1/guest/activate.json', data = b'', headers = self._apiHeaders, responseOkCallback = self._check_guest_token_response)
+				o = r.json()
+				if not o.get('guest_token'):
+					raise snscrape.base.ScraperError('Unable to retrieve guest token')
+				self._guestTokenManager.token = o['guest_token']
 			assert self._guestTokenManager.token
 		logger.debug(f'Using guest token {self._guestTokenManager.token}')
 		self._session.cookies.set('gt', self._guestTokenManager.token, domain = '.twitter.com', path = '/', secure = True, expires = self._guestTokenManager.setTime + 10800)
