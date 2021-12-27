@@ -60,7 +60,7 @@
    :template: custom-module-template.rst
    :recursive:
 {% for item in modules %}
-   {{ item }}
+   {{ item.split('.')[-1] }}
 {%- endfor %}
 {% endif %}
 {% endblock %}
