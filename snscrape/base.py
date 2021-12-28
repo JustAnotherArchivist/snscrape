@@ -141,7 +141,17 @@ class Scraper:
 
 	@abc.abstractmethod
 	def get_items(self):
-		'''Iterator yielding Items.'''
+		'''Get items according to the specifications given when instantiating this scraper.
+
+		Yields:
+			Individual items.
+		Returns:
+			An iterator of items.
+
+		Note:
+			This method is a generator. The number of items is not known beforehand.
+			Please keep in mind that the scraping results can possibly be a lot of items.
+		'''
 
 		pass
 
