@@ -14,6 +14,8 @@ logger = logging.getLogger(__name__)
 
 @dataclasses.dataclass
 class FacebookPost(snscrape.base.Item):
+	'''An entity representing one post.'''
+
 	cleanUrl: str
 	dirtyUrl: str
 	date: datetime.datetime
@@ -28,6 +30,8 @@ class FacebookPost(snscrape.base.Item):
 
 @dataclasses.dataclass
 class User(snscrape.base.Entity):
+	'''An entity representing one user.'''
+
 	username: str
 	pageId: int
 	name: str
@@ -47,6 +51,8 @@ class User(snscrape.base.Entity):
 
 
 class FacebookCommonScraper(snscrape.base.Scraper):
+	'''Base class for all other Facebook scraper classes.'''
+
 	def _clean_url(self, dirtyUrl):
 		u = urllib.parse.urlparse(dirtyUrl)
 		if u.path == '/permalink.php':
@@ -211,6 +217,8 @@ class FacebookUserAndCommunityScraper(FacebookCommonScraper):
 
 
 class FacebookUserScraper(FacebookUserAndCommunityScraper):
+	'''Scraper class, designed to scrape specific user's profile for posts.'''
+
 	name = 'facebook-user'
 
 	def __init__(self, *args, **kwargs):
@@ -289,6 +297,8 @@ class FacebookUserScraper(FacebookUserAndCommunityScraper):
 
 
 class FacebookCommunityScraper(FacebookUserAndCommunityScraper):
+	'''Scraper class, designed to collect community/visitor posts.'''
+
 	name = 'facebook-community'
 
 	def __init__(self, *args, **kwargs):
@@ -297,9 +307,15 @@ class FacebookCommunityScraper(FacebookUserAndCommunityScraper):
 
 
 class FacebookGroupScraper(FacebookCommonScraper):
+	'''Scraper class, designed to collect posts in a Facebook group.'''
+
 	name = 'facebook-group'
 
-	def __init__(self, group, **kwargs):
+	def __init__(self, group: str, **kwargs):
+		'''
+		Args:
+			group: A group name or ID.
+		'''
 		super().__init__(**kwargs)
 		self._group = group
 
