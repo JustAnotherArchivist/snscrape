@@ -10,6 +10,8 @@ _userDoesNotExist = object()
 
 @dataclasses.dataclass
 class Post(snscrape.base.Item):
+	'''An object representing one post.'''
+
 	url: str
 	id: str
 	user: typing.Optional['User']
@@ -30,6 +32,8 @@ class Post(snscrape.base.Item):
 
 @dataclasses.dataclass
 class User(snscrape.base.Entity):
+	'''An object representing one user.'''
+
 	screenname: str
 	uid: int
 	verified: bool
@@ -45,6 +49,8 @@ class User(snscrape.base.Entity):
 
 
 class WeiboUserScraper(snscrape.base.Scraper):
+	'''Scraper class, designed to scrape a specific Weibo user's profile for posts.'''
+
 	name = 'weibo-user'
 
 	def __init__(self, name, uid, **kwargs):
