@@ -44,13 +44,16 @@ class Comment(snscrape.base.Item):
 
 
 class RedditPushshiftScraper(snscrape.base.Scraper):
-	def __init__(self, submissions = True, comments = True, before = None, after = None, **kwargs):
+	def __init__(self, name, submissions = True, comments = True, before = None, after = None, **kwargs):
 		super().__init__(**kwargs)
+		self._name = name
 		self._submissions = submissions
 		self._comments = comments
 		self._before = before
 		self._after = after
 
+		if not type(self)._validationFunc(self._name):
+			raise ValueError(f'invalid {type(self).name.split("-", 1)[1]} name')
 		if not self._submissions and not self._comments:
 			raise ValueError('At least one of submissions and comments must be True')
 
@@ -194,27 +197,15 @@ class RedditPushshiftScraper(snscrape.base.Scraper):
 					yield from submissionsIter
 					break
 
-	@classmethod
-	def _setup_parser_opts(cls, subparser):
-		subparser.add_argument('--no-submissions', dest = 'noSubmissions', action = 'store_true', default = False, help = 'Don\'t list submissions')
-		subparser.add_argument('--no-comments', dest = 'noComments', action = 'store_true', default = False, help = 'Don\'t list comments')
-		subparser.add_argument('--before', metavar = 'TIMESTAMP', type = int, help = 'Fetch results before a Unix timestamp')
-		subparser.add_argument('--after', metavar = 'TIMESTAMP', type = int, help = 'Fetch results after a Unix timestamp')
-
-
-class RedditScraper(RedditPushshiftScraper):
-	def __init__(self, name, **kwargs):
-		super().__init__(**kwargs)
-		self._name = name
-		if not type(self)._validationFunc(self._name):
-			raise ValueError(f'invalid {type(self).name.split("-", 1)[1]} name')
-
 	def get_items(self):
 		yield from self._iter_api_submissions_and_comments({type(self)._apiField: self._name})
 
 	@classmethod
 	def setup_parser(cls, subparser):
-		super()._setup_parser_opts(subparser)
+		subparser.add_argument('--no-submissions', dest = 'noSubmissions', action = 'store_true', default = False, help = 'Don\'t list submissions')
+		subparser.add_argument('--no-comments', dest = 'noComments', action = 'store_true', default = False, help = 'Don\'t list comments')
+		subparser.add_argument('--before', metavar = 'TIMESTAMP', type = int, help = 'Fetch results before a Unix timestamp')
+		subparser.add_argument('--after', metavar = 'TIMESTAMP', type = int, help = 'Fetch results after a Unix timestamp')
 		name = cls.name.split('-', 1)[1]
 		subparser.add_argument(name, type = snscrape.base.nonempty_string(name))
 
@@ -224,19 +215,19 @@ class RedditScraper(RedditPushshiftScraper):
 		return cls._construct(args, getattr(args, name), submissions = not args.noSubmissions, comments = not args.noComments, before = args.before, after = args.after)
 
 
-class RedditUserScraper(RedditScraper):
+class RedditUserScraper(RedditPushshiftScraper):
 	name = 'reddit-user'
 	_validationFunc = lambda x: re.match('^[A-Za-z0-9_-]{3,20}$', x)
 	_apiField = 'author'
 
 
-class RedditSubredditScraper(RedditScraper):
+class RedditSubredditScraper(RedditPushshiftScraper):
 	name = 'reddit-subreddit'
 	_validationFunc = lambda x: re.match('^[A-Za-z0-9][A-Za-z0-9_]{2,20}$', x)
 	_apiField = 'subreddit'
 
 
-class RedditSearchScraper(RedditScraper):
+class RedditSearchScraper(RedditPushshiftScraper):
 	name = 'reddit-search'
 	_validationFunc = lambda x: True
 	_apiField = 'q'
