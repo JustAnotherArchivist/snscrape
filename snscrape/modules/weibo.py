@@ -1,10 +1,13 @@
+__all__ = ['Post', 'User', 'WeiboUserScraper']
+
+
 import dataclasses
 import logging
 import snscrape.base
 import typing
 
 
-logger = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__)
 _userDoesNotExist = object()
 
 
@@ -63,7 +66,7 @@ class WeiboUserScraper(snscrape.base.Scraper):
 			# Redirect to uid URL
 			self._uid = int(r.headers['Location'][3:])
 		elif r.status_code == 200 and '<p class="h5-4con">用户不存在</p>' in r.text:
-			logger.warning('User does not exist')
+			_logger.warning('User does not exist')
 			self._uid = _userDoesNotExist
 		else:
 			raise snscrape.base.ScraperError(f'Got unexpected response on resolving username ({r.status_code})')
@@ -106,7 +109,7 @@ class WeiboUserScraper(snscrape.base.Scraper):
 			o = r.json()
 			for card in o['data']['cards']:
 				if card['card_type'] != 9:
-					logger.warning(f'Skipping card of type {card["card_type"]}')
+					_logger.warning(f'Skipping card of type {card["card_type"]}')
 					continue
 				yield self._mblog_to_item(card['mblog'])
 			if 'since_id' not in o['data']['cardlistInfo']:

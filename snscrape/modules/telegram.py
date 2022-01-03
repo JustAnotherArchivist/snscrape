@@ -1,3 +1,6 @@
+__all__ = ['LinkPreview', 'TelegramPost', 'Channel', 'TelegramChannelScraper']
+
+
 import bs4
 import dataclasses
 import datetime
@@ -8,7 +11,7 @@ import typing
 import urllib.parse
 
 
-logger = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__)
 _SINGLE_MEDIA_LINK_PATTERN = re.compile(r'^https://t\.me/[^/]+/\d+\?single$')
 
 
@@ -84,7 +87,7 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 			dateDiv = post.find('div', class_ = 'tgme_widget_message_footer').find('a', class_ = 'tgme_widget_message_date')
 			rawUrl = dateDiv['href']
 			if not rawUrl.startswith('https://t.me/') or sum(x == '/' for x in rawUrl) != 4 or rawUrl.rsplit('/', 1)[1].strip('0123456789') != '':
-				logger.warning(f'Possibly incorrect URL: {rawUrl!r}')
+				_logger.warning(f'Possibly incorrect URL: {rawUrl!r}')
 			url = rawUrl.replace('//t.me/', '//t.me/s/')
 			date = datetime.datetime.strptime(dateDiv.find('time', datetime = True)['datetime'].replace('-', '', 2).replace(':', ''), '%Y%m%dT%H%M%S%z')
 			if (message := post.find('div', class_ = 'tgme_widget_message_text')):
@@ -120,14 +123,14 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 					if imageI['style'].startswith("background-image:url('"):
 						kwargs['image'] = imageI['style'][22 : imageI['style'].index("'", 22)]
 					else:
-						logger.warning(f'Could not process link preview image on {url}')
+						_logger.warning(f'Could not process link preview image on {url}')
 				linkPreview = LinkPreview(**kwargs)
 			yield TelegramPost(url = url, date = date, content = content, outlinks = outlinks, linkPreview = linkPreview)
 
 	def get_items(self):
 		r, soup = self._initial_page()
 		if '/s/' not in r.url:
-			logger.warning('No public post list for this user')
+			_logger.warning('No public post list for this user')
 			return
 		while True:
 			yield from self._soup_to_items(soup, r.url)
@@ -166,7 +169,7 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 			kwargs['username'] = next(self._soup_to_items(soup, r.url, onlyUsername = True))
 		except StopIteration:
 			# If there are no posts, fall back to the channel info div, although that should never happen due to the 'Channel created' entry.
-			logger.warning('Could not find a post; extracting username from channel info div, which may not be capitalised correctly')
+			_logger.warning('Could not find a post; extracting username from channel info div, which may not be capitalised correctly')
 			kwargs['username'] = channelInfoDiv.find('div', class_ = 'tgme_channel_info_header_username').text[1:] # Remove @
 		if (descriptionDiv := channelInfoDiv.find('div', class_ = 'tgme_channel_info_description')):
 			kwargs['description'] = descriptionDiv.text

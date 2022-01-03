@@ -1,3 +1,6 @@
+__all__ = ['FacebookPost', 'User', 'FacebookUserScraper', 'FacebookCommunityScraper', 'FacebookGroupScraper']
+
+
 import bs4
 import dataclasses
 import datetime
@@ -9,7 +12,7 @@ import typing
 import urllib.parse
 
 
-logger = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass
@@ -46,7 +49,7 @@ class User(snscrape.base.Entity):
 		return f'https://www.facebook.com/{self.username}/'
 
 
-class FacebookCommonScraper(snscrape.base.Scraper):
+class _FacebookCommonScraper(snscrape.base.Scraper):
 	def _clean_url(self, dirtyUrl):
 		u = urllib.parse.urlparse(dirtyUrl)
 		if u.path == '/permalink.php':
@@ -119,7 +122,7 @@ class FacebookCommonScraper(snscrape.base.Scraper):
 			entryA = entry.find('a', class_ = '_5pcq') # There can be more than one, e.g. when a post is shared by another user, but the first one is always the one of this entry.
 			mediaSetA = entry.find('a', class_ = '_17z-')
 			if not mediaSetA and not entryA:
-				logger.warning(f'Ignoring link-less entry after {cleanUrl}: {entry.text!r}')
+				_logger.warning(f'Ignoring link-less entry after {cleanUrl}: {entry.text!r}')
 				continue
 			if mediaSetA and (not entryA or entryA['href'] == '#'):
 				href = mediaSetA['href']
@@ -128,7 +131,7 @@ class FacebookCommonScraper(snscrape.base.Scraper):
 			oddLink, warn = self._is_odd_link(href, entry.text, mode)
 			if oddLink:
 				if warn:
-					logger.warning(f'Ignoring odd link: {href}')
+					_logger.warning(f'Ignoring odd link: {href}')
 				continue
 			dirtyUrl = urllib.parse.urljoin(baseUrl, href)
 			cleanUrl = self._clean_url(dirtyUrl)
@@ -146,7 +149,7 @@ class FacebookCommonScraper(snscrape.base.Scraper):
 					continue
 				query = urllib.parse.parse_qs(urllib.parse.urlparse(href).query)
 				if 'u' not in query or len(query['u']) != 1:
-					logger.warning(f'Ignoring odd outlink: {href}')
+					_logger.warning(f'Ignoring odd outlink: {href}')
 					continue
 				outlink = query['u'][0]
 				if outlink.startswith('http://') or outlink.startswith('https://') and outlink not in outlinks:
@@ -154,7 +157,7 @@ class FacebookCommonScraper(snscrape.base.Scraper):
 			yield FacebookPost(cleanUrl = cleanUrl, dirtyUrl = dirtyUrl, date = date, content = content, outlinks = outlinks)
 
 
-class FacebookUserAndCommunityScraper(FacebookCommonScraper):
+class _FacebookUserAndCommunityScraper(_FacebookCommonScraper):
 	def __init__(self, username, **kwargs):
 		super().__init__(**kwargs)
 		self._username = username
@@ -164,7 +167,7 @@ class FacebookUserAndCommunityScraper(FacebookCommonScraper):
 
 	def _initial_page(self):
 		if self._initialPage is None:
-			logger.info('Retrieving initial data')
+			_logger.info('Retrieving initial data')
 			r = self._get(self._baseUrl, headers = self._headers)
 			if r.status_code not in (200, 404):
 				raise snscrape.base.ScraperException(f'Got status code {r.status_code}')
@@ -178,12 +181,12 @@ class FacebookUserAndCommunityScraper(FacebookCommonScraper):
 
 		r, soup = self._initial_page()
 		if r.status_code == 404:
-			logger.warning('User does not exist')
+			_logger.warning('User does not exist')
 			return
 		yield from self._soup_to_items(soup, self._baseUrl, 'user')
 
 		while (nextPageLink := soup.find('a', ajaxify = nextPageLinkPattern)):
-			logger.info('Retrieving next page')
+			_logger.info('Retrieving next page')
 
 			# The web app sends a bunch of additional parameters. Most of them would be easy to add, but there's also __dyn, which is a compressed list of the "modules" loaded in the browser.
 			# Reproducing that would be difficult to get right, especially as Facebook's codebase evolves, so it's just not sent at all here.
@@ -210,7 +213,7 @@ class FacebookUserAndCommunityScraper(FacebookCommonScraper):
 		return cls._construct(args, args.username)
 
 
-class FacebookUserScraper(FacebookUserAndCommunityScraper):
+class FacebookUserScraper(_FacebookUserAndCommunityScraper):
 	name = 'facebook-user'
 
 	def __init__(self, *args, **kwargs):
@@ -288,7 +291,7 @@ class FacebookUserScraper(FacebookUserAndCommunityScraper):
 		return User(**kwargs)
 
 
-class FacebookCommunityScraper(FacebookUserAndCommunityScraper):
+class FacebookCommunityScraper(_FacebookUserAndCommunityScraper):
 	name = 'facebook-community'
 
 	def __init__(self, *args, **kwargs):
@@ -296,7 +299,7 @@ class FacebookCommunityScraper(FacebookUserAndCommunityScraper):
 		self._baseUrl = f'https://www.facebook.com/{self._username}/community/'
 
 
-class FacebookGroupScraper(FacebookCommonScraper):
+class FacebookGroupScraper(_FacebookCommonScraper):
 	name = 'facebook-group'
 
 	def __init__(self, group, **kwargs):
@@ -313,7 +316,7 @@ class FacebookGroupScraper(FacebookCommonScraper):
 		baseUrl = f'https://upload.facebook.com/groups/{self._group}/?sorting_setting=CHRONOLOGICAL'
 		r = self._get(baseUrl, headers = headers)
 		if r.status_code == 404:
-			logger.warning('Group does not exist')
+			_logger.warning('Group does not exist')
 			return
 		elif r.status_code != 200:
 			raise snscrape.base.ScraperException(f'Got status code {r.status_code}')

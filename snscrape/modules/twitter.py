@@ -1,3 +1,20 @@
+__all__ = [
+	'Tweet', 'Medium', 'Photo', 'VideoVariant', 'Video', 'Gif', 'DescriptionUrl', 'Coordinates', 'Place',
+	'User', 'UserLabel',
+	'Trend',
+	'ScrollDirection',
+	'GuestTokenManager',
+	'TwitterSearchScraper',
+	'TwitterUserScraper',
+	'TwitterProfileScraper',
+	'TwitterHashtagScraper',
+	'TwitterTweetScraperMode',
+	'TwitterTweetScraper',
+	'TwitterListPostsScraper',
+	'TwitterTrendsScraper',
+]
+
+
 import collections
 import dataclasses
 import datetime
@@ -15,7 +32,7 @@ import typing
 import urllib.parse
 
 
-logger = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__)
 _API_AUTHORIZATION_HEADER = 'Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs=1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA'
 _globalGuestTokenManager = None
 
@@ -193,7 +210,7 @@ class GuestTokenManager:
 		self._setTime = 0.0
 
 
-class TwitterAPIScraper(snscrape.base.Scraper):
+class _TwitterAPIScraper(snscrape.base.Scraper):
 	def __init__(self, baseUrl, guestTokenManager = None, **kwargs):
 		super().__init__(**kwargs)
 		self._baseUrl = baseUrl
@@ -223,24 +240,24 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 
 	def _ensure_guest_token(self, url = None):
 		if self._guestTokenManager.token is None:
-			logger.info('Retrieving guest token')
+			_logger.info('Retrieving guest token')
 			r = self._get(self._baseUrl if url is None else url, headers = {'User-Agent': self._userAgent}, responseOkCallback = self._check_guest_token_response)
 			if (match := re.search(r'document\.cookie = decodeURIComponent\("gt=(\d+); Max-Age=10800; Domain=\.twitter\.com; Path=/; Secure"\);', r.text)):
-				logger.debug('Found guest token in HTML')
+				_logger.debug('Found guest token in HTML')
 				self._guestTokenManager.token = match.group(1)
 			if 'gt' in r.cookies:
-				logger.debug('Found guest token in cookies')
+				_logger.debug('Found guest token in cookies')
 				self._guestTokenManager.token = r.cookies['gt']
 			if not self._guestTokenManager.token:
-				logger.debug('No guest token in response')
-				logger.info('Retrieving guest token via API')
+				_logger.debug('No guest token in response')
+				_logger.info('Retrieving guest token via API')
 				r = self._post('https://api.twitter.com/1.1/guest/activate.json', data = b'', headers = self._apiHeaders, responseOkCallback = self._check_guest_token_response)
 				o = r.json()
 				if not o.get('guest_token'):
 					raise snscrape.base.ScraperError('Unable to retrieve guest token')
 				self._guestTokenManager.token = o['guest_token']
 			assert self._guestTokenManager.token
-		logger.debug(f'Using guest token {self._guestTokenManager.token}')
+		_logger.debug(f'Using guest token {self._guestTokenManager.token}')
 		self._session.cookies.set('gt', self._guestTokenManager.token, domain = '.twitter.com', path = '/', secure = True, expires = self._guestTokenManager.setTime + 10800)
 		self._apiHeaders['x-guest-token'] = self._guestTokenManager.token
 
@@ -291,7 +308,7 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 		stopOnEmptyResponse = False
 		emptyResponsesOnCursor = 0
 		while True:
-			logger.info(f'Retrieving scroll page {cursor}')
+			_logger.info(f'Retrieving scroll page {cursor}')
 			obj = self._get_api_data(endpoint, reqParams)
 			yield obj
 
@@ -375,14 +392,14 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 			if 'promotedMetadata' in entry['item']['content']['tweet']: # Promoted tweet aka ads
 				return
 			if entry['item']['content']['tweet']['id'] not in obj['globalObjects']['tweets']:
-				logger.warning(f'Skipping tweet {entry["item"]["content"]["tweet"]["id"]} which is not in globalObjects')
+				_logger.warning(f'Skipping tweet {entry["item"]["content"]["tweet"]["id"]} which is not in globalObjects')
 				return
 			tweet = obj['globalObjects']['tweets'][entry['item']['content']['tweet']['id']]
 		elif 'tombstone' in entry['item']['content']:
 			if 'tweet' not in entry['item']['content']['tombstone']: # E.g. deleted reply
 				return
 			if entry['item']['content']['tombstone']['tweet']['id'] not in obj['globalObjects']['tweets']:
-				logger.warning(f'Skipping tweet {entry["item"]["content"]["tombstone"]["tweet"]["id"]} which is not in globalObjects')
+				_logger.warning(f'Skipping tweet {entry["item"]["content"]["tombstone"]["tweet"]["id"]} which is not in globalObjects')
 				return
 			tweet = obj['globalObjects']['tweets'][entry['item']['content']['tombstone']['tweet']['id']]
 		else:
@@ -417,11 +434,11 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 			for medium in tweet['extended_entities']['media']:
 				if medium['type'] == 'photo':
 					if '.' not in medium['media_url_https']:
-						logger.warning(f'Skipping malformed medium URL on tweet {kwargs["id"]}: {medium["media_url_https"]!r} contains no dot')
+						_logger.warning(f'Skipping malformed medium URL on tweet {kwargs["id"]}: {medium["media_url_https"]!r} contains no dot')
 						continue
 					baseUrl, format = medium['media_url_https'].rsplit('.', 1)
 					if format not in ('jpg', 'png'):
-						logger.warning(f'Skipping photo with unknown format on tweet {kwargs["id"]}: {format!r}')
+						_logger.warning(f'Skipping photo with unknown format on tweet {kwargs["id"]}: {format!r}')
 						continue
 					media.append(Photo(
 						previewUrl = f'{baseUrl}?format={format}&name=small',
@@ -536,7 +553,7 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 		return UserLabel(**labelKwargs)
 
 
-class TwitterSearchScraper(TwitterAPIScraper):
+class TwitterSearchScraper(_TwitterAPIScraper):
 	name = 'twitter-search'
 
 	def __init__(self, query, cursor = None, top = False, **kwargs):
@@ -765,7 +782,7 @@ class TwitterTweetScraperMode(enum.Enum):
 		return cls.SINGLE
 
 
-class TwitterTweetScraper(TwitterAPIScraper):
+class TwitterTweetScraper(_TwitterAPIScraper):
 	name = 'twitter-tweet'
 
 	def __init__(self, tweetId, mode = TwitterTweetScraperMode.SINGLE, **kwargs):
@@ -851,7 +868,7 @@ class TwitterListPostsScraper(TwitterSearchScraper):
 		return cls._construct(args, args.list)
 
 
-class TwitterTrendsScraper(TwitterAPIScraper):
+class TwitterTrendsScraper(_TwitterAPIScraper):
 	name = 'twitter-trends'
 
 	def __init__(self, **kwargs):

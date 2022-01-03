@@ -1,3 +1,6 @@
+__all__ = ['Submission', 'Comment', 'RedditUserScraper', 'RedditSubredditScraper', 'RedditSearchScraper']
+
+
 import dataclasses
 import datetime
 import logging
@@ -9,7 +12,7 @@ import time
 import typing
 
 
-logger = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 
 # Most of these fields should never be None, but due to broken data, they sometimes are anyway...
@@ -43,7 +46,7 @@ class Comment(snscrape.base.Item):
 		return self.url
 
 
-class RedditPushshiftScraper(snscrape.base.Scraper):
+class _RedditPushshiftScraper(snscrape.base.Scraper):
 	def __init__(self, name, submissions = True, comments = True, before = None, after = None, **kwargs):
 		super().__init__(**kwargs)
 		self._name = name
@@ -59,7 +62,7 @@ class RedditPushshiftScraper(snscrape.base.Scraper):
 
 	def _handle_rate_limiting(self, r):
 		if r.status_code == 429:
-			logger.info('Got 429 response, sleeping')
+			_logger.info('Got 429 response, sleeping')
 			time.sleep(10)
 			return False, 'rate-limited'
 		if r.status_code != 200:
@@ -128,7 +131,7 @@ class RedditPushshiftScraper(snscrape.base.Scraper):
 					else: # E.g. submission 617p51 but can likely happen for comments as well
 						permalink = f'/comments/{d["link_id"][3:]}/_/{d["id"]}/'
 				else:
-					logger.warning(f'Unable to find or construct permalink')
+					_logger.warning(f'Unable to find or construct permalink')
 					permalink = '/'
 
 		kwargs = {
@@ -215,19 +218,19 @@ class RedditPushshiftScraper(snscrape.base.Scraper):
 		return cls._construct(args, getattr(args, name), submissions = not args.noSubmissions, comments = not args.noComments, before = args.before, after = args.after)
 
 
-class RedditUserScraper(RedditPushshiftScraper):
+class RedditUserScraper(_RedditPushshiftScraper):
 	name = 'reddit-user'
 	_validationFunc = lambda x: re.match('^[A-Za-z0-9_-]{3,20}$', x)
 	_apiField = 'author'
 
 
-class RedditSubredditScraper(RedditPushshiftScraper):
+class RedditSubredditScraper(_RedditPushshiftScraper):
 	name = 'reddit-subreddit'
 	_validationFunc = lambda x: re.match('^[A-Za-z0-9][A-Za-z0-9_]{2,20}$', x)
 	_apiField = 'subreddit'
 
 
-class RedditSearchScraper(RedditPushshiftScraper):
+class RedditSearchScraper(_RedditPushshiftScraper):
 	name = 'reddit-search'
 	_validationFunc = lambda x: True
 	_apiField = 'q'

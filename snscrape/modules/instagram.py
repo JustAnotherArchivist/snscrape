@@ -1,3 +1,6 @@
+__all__ = ['InstagramPost', 'User', 'InstagramUserScraper', 'InstagramHashtagScraper', 'InstagramLocationScraper']
+
+
 import dataclasses
 import datetime
 import hashlib
@@ -8,7 +11,7 @@ import snscrape.base
 import typing
 
 
-logger = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass
@@ -44,7 +47,7 @@ class User(snscrape.base.Entity):
 		return f'https://www.instagram.com/{self.username}/'
 
 
-class InstagramCommonScraper(snscrape.base.Scraper):
+class _InstagramCommonScraper(snscrape.base.Scraper):
 	def __init__(self, **kwargs):
 		super().__init__(**kwargs)
 		self._headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
@@ -70,7 +73,7 @@ class InstagramCommonScraper(snscrape.base.Scraper):
 
 	def _initial_page(self):
 		if self._initialPage is None:
-			logger.info('Retrieving initial data')
+			_logger.info('Retrieving initial data')
 			r = self._get(self._initialUrl, headers = self._headers, responseOkCallback = self._check_initial_page_callback)
 			if r.status_code not in (200, 404):
 				raise snscrape.base.ScraperException(f'Got status code {r.status_code}')
@@ -103,15 +106,15 @@ class InstagramCommonScraper(snscrape.base.Scraper):
 	def get_items(self):
 		r = self._initial_page()
 		if r.status_code == 404:
-			logger.warning(f'Page does not exist')
+			_logger.warning(f'Page does not exist')
 			return
 		response = r._snscrape_json_obj
 		rhxGis = response['rhx_gis'] if 'rhx_gis' in response else ''
 		if response['entry_data'][self._pageName][0]['graphql'][self._responseContainer][self._edgeXToMedia]['count'] == 0:
-			logger.info(f'Page has no posts')
+			_logger.info(f'Page has no posts')
 			return
 		if not response['entry_data'][self._pageName][0]['graphql'][self._responseContainer][self._edgeXToMedia]['edges']:
-			logger.warning('Private account')
+			_logger.warning('Private account')
 			return
 		pageID = response['entry_data'][self._pageName][0]['graphql'][self._responseContainer][self._pageIDKey]
 		yield from self._response_to_items(response['entry_data'][self._pageName][0]['graphql'])
@@ -121,7 +124,7 @@ class InstagramCommonScraper(snscrape.base.Scraper):
 
 		headers = self._headers.copy()
 		while True:
-			logger.info(f'Retrieving endCursor = {endCursor!r}')
+			_logger.info(f'Retrieving endCursor = {endCursor!r}')
 			variables = self._variablesFormat.format(**locals())
 			headers['X-Requested-With'] = 'XMLHttpRequest'
 			headers['X-Instagram-GIS'] = hashlib.md5(f'{rhxGis}:{variables}'.encode('utf-8')).hexdigest()
@@ -139,7 +142,7 @@ class InstagramCommonScraper(snscrape.base.Scraper):
 			endCursor = response['data'][self._responseContainer][self._edgeXToMedia]['page_info']['end_cursor']
 
 
-class InstagramUserScraper(InstagramCommonScraper):
+class InstagramUserScraper(_InstagramCommonScraper):
 	name = 'instagram-user'
 
 	def __init__(self, username, **kwargs):
@@ -194,7 +197,7 @@ class InstagramUserScraper(InstagramCommonScraper):
 		  )
 
 
-class InstagramHashtagScraper(InstagramCommonScraper):
+class InstagramHashtagScraper(_InstagramCommonScraper):
 	name = 'instagram-hashtag'
 
 	def __init__(self, hashtag, **kwargs):
@@ -216,7 +219,7 @@ class InstagramHashtagScraper(InstagramCommonScraper):
 		return cls._construct(args, args.hashtag)
 
 
-class InstagramLocationScraper(InstagramCommonScraper):
+class InstagramLocationScraper(_InstagramCommonScraper):
 	name = 'instagram-location'
 
 	def __init__(self, locationId, **kwargs):
