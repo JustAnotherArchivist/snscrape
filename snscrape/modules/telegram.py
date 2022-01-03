@@ -84,7 +84,7 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 			dateDiv = post.find('div', class_ = 'tgme_widget_message_footer').find('a', class_ = 'tgme_widget_message_date')
 			rawUrl = dateDiv['href']
 			if not rawUrl.startswith('https://t.me/') or sum(x == '/' for x in rawUrl) != 4 or rawUrl.rsplit('/', 1)[1].strip('0123456789') != '':
-				self.logger.warning(f'Possibly incorrect URL: {rawUrl!r}')
+				logger.warning(f'Possibly incorrect URL: {rawUrl!r}')
 			url = rawUrl.replace('//t.me/', '//t.me/s/')
 			date = datetime.datetime.strptime(dateDiv.find('time', datetime = True)['datetime'].replace('-', '', 2).replace(':', ''), '%Y%m%dT%H%M%S%z')
 			if (message := post.find('div', class_ = 'tgme_widget_message_text')):
@@ -120,7 +120,7 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 					if imageI['style'].startswith("background-image:url('"):
 						kwargs['image'] = imageI['style'][22 : imageI['style'].index("'", 22)]
 					else:
-						self.logger.warning(f'Could not process link preview image on {url}')
+						logger.warning(f'Could not process link preview image on {url}')
 				linkPreview = LinkPreview(**kwargs)
 			yield TelegramPost(url = url, date = date, content = content, outlinks = outlinks, linkPreview = linkPreview)
 
