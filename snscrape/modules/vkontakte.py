@@ -154,7 +154,7 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 			_logger.warning(f'Skipping post without link: {str(post)[:200]!r}')
 			return
 		url = urllib.parse.urljoin(self._baseUrl, postLink['href'])
-		assert (url.startswith('https://vk.com/wall') or (isCopy and (url.startswith('https://vk.com/video') or url.startswith('https://vk.com/photo')))) and '_' in url and url[-1] != '_' and url.rsplit('_', 1)[1].strip('0123456789') == ''
+		assert (url.startswith('https://vk.com/wall') or (isCopy and (url.startswith('https://vk.com/video') or url.startswith('https://vk.com/photo')))) and '_' in url and url[-1] != '_' and url.rsplit('_', 1)[1].strip('0123456789') in ('', '?reply=')
 		if not isCopy:
 			dateSpan = post.find('div', class_ = 'post_date').find('span', class_ = 'rel_date')
 		else:
