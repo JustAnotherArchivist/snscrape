@@ -57,13 +57,13 @@ body:
     attributes:
       label: Backtrace
       description: What is the error snscrape gives you, if any?
-  - type: input
+  - type: textarea
     validations:
       required: false
     attributes:
       label: Dump of locals
       description: | 
-        Here put a link to the dump of your snscrape locals, if it's a crash. (snscrape should tell you the path).
+        Here attach the dump of your snscrape locals, if it's a crash. (snscrape should tell you the path).
         Please note that it may contain identifying info such as IP address, if the website returns that.
         You can also optionally request to exchange the file in private.
         Finally, if snscrape didn't crash, leave this field blank.
