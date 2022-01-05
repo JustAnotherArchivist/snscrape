@@ -141,15 +141,15 @@ class WeiboUserScraper(snscrape.base.Scraper):
 		return self._user_info_to_entity(o['data']['userInfo'])
 
 	@classmethod
-	def setup_parser(cls, subparser):
+	def cli_setup_parser(cls, subparser):
 		subparser.add_argument('user', type = snscrape.base.nonempty_string('user'), help = 'A user name or ID')
 
 	@classmethod
-	def from_args(cls, args):
+	def cli_from_args(cls, args):
 		if len(args.user) == 10 and args.user.strip('0123456789') == '':
 			uid = args.user
 			name = None
 		else:
 			uid = None
 			name = args.user
-		return cls._construct(args, name = name, uid = uid)
+		return cls.cli_construct(args, name = name, uid = uid)

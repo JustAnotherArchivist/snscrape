@@ -374,9 +374,9 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 		return User(**kwargs)
 
 	@classmethod
-	def setup_parser(cls, subparser):
+	def cli_setup_parser(cls, subparser):
 		subparser.add_argument('username', type = snscrape.base.nonempty_string('username'), help = 'A VK username')
 
 	@classmethod
-	def from_args(cls, args):
-		return cls._construct(args, args.username)
+	def cli_from_args(cls, args):
+		return cls.cli_construct(args, args.username)

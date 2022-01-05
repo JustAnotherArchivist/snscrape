@@ -195,9 +195,9 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 		return Channel(**kwargs)
 
 	@classmethod
-	def setup_parser(cls, subparser):
+	def cli_setup_parser(cls, subparser):
 		subparser.add_argument('channel', type = snscrape.base.nonempty_string('channel'), help = 'A channel name')
 
 	@classmethod
-	def from_args(cls, args):
-		return cls._construct(args, args.channel)
+	def cli_from_args(cls, args):
+		return cls.cli_construct(args, args.channel)
