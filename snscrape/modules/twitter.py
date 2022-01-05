@@ -20,10 +20,12 @@ import dataclasses
 import datetime
 import email.utils
 import enum
+import filelock
 import itertools
 import json
 import random
 import logging
+import os
 import re
 import snscrape.base
 import string
@@ -208,6 +210,62 @@ class GuestTokenManager:
 	def reset(self):
 		self._token = None
 		self._setTime = 0.0
+
+
+class _CLIGuestTokenManager(GuestTokenManager):
+	def __init__(self):
+		super().__init__()
+		cacheHome = os.environ.get('XDG_CACHE_HOME')
+		if not cacheHome or not os.path.isabs(cacheHome):
+			# This should be ${HOME}/.cache, but the HOME environment variable may not exist on non-POSIX-compliant systems.
+			# On POSIX-compliant systems, the XDG Base Directory specification is followed exactly since ~ expands to $HOME if it is present.
+			cacheHome = os.path.join(os.path.expanduser('~'), '.cache')
+		dir = os.path.join(cacheHome, 'snscrape')
+		if not os.path.isdir(dir):
+			# os.makedirs does not apply mode recursively anymore. https://bugs.python.org/issue42367
+			# This ensures that the XDG_CACHE_HOME is created with the right permissions.
+			os.makedirs(os.path.dirname(dir), mode = 0o700, exist_ok = True)
+			os.mkdir(dir, mode = 0o700)
+		self._file = os.path.join(dir, 'cli-twitter-guest-token.json')
+		self._lockFile = f'{self._file}.lock'
+		self._lock = filelock.FileLock(self._lockFile)
+
+	def _read(self):
+		with self._lock:
+			if not os.path.exists(self._file):
+				return None
+			_logger.info(f'Reading guest token from {self._file}')
+			with open(self._file, 'r') as fp:
+				o = json.load(fp)
+		self._token = o['token']
+		self._setTime = o['setTime']
+
+	def _write(self):
+		with self._lock:
+			_logger.info(f'Writing guest token to {self._file}')
+			with open(self._file, 'w') as fp:
+				json.dump({'token': self.token, 'setTime': self.setTime}, fp)
+
+	@property
+	def token(self):
+		if not self._token:
+			self._read()
+		return self._token
+
+	@token.setter
+	def token(self, token):
+		super(type(self), type(self)).token.__set__(self, token)  # https://bugs.python.org/issue14965
+		self._write()
+
+	@property
+	def setTime(self):
+		self.token  # Implicitly reads from the file if necessary
+		return self._setTime
+
+	def reset(self):
+		super().reset()
+		with self._lock:
+			os.remove(self._file)
 
 
 class _TwitterAPIScraper(snscrape.base.Scraper):
@@ -551,6 +609,11 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 		if 'longDescription' in label and 'text' in label['longDescription']:
 			labelKwargs['longDescription'] = label['longDescription']['text']
 		return UserLabel(**labelKwargs)
+
+	@classmethod
+	def _construct(cls, argparseArgs, *args, **kwargs):
+		kwargs['guestTokenManager'] = _CLIGuestTokenManager()
+		return super()._construct(argparseArgs, *args, **kwargs)
 
 
 class TwitterSearchScraper(_TwitterAPIScraper):
