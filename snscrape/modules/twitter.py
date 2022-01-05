@@ -1,12 +1,31 @@
+__all__ = [
+	'Tweet', 'Medium', 'Photo', 'VideoVariant', 'Video', 'Gif', 'DescriptionUrl', 'Coordinates', 'Place',
+	'User', 'UserLabel',
+	'Trend',
+	'ScrollDirection',
+	'GuestTokenManager',
+	'TwitterSearchScraper',
+	'TwitterUserScraper',
+	'TwitterProfileScraper',
+	'TwitterHashtagScraper',
+	'TwitterTweetScraperMode',
+	'TwitterTweetScraper',
+	'TwitterListPostsScraper',
+	'TwitterTrendsScraper',
+]
+
+
 import collections
 import dataclasses
 import datetime
 import email.utils
 import enum
+import filelock
 import itertools
 import json
 import random
 import logging
+import os
 import re
 import snscrape.base
 import string
@@ -15,7 +34,7 @@ import typing
 import urllib.parse
 
 
-logger = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__)
 _API_AUTHORIZATION_HEADER = 'Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs=1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA'
 _globalGuestTokenManager = None
 
@@ -208,7 +227,63 @@ class GuestTokenManager:
 		self._setTime = 0.0
 
 
-class TwitterAPIScraper(snscrape.base.Scraper):
+class _CLIGuestTokenManager(GuestTokenManager):
+	def __init__(self):
+		super().__init__()
+		cacheHome = os.environ.get('XDG_CACHE_HOME')
+		if not cacheHome or not os.path.isabs(cacheHome):
+			# This should be ${HOME}/.cache, but the HOME environment variable may not exist on non-POSIX-compliant systems.
+			# On POSIX-compliant systems, the XDG Base Directory specification is followed exactly since ~ expands to $HOME if it is present.
+			cacheHome = os.path.join(os.path.expanduser('~'), '.cache')
+		dir = os.path.join(cacheHome, 'snscrape')
+		if not os.path.isdir(dir):
+			# os.makedirs does not apply mode recursively anymore. https://bugs.python.org/issue42367
+			# This ensures that the XDG_CACHE_HOME is created with the right permissions.
+			os.makedirs(os.path.dirname(dir), mode = 0o700, exist_ok = True)
+			os.mkdir(dir, mode = 0o700)
+		self._file = os.path.join(dir, 'cli-twitter-guest-token.json')
+		self._lockFile = f'{self._file}.lock'
+		self._lock = filelock.FileLock(self._lockFile)
+
+	def _read(self):
+		with self._lock:
+			if not os.path.exists(self._file):
+				return None
+			_logger.info(f'Reading guest token from {self._file}')
+			with open(self._file, 'r') as fp:
+				o = json.load(fp)
+		self._token = o['token']
+		self._setTime = o['setTime']
+
+	def _write(self):
+		with self._lock:
+			_logger.info(f'Writing guest token to {self._file}')
+			with open(self._file, 'w') as fp:
+				json.dump({'token': self.token, 'setTime': self.setTime}, fp)
+
+	@property
+	def token(self):
+		if not self._token:
+			self._read()
+		return self._token
+
+	@token.setter
+	def token(self, token):
+		super(type(self), type(self)).token.__set__(self, token)  # https://bugs.python.org/issue14965
+		self._write()
+
+	@property
+	def setTime(self):
+		self.token  # Implicitly reads from the file if necessary
+		return self._setTime
+
+	def reset(self):
+		super().reset()
+		with self._lock:
+			os.remove(self._file)
+
+
+class _TwitterAPIScraper(snscrape.base.Scraper):
 	'''Base class for all other Twitter scraper classes.'''
 
 	def __init__(self, baseUrl, guestTokenManager = None, **kwargs):
@@ -246,24 +321,24 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 
 	def _ensure_guest_token(self, url = None):
 		if self._guestTokenManager.token is None:
-			logger.info('Retrieving guest token')
+			_logger.info('Retrieving guest token')
 			r = self._get(self._baseUrl if url is None else url, headers = {'User-Agent': self._userAgent}, responseOkCallback = self._check_guest_token_response)
 			if (match := re.search(r'document\.cookie = decodeURIComponent\("gt=(\d+); Max-Age=10800; Domain=\.twitter\.com; Path=/; Secure"\);', r.text)):
-				logger.debug('Found guest token in HTML')
+				_logger.debug('Found guest token in HTML')
 				self._guestTokenManager.token = match.group(1)
 			if 'gt' in r.cookies:
-				logger.debug('Found guest token in cookies')
+				_logger.debug('Found guest token in cookies')
 				self._guestTokenManager.token = r.cookies['gt']
 			if not self._guestTokenManager.token:
-				logger.debug('No guest token in response')
-				logger.info('Retrieving guest token via API')
+				_logger.debug('No guest token in response')
+				_logger.info('Retrieving guest token via API')
 				r = self._post('https://api.twitter.com/1.1/guest/activate.json', data = b'', headers = self._apiHeaders, responseOkCallback = self._check_guest_token_response)
 				o = r.json()
 				if not o.get('guest_token'):
 					raise snscrape.base.ScraperError('Unable to retrieve guest token')
 				self._guestTokenManager.token = o['guest_token']
 			assert self._guestTokenManager.token
-		logger.debug(f'Using guest token {self._guestTokenManager.token}')
+		_logger.debug(f'Using guest token {self._guestTokenManager.token}')
 		self._session.cookies.set('gt', self._guestTokenManager.token, domain = '.twitter.com', path = '/', secure = True, expires = self._guestTokenManager.setTime + 10800)
 		self._apiHeaders['x-guest-token'] = self._guestTokenManager.token
 
@@ -314,7 +389,7 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 		stopOnEmptyResponse = False
 		emptyResponsesOnCursor = 0
 		while True:
-			logger.info(f'Retrieving scroll page {cursor}')
+			_logger.info(f'Retrieving scroll page {cursor}')
 			obj = self._get_api_data(endpoint, reqParams)
 			yield obj
 
@@ -398,14 +473,14 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 			if 'promotedMetadata' in entry['item']['content']['tweet']: # Promoted tweet aka ads
 				return
 			if entry['item']['content']['tweet']['id'] not in obj['globalObjects']['tweets']:
-				logger.warning(f'Skipping tweet {entry["item"]["content"]["tweet"]["id"]} which is not in globalObjects')
+				_logger.warning(f'Skipping tweet {entry["item"]["content"]["tweet"]["id"]} which is not in globalObjects')
 				return
 			tweet = obj['globalObjects']['tweets'][entry['item']['content']['tweet']['id']]
 		elif 'tombstone' in entry['item']['content']:
 			if 'tweet' not in entry['item']['content']['tombstone']: # E.g. deleted reply
 				return
 			if entry['item']['content']['tombstone']['tweet']['id'] not in obj['globalObjects']['tweets']:
-				logger.warning(f'Skipping tweet {entry["item"]["content"]["tombstone"]["tweet"]["id"]} which is not in globalObjects')
+				_logger.warning(f'Skipping tweet {entry["item"]["content"]["tombstone"]["tweet"]["id"]} which is not in globalObjects')
 				return
 			tweet = obj['globalObjects']['tweets'][entry['item']['content']['tombstone']['tweet']['id']]
 		else:
@@ -440,11 +515,11 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 			for medium in tweet['extended_entities']['media']:
 				if medium['type'] == 'photo':
 					if '.' not in medium['media_url_https']:
-						logger.warning(f'Skipping malformed medium URL on tweet {kwargs["id"]}: {medium["media_url_https"]!r} contains no dot')
+						_logger.warning(f'Skipping malformed medium URL on tweet {kwargs["id"]}: {medium["media_url_https"]!r} contains no dot')
 						continue
 					baseUrl, format = medium['media_url_https'].rsplit('.', 1)
 					if format not in ('jpg', 'png'):
-						logger.warning(f'Skipping photo with unknown format on tweet {kwargs["id"]}: {format!r}')
+						_logger.warning(f'Skipping photo with unknown format on tweet {kwargs["id"]}: {format!r}')
 						continue
 					media.append(Photo(
 						previewUrl = f'{baseUrl}?format={format}&name=small',
@@ -558,8 +633,13 @@ class TwitterAPIScraper(snscrape.base.Scraper):
 			labelKwargs['longDescription'] = label['longDescription']['text']
 		return UserLabel(**labelKwargs)
 
+	@classmethod
+	def cli_construct(cls, argparseArgs, *args, **kwargs):
+		kwargs['guestTokenManager'] = _CLIGuestTokenManager()
+		return super().cli_construct(argparseArgs, *args, **kwargs)
 
-class TwitterSearchScraper(TwitterAPIScraper):
+
+class TwitterSearchScraper(_TwitterAPIScraper):
 	'''Scraper class, designed to scrape Twitter through specific search query.'''
 
 	name = 'twitter-search'
@@ -651,14 +731,14 @@ class TwitterSearchScraper(TwitterAPIScraper):
 			yield from self._instructions_to_tweets(obj)
 
 	@classmethod
-	def setup_parser(cls, subparser):
+	def cli_setup_parser(cls, subparser):
 		subparser.add_argument('--cursor', metavar = 'CURSOR')
 		subparser.add_argument('--top', action = 'store_true', default = False, help = 'Enable fetching top tweets instead of live/chronological')
 		subparser.add_argument('query', type = snscrape.base.nonempty_string('query'), help = 'A Twitter search string')
 
 	@classmethod
-	def from_args(cls, args):
-		return cls._construct(args, args.query, cursor = args.cursor, top = args.top)
+	def cli_from_args(cls, args):
+		return cls.cli_construct(args, args.query, cursor = args.cursor, top = args.top)
 
 
 class TwitterUserScraper(TwitterSearchScraper):
@@ -744,7 +824,7 @@ class TwitterUserScraper(TwitterSearchScraper):
 		return (1 <= len(s) <= 15 and s.strip(string.ascii_letters + string.digits + '_') == '') or (s and s.strip(string.digits) == '')
 
 	@classmethod
-	def setup_parser(cls, subparser):
+	def cli_setup_parser(cls, subparser):
 		def username(s):
 			if cls.is_valid_username(s):
 				return s
@@ -754,8 +834,8 @@ class TwitterUserScraper(TwitterSearchScraper):
 		subparser.add_argument('username', type = username, help = 'A Twitter username (without @)')
 
 	@classmethod
-	def from_args(cls, args):
-		return cls._construct(args, args.username, args.isUserId)
+	def cli_from_args(cls, args):
+		return cls.cli_construct(args, args.username, args.isUserId)
 
 
 class TwitterProfileScraper(TwitterUserScraper):
@@ -816,12 +896,12 @@ class TwitterHashtagScraper(TwitterSearchScraper):
 		self._hashtag = hashtag
 
 	@classmethod
-	def setup_parser(cls, subparser):
+	def cli_setup_parser(cls, subparser):
 		subparser.add_argument('hashtag', type = snscrape.base.nonempty_string('hashtag'), help = 'A Twitter hashtag (without #)')
 
 	@classmethod
-	def from_args(cls, args):
-		return cls._construct(args, args.hashtag)
+	def cli_from_args(cls, args):
+		return cls.cli_construct(args, args.hashtag)
 
 
 class TwitterTweetScraperMode(enum.Enum):
@@ -838,7 +918,7 @@ class TwitterTweetScraperMode(enum.Enum):
 		return cls.SINGLE
 
 
-class TwitterTweetScraper(TwitterAPIScraper):
+class TwitterTweetScraper(_TwitterAPIScraper):
 	'''Scraper object designed to scrape a specific tweet or thread surrounding it.'''
 
 	name = 'twitter-tweet'
@@ -907,15 +987,15 @@ class TwitterTweetScraper(TwitterAPIScraper):
 								queue.append(tweet.id)
 
 	@classmethod
-	def setup_parser(cls, subparser):
+	def cli_setup_parser(cls, subparser):
 		group = subparser.add_mutually_exclusive_group(required = False)
 		group.add_argument('--scroll', action = 'store_true', default = False, help = 'Enable scrolling in both directions')
 		group.add_argument('--recurse', '--recursive', action = 'store_true', default = False, help = 'Enable recursion through all tweets encountered (warning: slow, potentially memory-intensive!)')
 		subparser.add_argument('tweetId', type = int, help = 'A tweet ID')
 
 	@classmethod
-	def from_args(cls, args):
-		return cls._construct(args, args.tweetId, TwitterTweetScraperMode.from_args(args))
+	def cli_from_args(cls, args):
+		return cls.cli_construct(args, args.tweetId, TwitterTweetScraperMode.from_args(args))
 
 
 class TwitterListPostsScraper(TwitterSearchScraper):
@@ -933,15 +1013,15 @@ class TwitterListPostsScraper(TwitterSearchScraper):
 		self._listName = listName
 
 	@classmethod
-	def setup_parser(cls, subparser):
+	def cli_setup_parser(cls, subparser):
 		subparser.add_argument('list', type = snscrape.base.nonempty_string('list'), help = 'A Twitter list ID or a string of the form "username/listname" (replace spaces with dashes)')
 
 	@classmethod
-	def from_args(cls, args):
-		return cls._construct(args, args.list)
+	def cli_from_args(cls, args):
+		return cls.cli_construct(args, args.list)
 
 
-class TwitterTrendsScraper(TwitterAPIScraper):
+class TwitterTrendsScraper(_TwitterAPIScraper):
 	'''Scraper object, designed to scrape Twitter trending topics.'''
 
 	name = 'twitter-trends'

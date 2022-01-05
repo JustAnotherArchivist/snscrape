@@ -246,7 +246,7 @@ def parse_args():
 		classes.extend(cls.__subclasses__())
 	for scraper, cls in sorted(scrapers.items()):
 		subparser = subparsers.add_parser(cls.name, help = '', formatter_class = argparse.ArgumentDefaultsHelpFormatter)
-		cls.setup_parser(subparser)
+		cls.cli_setup_parser(subparser)
 		subparser.set_defaults(cls = cls)
 
 	args = parser.parse_args()
@@ -293,7 +293,7 @@ def main():
 	setup_logging()
 	args = parse_args()
 	configure_logging(args.verbosity, args.dumpLocals)
-	scraper = args.cls.from_args(args)
+	scraper = args.cls.cli_from_args(args)
 
 	i = 0
 	with _dump_locals_on_exception():

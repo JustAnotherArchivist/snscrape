@@ -1,3 +1,6 @@
+__all__ = ['VKontaktePost', 'Photo', 'PhotoVariant', 'Video', 'User', 'VKontakteUserScraper']
+
+
 import bs4
 import collections
 import dataclasses
@@ -14,23 +17,23 @@ try:
 except ImportError:
 	# Python 3.8 support; nowadays, Europe/Moscow is always UTC+3, but it's more complicated before 2014, so need proper zone info
 	import pytz
-	def timezone(s):
+	def _timezone(s):
 		return pytz.timezone(s)
-	def localised_datetime(tz, *args, **kwargs):
+	def _localised_datetime(tz, *args, **kwargs):
 		return tz.localize(datetime.datetime(*args, **kwargs))
 else:
-	def timezone(s):
+	def _timezone(s):
 		return zoneinfo.ZoneInfo(s)
-	def localised_datetime(tz, *args, **kwargs):
+	def _localised_datetime(tz, *args, **kwargs):
 		return datetime.datetime(*args, tzinfo = tz, **kwargs)
 
 
-logger = logging.getLogger(__name__)
-months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-datePattern = re.compile(r'^(?P<date>today'
+_logger = logging.getLogger(__name__)
+_months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+_datePattern = re.compile(r'^(?P<date>today'
                                   r'|yesterday'
-                                  r'|(?P<day1>\d+)\s+(?P<month1>' + '|'.join(months) + ')(\s+(?P<year1>\d{4}))?'
-                                  r'|(?P<month2>' + '|'.join(months) + r')\s+(?P<day2>\d+),\s+(?P<year2>\d{4})'
+                                  r'|(?P<day1>\d+)\s+(?P<month1>' + '|'.join(_months) + ')(\s+(?P<year1>\d{4}))?'
+                                  r'|(?P<month2>' + '|'.join(_months) + r')\s+(?P<day2>\d+),\s+(?P<year2>\d{4})'
                            ')'
                           r'\s+at\s+(?P<hour>\d+):(?P<minute>\d+)\s+(?P<ampm>[ap]m)$')
 
@@ -126,9 +129,9 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 			return None
 		if 'time' in dateSpan.attrs:
 			return datetime.datetime.fromtimestamp(int(dateSpan['time']), datetime.timezone.utc)
-		if (match := datePattern.match(dateSpan.text)):
+		if (match := _datePattern.match(dateSpan.text)):
 			# Datetime information down to minutes
-			tz = timezone('Europe/Moscow')
+			tz = _timezone('Europe/Moscow')
 			if match.group('date') in ('today', 'yesterday'):
 				date = datetime.datetime.now(tz = tz)
 				if match.group('date') == 'yesterday':
@@ -136,7 +139,7 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 				year, month, day = date.year, date.month, date.day
 			else:
 				year = int(match.group('year1') or match.group('year2') or datetime.datetime.now(tz = tz).year)
-				month = months.index(match.group('month1') or match.group('month2')) + 1
+				month = _months.index(match.group('month1') or match.group('month2')) + 1
 				day = int(match.group('day1') or match.group('day2'))
 			hour = int(match.group('hour'))
 			# Damn AM/PM...
@@ -145,20 +148,20 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 			if match.group('ampm') == 'pm':
 				hour += 12
 			minute = int(match.group('minute'))
-			return localised_datetime(tz, year, month, day, hour, minute)
-		if (match := re.match(r'^(?P<day>\d+)\s+(?P<month>' + '|'.join(months) + r')\s+(?P<year>\d{4})$', dateSpan.text)):
+			return _localised_datetime(tz, year, month, day, hour, minute)
+		if (match := re.match(r'^(?P<day>\d+)\s+(?P<month>' + '|'.join(_months) + r')\s+(?P<year>\d{4})$', dateSpan.text)):
 			# Date only
-			return datetime.date(int(match.group('year')), months.index(match.group('month')) + 1, int(match.group('day')))
+			return datetime.date(int(match.group('year')), _months.index(match.group('month')) + 1, int(match.group('day')))
 		if dateSpan.text not in ('video', 'photo'): # Silently ignore video and photo reposts which have no original date attached
-			logger.warning(f'Could not parse date string: {dateSpan.text!r}')
+			_logger.warning(f'Could not parse date string: {dateSpan.text!r}')
 
 	def _post_div_to_item(self, post, isCopy = False):
 		postLink = post.find('a', class_ = 'post_link' if not isCopy else 'published_by_date')
 		if not postLink:
-			logger.warning(f'Skipping post without link: {str(post)[:200]!r}')
+			_logger.warning(f'Skipping post without link: {str(post)[:200]!r}')
 			return
 		url = urllib.parse.urljoin(self._baseUrl, postLink['href'])
-		assert (url.startswith('https://vk.com/wall') or (isCopy and (url.startswith('https://vk.com/video') or url.startswith('https://vk.com/photo')))) and '_' in url and url[-1] != '_' and url.rsplit('_', 1)[1].strip('0123456789') == ''
+		assert (url.startswith('https://vk.com/wall') or (isCopy and (url.startswith('https://vk.com/video') or url.startswith('https://vk.com/photo')))) and '_' in url and url[-1] != '_' and url.rsplit('_', 1)[1].strip('0123456789') in ('', '?reply=')
 		if not isCopy:
 			dateSpan = post.find('div', class_ = 'post_date').find('span', class_ = 'rel_date')
 		else:
@@ -177,7 +180,7 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 			photos = []
 			for a in thumbsDiv.find_all('a', class_ = 'page_post_thumb_wrap'):
 				if 'data-photo-id' not in a.attrs and 'data-video' not in a.attrs:
-					logger.warning(f'Skipping non-photo and non-video thumb wrap on {url}')
+					_logger.warning(f'Skipping non-photo and non-video thumb wrap on {url}')
 					continue
 				if 'data-video' in a.attrs:
 					# Video
@@ -191,7 +194,7 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 					continue
 				# From here on: photo
 				if 'onclick' not in a.attrs or not a['onclick'].startswith("return showPhoto('") or '{"temp":' not in a['onclick'] or not a['onclick'].endswith('}, event)'):
-					logger.warning(f'Photo thumb wrap on {url} has no or unexpected onclick, skipping')
+					_logger.warning(f'Photo thumb wrap on {url} has no or unexpected onclick, skipping')
 					continue
 				photoData = a['onclick'][a['onclick'].find('{"temp":') : -8] # -8 = len(', event)')
 				photoObj = json.loads(photoData)
@@ -207,7 +210,7 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 				   not all(photoObj['temp'][x] in (photoObj['temp'][f'{x}_'][0], photoObj['temp'][f'{x}_'][0] + '.jpg') for x in singleLetterKeys) or \
 				   not all(photoObj['temp'][x].startswith('https://sun') and '.userapi.com/' in photoObj['temp'][x] for x in singleLetterKeys) or \
 				   not all(len(photoObj['temp'][(x_ := f'{x}_')]) == 3 and isinstance(photoObj['temp'][x_][1], int) and isinstance(photoObj['temp'][x_][2], int) for x in singleLetterKeys):
-					logger.warning(f'Photo thumb wrap on {url} has unexpected data structure, skipping')
+					_logger.warning(f'Photo thumb wrap on {url} has unexpected data structure, skipping')
 					continue
 				photoVariants = []
 				for x in singleLetterKeys:
@@ -232,7 +235,7 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 
 	def _initial_page(self):
 		if self._initialPage is None:
-			logger.info('Retrieving initial data')
+			_logger.info('Retrieving initial data')
 			r = self._get(self._baseUrl, headers = self._headers)
 			if r.status_code not in (200, 404):
 				raise snscrape.base.ScraperException(f'Got status code {r.status_code}')
@@ -243,21 +246,21 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 	def get_items(self):
 		r, soup = self._initial_page()
 		if r.status_code == 404:
-			logger.warning('Wall does not exist')
+			_logger.warning('Wall does not exist')
 			return
 
 		if soup.find('div', class_ = 'profile_closed_wall_dummy'):
-			logger.warning('Private profile')
+			_logger.warning('Private profile')
 			return
 
 		if (profileDeleted := soup.find('h5', class_ = 'profile_deleted_text')):
 			# Unclear what this state represents, so just log website text.
-			logger.warning(profileDeleted.text)
+			_logger.warning(profileDeleted.text)
 			return
 
 		newestPost = soup.find('div', class_ = 'post')
 		if not newestPost:
-			logger.info('Wall has no posts')
+			_logger.info('Wall has no posts')
 			return
 		ownerID = newestPost.attrs['data-post-id'].split('_')[0]
 		# If there is a pinned post, we need its ID for the pagination requests
@@ -286,7 +289,7 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 				break
 			if not posts.startswith('<div id="post'):
 				if posts == '"\\/blank.php?block=119910902"':
-					logger.warning(f'Encountered geoblock on offset {offset}, trying to work around the block but might be missing content')
+					_logger.warning(f'Encountered geoblock on offset {offset}, trying to work around the block but might be missing content')
 					for geoblockOffset in range(lastWorkingOffset + 1, offset + 10):
 						geoPosts = self._get_wall_offset(fixedPostID, ownerID, geoblockOffset)
 						if geoPosts.startswith('<div class="page_block no_posts">'):
@@ -306,7 +309,7 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 	def _get_wall_offset(self, fixedPostID, ownerID, offset):
 		headers = self._headers.copy()
 		headers['X-Requested-With'] = 'XMLHttpRequest'
-		logger.info(f'Retrieving page offset {offset}')
+		_logger.info(f'Retrieving page offset {offset}')
 		r = self._post(
 		  'https://vk.com/al_wall.php',
 		  data = [('act', 'get_wall'), ('al', 1), ('fixed', fixedPostID), ('offset', offset), ('onlyCache', 'false'), ('owner_id', ownerID), ('type', 'own'), ('wall_start_from', offset)],
@@ -345,7 +348,7 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 						continue
 				for a in rowDiv.find_all('a'):
 					if not a['href'].startswith('/away.php?to='):
-						logger.warning(f'Skipping odd website link: {a["href"]!r}')
+						_logger.warning(f'Skipping odd website link: {a["href"]!r}')
 						continue
 					websites.append(urllib.parse.unquote(a['href'].split('=', 1)[1].split('&', 1)[0]))
 			if websites:
@@ -378,10 +381,9 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 		return User(**kwargs)
 
 	@classmethod
-	def setup_parser(cls, subparser):
+	def cli_setup_parser(cls, subparser):
 		subparser.add_argument('username', type = snscrape.base.nonempty_string('username'), help = 'A VK username')
 
 	@classmethod
-	def from_args(cls, args):
-		return cls._construct(args, args.username)
-
+	def cli_from_args(cls, args):
+		return cls.cli_construct(args, args.username)

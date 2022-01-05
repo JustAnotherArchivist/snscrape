@@ -1,10 +1,13 @@
+__all__ = ['Post', 'User', 'WeiboUserScraper']
+
+
 import dataclasses
 import logging
 import snscrape.base
 import typing
 
 
-logger = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__)
 _userDoesNotExist = object()
 
 
@@ -69,7 +72,7 @@ class WeiboUserScraper(snscrape.base.Scraper):
 			# Redirect to uid URL
 			self._uid = int(r.headers['Location'][3:])
 		elif r.status_code == 200 and '<p class="h5-4con">用户不存在</p>' in r.text:
-			logger.warning('User does not exist')
+			_logger.warning('User does not exist')
 			self._uid = _userDoesNotExist
 		else:
 			raise snscrape.base.ScraperError(f'Got unexpected response on resolving username ({r.status_code})')
@@ -112,7 +115,7 @@ class WeiboUserScraper(snscrape.base.Scraper):
 			o = r.json()
 			for card in o['data']['cards']:
 				if card['card_type'] != 9:
-					logger.warning(f'Skipping card of type {card["card_type"]}')
+					_logger.warning(f'Skipping card of type {card["card_type"]}')
 					continue
 				yield self._mblog_to_item(card['mblog'])
 			if 'since_id' not in o['data']['cardlistInfo']:
@@ -144,15 +147,15 @@ class WeiboUserScraper(snscrape.base.Scraper):
 		return self._user_info_to_entity(o['data']['userInfo'])
 
 	@classmethod
-	def setup_parser(cls, subparser):
+	def cli_setup_parser(cls, subparser):
 		subparser.add_argument('user', type = snscrape.base.nonempty_string('user'), help = 'A user name or ID')
 
 	@classmethod
-	def from_args(cls, args):
+	def cli_from_args(cls, args):
 		if len(args.user) == 10 and args.user.strip('0123456789') == '':
 			uid = args.user
 			name = None
 		else:
 			uid = None
 			name = args.user
-		return cls._construct(args, name = name, uid = uid)
+		return cls.cli_construct(args, name = name, uid = uid)
