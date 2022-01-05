@@ -851,7 +851,7 @@ class TwitterTweetScraper(_TwitterAPIScraper):
 	def __init__(self, tweetId, mode = TwitterTweetScraperMode.SINGLE, **kwargs):
 		self._tweetId = tweetId
 		self._mode = mode
-		super().__init__(f'https://twitter.com/i/web/{self._tweetId}', **kwargs)
+		super().__init__(f'https://twitter.com/i/web/status/{self._tweetId}', **kwargs)
 
 	def get_items(self):
 		paginationParams = {
