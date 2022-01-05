@@ -2,7 +2,6 @@ __all__ = [
 	'Tweet', 'Medium', 'Photo', 'VideoVariant', 'Video', 'Gif', 'DescriptionUrl', 'Coordinates', 'Place',
 	'User', 'UserLabel',
 	'Trend',
-	'ScrollDirection',
 	'GuestTokenManager',
 	'TwitterSearchScraper',
 	'TwitterUserScraper',
@@ -183,7 +182,7 @@ class Trend(snscrape.base.Item):
 		return f'https://twitter.com/search?q={urllib.parse.quote(self.name)}'
 
 
-class ScrollDirection(enum.Enum):
+class _ScrollDirection(enum.Enum):
 	TOP = enum.auto()
 	BOTTOM = enum.auto()
 	BOTH = enum.auto()
@@ -344,7 +343,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			raise snscrape.base.ScraperException('Received invalid JSON from Twitter') from e
 		return obj
 
-	def _iter_api_data(self, endpoint, params, paginationParams = None, cursor = None, direction = ScrollDirection.BOTTOM):
+	def _iter_api_data(self, endpoint, params, paginationParams = None, cursor = None, direction = _ScrollDirection.BOTTOM):
 		# Iterate over endpoint with params/paginationParams, optionally starting from a cursor
 		# Handles guest token extraction using the baseUrl passed to __init__ etc.
 		# Order from params and paginationParams is preserved. To insert the cursor at a particular location, insert a 'cursor' key into paginationParams there (value is overwritten).
@@ -359,7 +358,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			reqParams = paginationParams.copy()
 			reqParams['cursor'] = cursor
 		bottomCursorAndStop = None
-		if direction is ScrollDirection.TOP or direction is ScrollDirection.BOTH:
+		if direction is _ScrollDirection.TOP or direction is _ScrollDirection.BOTH:
 			dir = 'top'
 		else:
 			dir = 'bottom'
@@ -388,7 +387,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 							stopOnEmptyResponse = entry['content']['operation']['cursor']['stopOnEmptyResponse']
 					elif entry['entryId'].startswith('cursor-showMoreThreadsPrompt-'): # E.g. 'offensive' replies button
 						promptCursor = entry['content']['operation']['cursor']['value']
-					elif direction is ScrollDirection.BOTH and bottomCursorAndStop is None and (entry['entryId'] == f'sq-cursor-bottom' or entry['entryId'].startswith('cursor-bottom-')):
+					elif direction is _ScrollDirection.BOTH and bottomCursorAndStop is None and (entry['entryId'] == f'sq-cursor-bottom' or entry['entryId'].startswith('cursor-bottom-')):
 						newBottomCursorAndStop = (entry['content']['operation']['cursor']['value'], entry['content']['operation']['cursor'].get('stopOnEmptyResponse', False))
 			if bottomCursorAndStop is None and newBottomCursorAndStop is not None:
 				bottomCursorAndStop = newBottomCursorAndStop
@@ -402,7 +401,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 				# End of pagination
 				if promptCursor is not None:
 					newCursor = promptCursor
-				elif direction is ScrollDirection.BOTH and bottomCursorAndStop is not None:
+				elif direction is _ScrollDirection.BOTH and bottomCursorAndStop is not None:
 					dir = 'bottom'
 					newCursor, stopOnEmptyResponse = bottomCursorAndStop
 					bottomCursorAndStop = None
@@ -887,7 +886,7 @@ class TwitterTweetScraper(_TwitterAPIScraper):
 			obj = self._get_api_data(f'https://twitter.com/i/api/2/timeline/conversation/{self._tweetId}.json', params)
 			yield self._tweet_to_tweet(obj['globalObjects']['tweets'][str(self._tweetId)], obj)
 		elif self._mode is TwitterTweetScraperMode.SCROLL:
-			for obj in self._iter_api_data(f'https://twitter.com/i/api/2/timeline/conversation/{self._tweetId}.json', params, paginationParams, direction = ScrollDirection.BOTH):
+			for obj in self._iter_api_data(f'https://twitter.com/i/api/2/timeline/conversation/{self._tweetId}.json', params, paginationParams, direction = _ScrollDirection.BOTH):
 				yield from self._instructions_to_tweets(obj, includeConversationThreads = True)
 		elif self._mode is TwitterTweetScraperMode.RECURSE:
 			seenTweets = set()
@@ -895,7 +894,7 @@ class TwitterTweetScraper(_TwitterAPIScraper):
 			queue.append(self._tweetId)
 			while queue:
 				tweetId = queue.popleft()
-				for obj in self._iter_api_data(f'https://twitter.com/i/api/2/timeline/conversation/{tweetId}.json', params, paginationParams, direction = ScrollDirection.BOTH):
+				for obj in self._iter_api_data(f'https://twitter.com/i/api/2/timeline/conversation/{tweetId}.json', params, paginationParams, direction = _ScrollDirection.BOTH):
 					for tweet in self._instructions_to_tweets(obj, includeConversationThreads = True):
 						if tweet.id not in seenTweets:
 							yield tweet
