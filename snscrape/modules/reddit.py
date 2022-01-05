@@ -27,6 +27,7 @@ class Submission(snscrape.base.Item):
 	subreddit: typing.Optional[str] # E.g. submission 617p51
 	title: str
 	url: str
+	score: str
 
 	def __str__(self):
 		return self.url
@@ -41,6 +42,7 @@ class Comment(snscrape.base.Item):
 	parentId: typing.Optional[str]
 	subreddit: typing.Optional[str]
 	url: str
+	score: str
 
 	def __str__(self):
 		return self.url
@@ -124,20 +126,21 @@ class _RedditPushshiftScraper(snscrape.base.Scraper):
 		if permalink is None:
 			# E.g. comment dovj2v7
 			permalink = d.get('permalink_url')
-			if permalink is None:
-				if 'link_id' in d and d['link_id'].startswith('t3_'): # E.g. comment doraazf
-					if 'subreddit' in d:
-						permalink = f'/r/{d["subreddit"]}/comments/{d["link_id"][3:]}/_/{d["id"]}/'
-					else: # E.g. submission 617p51 but can likely happen for comments as well
-						permalink = f'/comments/{d["link_id"][3:]}/_/{d["id"]}/'
-				else:
-					_logger.warning(f'Unable to find or construct permalink')
-					permalink = '/'
+		if permalink is None:
+			if 'link_id' in d and d['link_id'].startswith('t3_'): # E.g. comment doraazf
+				if 'subreddit' in d:
+					permalink = f'/r/{d["subreddit"]}/comments/{d["link_id"][3:]}/_/{d["id"]}/'
+				else: # E.g. submission 617p51 but can likely happen for comments as well
+					permalink = f'/comments/{d["link_id"][3:]}/_/{d["id"]}/'
+			else:
+				_logger.warning('Unable to find or construct permalink')
+				permalink = '/'
 
 		kwargs = {
 			'author': d.get('author'),
 			'created': datetime.datetime.fromtimestamp(d['created_utc'], datetime.timezone.utc),
 			'url': f'https://old.reddit.com{permalink}',
+			'score': d.get('score'),
 			'subreddit': d.get('subreddit'),
 		}
 		if cls is Submission:
