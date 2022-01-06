@@ -40,11 +40,15 @@ def _json_dataclass_to_dict(obj):
 		out['_type'] = f'{type(obj).__module__}.{type(obj).__name__}'
 		for field in dataclasses.fields(obj):
 			assert field.name != '_type'
+			if field.name.startswith('_'):
+				continue
 			out[field.name] = _json_dataclass_to_dict(getattr(obj, field.name))
 		# Add in (non-deprecated) properties
 		for k in dir(obj):
 			if isinstance(getattr(type(obj), k, None), property):
 				assert k != '_type'
+				if k.startswith('_'):
+					continue
 				out[k] = _json_dataclass_to_dict(getattr(obj, k))
 		return out
 	elif isinstance(obj, (tuple, list)):
