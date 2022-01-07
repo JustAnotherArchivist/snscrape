@@ -120,7 +120,7 @@ class _MastodonCommonScraper(snscrape.base.Scraper):
 				link = info.find('a', class_ = 'detailed-status__datetime')
 			tootKwargs['url'] = link['href']
 			tootKwargs['id'] = tootKwargs['url'].rsplit('/', 1)[1]
-			tootKwargs['date'] = datetime.datetime.strptime(info.find('data', class_ = 'dt-published')['value'], '%Y-%m-%dT%H:%M:%S+00:00')
+			tootKwargs['date'] = datetime.datetime.strptime(info.find('data', class_ = 'dt-published')['value'], '%Y-%m-%dT%H:%M:%S+00:00').replace(tzinfo = datetime.timezone.utc)
 
 			userKwargs = {}
 			userLink = info.find('a', class_ = 'status__display-name')
@@ -182,7 +182,7 @@ class _MastodonCommonScraper(snscrape.base.Scraper):
 				o = json.loads(pollDiv['data-props'])
 				pollKwargs = {}
 				pollKwargs['id'] = o['poll']['id']
-				pollKwargs['expirationDate'] = datetime.datetime.strptime(o['poll']['expires_at'], '%Y-%m-%dT%H:%M:%S.%fZ')
+				pollKwargs['expirationDate'] = datetime.datetime.strptime(o['poll']['expires_at'], '%Y-%m-%dT%H:%M:%S.%fZ').replace(tzinfo = datetime.timezone.utc)
 				pollKwargs['multiple'] = o['poll']['multiple']
 				pollKwargs['options'] = [PollOption(title = op['title'], votesCount = op['votes_count']) for op in o['poll']['options']]
 				pollKwargs['votesCount'] = o['poll']['votes_count']
