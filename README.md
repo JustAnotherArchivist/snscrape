@@ -18,11 +18,11 @@ snscrape requires Python 3.8 or higher. The Python package dependencies are inst
 Note that one of the dependencies, lxml, also requires libxml2 and libxslt to be installed.
 
 ## Installation
-    pip3 install snscrape
+    python3 -m pip install snscrape
 
 If you want to use the development version:
 
-    pip3 install git+https://github.com/JustAnotherArchivist/snscrape.git
+    python3 -m pip install git+https://github.com/JustAnotherArchivist/snscrape.git
 
 ## Usage
 ### CLI
