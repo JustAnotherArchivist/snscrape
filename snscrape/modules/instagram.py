@@ -155,14 +155,6 @@ class InstagramUserScraper(_InstagramCommonScraper):
 		self._queryHash = 'f2405b236d85e8296cf30347c9f08c2a'
 		self._variablesFormat = '{{"id":"{pageID}","first":50,"after":"{endCursor}"}}'
 
-	@classmethod
-	def _cli_setup_parser(cls, subparser):
-		subparser.add_argument('username', type = snscrape.base.nonempty_string('username'), help = 'An Instagram username (no leading @)')
-
-	@classmethod
-	def _cli_from_args(cls, args):
-		return cls._cli_construct(args, args.username)
-
 	def _get_entity(self):
 		r = self._initial_page()
 		if r.status_code != 200:
@@ -195,6 +187,14 @@ class InstagramUserScraper(_InstagramCommonScraper):
 			following = following,
 			posts = posts,
 		  )
+
+	@classmethod
+	def _cli_setup_parser(cls, subparser):
+		subparser.add_argument('username', type = snscrape.base.nonempty_string('username'), help = 'An Instagram username (no leading @)')
+
+	@classmethod
+	def _cli_from_args(cls, args):
+		return cls._cli_construct(args, args.username)
 
 
 class InstagramHashtagScraper(_InstagramCommonScraper):
