@@ -694,13 +694,13 @@ class TwitterSearchScraper(_TwitterAPIScraper):
 class TwitterUserScraper(TwitterSearchScraper):
 	name = 'twitter-user'
 
-	def __init__(self, username, isUserId = False, **kwargs):
-		if not self.is_valid_username(username):
+	def __init__(self, user, **kwargs):
+		self._isUserId = isinstance(user, int)
+		if not self._isUserId and not self.is_valid_username(user):
 			raise ValueError('Invalid username')
-		super().__init__(f'from:{username}', **kwargs)
-		self._username = username
-		self._isUserId = isUserId
-		self._baseUrl = f'https://twitter.com/{self._username}' if not self._isUserId else f'https://twitter.com/i/user/{self._username}'
+		super().__init__(f'from:{user}', **kwargs)
+		self._user = user
+		self._baseUrl = f'https://twitter.com/{self._user}' if not self._isUserId else f'https://twitter.com/i/user/{self._user}'
 
 	def _get_entity(self):
 		self._ensure_guest_token()
@@ -710,7 +710,7 @@ class TwitterUserScraper(TwitterSearchScraper):
 		else:
 			fieldName = 'userId'
 			endpoint = 'https://twitter.com/i/api/graphql/WN6Hck-Pwm-YP0uxVj1oMQ/UserByRestIdWithoutResults'
-		params = {'variables': json.dumps({fieldName: self._username, 'withHighlightedLabel': True}, separators = (',', ':'))}
+		params = {'variables': json.dumps({fieldName: str(self._user), 'withHighlightedLabel': True}, separators = (',', ':'))}
 		obj = self._get_api_data(endpoint, params = urllib.parse.urlencode(params, quote_via=urllib.parse.quote))
 		if not obj['data']:
 			return None
@@ -747,28 +747,28 @@ class TwitterUserScraper(TwitterSearchScraper):
 	def get_items(self):
 		if self._isUserId:
 			# Resolve user ID to username
-			self._username = self.entity.username
+			self._user = self.entity.username
 			self._isUserId = False
-			self._query = f'from:{self._username}'
+			self._query = f'from:{self._user}'
 		yield from super().get_items()
 
 	@staticmethod
 	def is_valid_username(s):
-		return (1 <= len(s) <= 15 and s.strip(string.ascii_letters + string.digits + '_') == '') or (s and s.strip(string.digits) == '')
+		return 1 <= len(s) <= 15 and s.strip(string.ascii_letters + string.digits + '_') == ''
 
 	@classmethod
 	def _cli_setup_parser(cls, subparser):
-		def username(s):
-			if cls.is_valid_username(s):
+		def user(s):
+			if cls.is_valid_username(s) or s.isdigit():
 				return s
-			raise ValueError('Invalid username')
+			raise ValueError('Invalid username or ID')
 
 		subparser.add_argument('--user-id', dest = 'isUserId', action = 'store_true', default = False, help = 'Use user ID instead of username')
-		subparser.add_argument('username', type = username, help = 'A Twitter username (without @)')
+		subparser.add_argument('user', type = user, help = 'A Twitter username (without @)')
 
 	@classmethod
 	def _cli_from_args(cls, args):
-		return cls._cli_construct(args, args.username, args.isUserId)
+		return cls._cli_construct(args, user = int(args.user) if args.isUserId else args.user)
 
 
 class TwitterProfileScraper(TwitterUserScraper):
@@ -778,7 +778,7 @@ class TwitterProfileScraper(TwitterUserScraper):
 		if not self._isUserId:
 			userId = self.entity.id
 		else:
-			userId = self._username
+			userId = self._user
 		paginationParams = {
 			'include_profile_interstitial_type': '1',
 			'include_blocking': '1',
