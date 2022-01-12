@@ -219,15 +219,15 @@ class Scraper:
 		return self._request('POST', *args, **kwargs)
 
 	@classmethod
-	def cli_setup_parser(cls, subparser):
+	def _cli_setup_parser(cls, subparser):
 		pass
 
 	@classmethod
-	def cli_from_args(cls, args):
+	def _cli_from_args(cls, args):
 		return cls._construct(args)
 
 	@classmethod
-	def cli_construct(cls, argparseArgs, *args, **kwargs):
+	def _cli_construct(cls, argparseArgs, *args, **kwargs):
 		return cls(*args, **kwargs, retries = argparseArgs.retries)
 
 

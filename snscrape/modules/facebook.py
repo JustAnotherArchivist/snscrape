@@ -205,12 +205,12 @@ class _FacebookUserAndCommunityScraper(_FacebookCommonScraper):
 			yield from self._soup_to_items(soup, self._baseUrl, 'user')
 
 	@classmethod
-	def cli_setup_parser(cls, subparser):
+	def _cli_setup_parser(cls, subparser):
 		subparser.add_argument('username', type = snscrape.base.nonempty_string('username'), help = 'A Facebook username or user ID')
 
 	@classmethod
-	def cli_from_args(cls, args):
-		return cls.cli_construct(args, args.username)
+	def _cli_from_args(cls, args):
+		return cls._cli_construct(args, args.username)
 
 
 class FacebookUserScraper(_FacebookUserAndCommunityScraper):
@@ -356,9 +356,9 @@ class FacebookGroupScraper(_FacebookCommonScraper):
 			yield from self._soup_to_items(soup, baseUrl, 'group')
 
 	@classmethod
-	def cli_setup_parser(cls, subparser):
+	def _cli_setup_parser(cls, subparser):
 		subparser.add_argument('group', type = snscrape.base.nonempty_string('group'), help = 'A group name or ID')
 
 	@classmethod
-	def cli_from_args(cls, args):
-		return cls.cli_construct(args, args.group)
+	def _cli_from_args(cls, args):
+		return cls._cli_construct(args, args.group)

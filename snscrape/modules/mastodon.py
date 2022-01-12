@@ -288,12 +288,12 @@ class MastodonProfileScraper(_MastodonCommonScraper):
 			url = urllib.parse.urljoin(r.url, nextA['href'])
 
 	@classmethod
-	def cli_setup_parser(cls, subparser):
+	def _cli_setup_parser(cls, subparser):
 		subparser.add_argument('account', type = snscrape.base.nonempty_string('account'), help = 'A Mastodon account. This can be either a URL to the profile page or a string of the form @account@instance.example.org')
 
 	@classmethod
-	def cli_from_args(cls, args):
-		return cls.cli_construct(args, args.account)
+	def _cli_from_args(cls, args):
+		return cls._cli_construct(args, args.account)
 
 
 class MastodonTootScraperMode(enum.Enum):
@@ -301,7 +301,7 @@ class MastodonTootScraperMode(enum.Enum):
 	THREAD = 'thread'
 
 	@classmethod
-	def cli_from_args(cls, args):
+	def _cli_from_args(cls, args):
 		if args.thread:
 			return cls.THREAD
 		return cls.SINGLE
@@ -331,10 +331,10 @@ class MastodonTootScraper(_MastodonCommonScraper):
 			yield from self._entries_to_items(soup.find('div', class_ = 'activity-stream').find_all('div', class_ = 'entry'), r.url)
 
 	@classmethod
-	def cli_setup_parser(cls, subparser):
+	def _cli_setup_parser(cls, subparser):
 		subparser.add_argument('--thread', action = 'store_true', help = 'Collect thread around the toot referenced by the URL')
 		subparser.add_argument('url', type = snscrape.base.nonempty_string('url'), help = 'A URL for a toot')
 
 	@classmethod
-	def cli_from_args(cls, args):
-		return cls.cli_construct(args, args.url, MastodonTootScraperMode.cli_from_args(args))
+	def _cli_from_args(cls, args):
+		return cls._cli_construct(args, args.url, MastodonTootScraperMode._cli_from_args(args))

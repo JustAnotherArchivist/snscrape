@@ -156,12 +156,12 @@ class InstagramUserScraper(_InstagramCommonScraper):
 		self._variablesFormat = '{{"id":"{pageID}","first":50,"after":"{endCursor}"}}'
 
 	@classmethod
-	def cli_setup_parser(cls, subparser):
+	def _cli_setup_parser(cls, subparser):
 		subparser.add_argument('username', type = snscrape.base.nonempty_string('username'), help = 'An Instagram username (no leading @)')
 
 	@classmethod
-	def cli_from_args(cls, args):
-		return cls.cli_construct(args, args.username)
+	def _cli_from_args(cls, args):
+		return cls._cli_construct(args, args.username)
 
 	def _get_entity(self):
 		r = self._initial_page()
@@ -211,12 +211,12 @@ class InstagramHashtagScraper(_InstagramCommonScraper):
 		self._variablesFormat = '{{"tag_name":"{pageID}","first":50,"after":"{endCursor}"}}'
 
 	@classmethod
-	def cli_setup_parser(cls, subparser):
+	def _cli_setup_parser(cls, subparser):
 		subparser.add_argument('hashtag', type = snscrape.base.nonempty_string('hashtag'), help = 'An Instagram hashtag (no leading #)')
 
 	@classmethod
-	def cli_from_args(cls, args):
-		return cls.cli_construct(args, args.hashtag)
+	def _cli_from_args(cls, args):
+		return cls._cli_construct(args, args.hashtag)
 
 
 class InstagramLocationScraper(_InstagramCommonScraper):
@@ -233,9 +233,9 @@ class InstagramLocationScraper(_InstagramCommonScraper):
 		self._variablesFormat = '{{"id":"{pageID}","first":50,"after":"{endCursor}"}}'
 
 	@classmethod
-	def cli_setup_parser(cls, subparser):
+	def _cli_setup_parser(cls, subparser):
 		subparser.add_argument('locationid', help = 'An Instagram location ID', type = int)
 
 	@classmethod
-	def cli_from_args(cls, args):
-		return cls.cli_construct(args, args.locationid)
+	def _cli_from_args(cls, args):
+		return cls._cli_construct(args, args.locationid)
