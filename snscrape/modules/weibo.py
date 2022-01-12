@@ -3,12 +3,14 @@ __all__ = ['Post', 'User', 'WeiboUserScraper']
 
 import dataclasses
 import logging
+import re
 import snscrape.base
 import typing
 
 
 _logger = logging.getLogger(__name__)
 _userDoesNotExist = object()
+_HTML_STRIP_PATTERN = re.compile(r'<[^>]*>')
 
 
 @dataclasses.dataclass
@@ -85,7 +87,7 @@ class WeiboUserScraper(snscrape.base.Scraper):
 			id = mblog['id'],
 			user = self._user_info_to_entity(mblog['user']) if mblog['user'] is not None else None,
 			createdAt = mblog['created_at'],
-			text = mblog['raw_text'],
+			text = mblog['raw_text'] if 'raw_text' in mblog else _HTML_STRIP_PATTERN.sub('', mblog['text']),
 			repostsCount = mblog.get('reposts_count'),
 			commentsCount = mblog.get('comments_count'),
 			likesCount = mblog.get('attitudes_count'),
