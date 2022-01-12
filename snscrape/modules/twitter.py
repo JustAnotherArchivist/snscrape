@@ -722,7 +722,7 @@ class TwitterUserScraper(TwitterSearchScraper):
 			label = self._user_label_to_user_label(labelO)
 		return User(
 			username = user['legacy']['screen_name'],
-			id = user['rest_id'],
+			id = int(user['rest_id']),
 			displayname = user['legacy']['name'],
 			description = description,
 			rawDescription = rawDescription,
