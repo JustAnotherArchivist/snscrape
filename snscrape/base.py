@@ -139,8 +139,9 @@ class Scraper:
 
 	name = None
 
-	def __init__(self, retries = 3):
+	def __init__(self, retries = 3, proxies = None):
 		self._retries = retries
+		self._proxies = proxies
 		self._session = requests.Session()
 
 	@abc.abstractmethod
@@ -161,7 +162,8 @@ class Scraper:
 	def entity(self):
 		return self._get_entity()
 
-	def _request(self, method, url, params = None, data = None, headers = None, timeout = 10, responseOkCallback = None, allowRedirects = True):
+	def _request(self, method, url, params = None, data = None, headers = None, timeout = 10, responseOkCallback = None, allowRedirects = True, proxies = None):
+		proxies = proxies or self._proxies
 		for attempt in range(self._retries + 1):
 			# The request is newly prepared on each retry because of potential cookie updates.
 			req = self._session.prepare_request(requests.Request(method, url, params = params, data = data, headers = headers))
@@ -170,7 +172,7 @@ class Scraper:
 			if data:
 				logger.debug(f'... with data: {data!r}')
 			try:
-				r = self._session.send(req, allow_redirects = allowRedirects, timeout = timeout)
+				r = self._session.send(req, allow_redirects = allowRedirects, timeout = timeout, proxies = proxies)
 			except requests.exceptions.RequestException as exc:
 				if attempt < self._retries:
 					retrying = ', retrying'
