@@ -157,9 +157,15 @@ class _InstagramCommonScraper(snscrape.base.Scraper):
 
 
 class InstagramUserScraper(_InstagramCommonScraper):
+	'''Scraper class, designed to scrape posts from a specific user profile.'''
+
 	name = 'instagram-user'
 
 	def __init__(self, username, **kwargs):
+		'''
+		Args:
+			username: Username of the desired profile, without the @ sign.
+		'''
 		super().__init__(**kwargs)
 		self._initialUrl = f'https://www.instagram.com/{username}/'
 		self._pageName = 'ProfilePage'
@@ -212,9 +218,15 @@ class InstagramUserScraper(_InstagramCommonScraper):
 
 
 class InstagramHashtagScraper(_InstagramCommonScraper):
+	'''Scraper object, designed to scrape Instagram through hashtag.'''
+
 	name = 'instagram-hashtag'
 
 	def __init__(self, hashtag, **kwargs):
+		'''
+		Args:
+			hashtag: Hashtag query, without the # sign.
+		'''
 		super().__init__(**kwargs)
 		self._initialUrl = f'https://www.instagram.com/explore/tags/{hashtag}/'
 		self._pageName = 'TagPage'
@@ -234,9 +246,15 @@ class InstagramHashtagScraper(_InstagramCommonScraper):
 
 
 class InstagramLocationScraper(_InstagramCommonScraper):
+	'''Scraper class, designed to scrape for posts according to its location ID.'''
+
 	name = 'instagram-location'
 
 	def __init__(self, locationId, **kwargs):
+		'''
+		Args:
+			locationId: Desired location ID.
+		'''
 		super().__init__(**kwargs)
 		self._initialUrl = f'https://www.instagram.com/explore/locations/{locationId}/'
 		self._pageName = 'LocationsPage'

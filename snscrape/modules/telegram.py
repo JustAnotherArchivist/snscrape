@@ -17,6 +17,8 @@ _SINGLE_MEDIA_LINK_PATTERN = re.compile(r'^https://t\.me/[^/]+/\d+\?single$')
 
 @dataclasses.dataclass
 class LinkPreview:
+	'''An object representing a Telegram link preview.'''
+
 	href: str
 	siteName: typing.Optional[str] = None
 	title: typing.Optional[str] = None
@@ -139,6 +141,15 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 			yield TelegramPost(url = url, date = date, content = content, outlinks = outlinks, linkPreview = linkPreview)
 
 	def get_items(self):
+		'''Get posts according to the specifications given when instantiating this scraper.
+
+		Raises:
+			snscrape.base.ScraperException
+		Yields:
+			Individual post.
+		Returns:
+			An iterator of posts.
+		'''
 		r, soup = self._initial_page()
 		if '/s/' not in r.url:
 			_logger.warning('No public post list for this user')

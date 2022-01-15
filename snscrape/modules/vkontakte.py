@@ -40,6 +40,8 @@ _datePattern = re.compile(r'^(?P<date>today'
 
 @dataclasses.dataclass
 class VKontaktePost(snscrape.base.Item):
+	'''An object representing one VKontakte post.'''
+
 	url: str
 	date: typing.Optional[typing.Union[datetime.datetime, datetime.date]]
 	content: str
@@ -76,6 +78,8 @@ class Video:
 
 @dataclasses.dataclass
 class User(snscrape.base.Entity):
+	'''An object representing one VKontakte user.'''
+
 	username: str
 	name: str
 	verified: bool

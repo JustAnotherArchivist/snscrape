@@ -211,6 +211,13 @@ class _RedditPushshiftScraper(snscrape.base.Scraper):
 					break
 
 	def get_items(self):
+		'''Get posts according to the specifications given when instantiating this scraper.
+
+		Yields:
+			Individual post.
+		Returns:
+			An iterator of posts.
+		'''
 		yield from self._iter_api_submissions_and_comments({type(self)._apiField: self._name})
 
 	@classmethod
@@ -229,18 +236,24 @@ class _RedditPushshiftScraper(snscrape.base.Scraper):
 
 
 class RedditUserScraper(_RedditPushshiftScraper):
+	'''Scraper class, designed to scrape posts made by specific user.'''
+
 	name = 'reddit-user'
 	_validationFunc = lambda x: re.match('^[A-Za-z0-9_-]{3,20}$', x)
 	_apiField = 'author'
 
 
 class RedditSubredditScraper(_RedditPushshiftScraper):
+	'''Scraper class, designed to scrape a subreddit for posts.'''
+
 	name = 'reddit-subreddit'
 	_validationFunc = lambda x: re.match('^[A-Za-z0-9][A-Za-z0-9_]{2,20}$', x)
 	_apiField = 'subreddit'
 
 
 class RedditSearchScraper(_RedditPushshiftScraper):
+	'''Scraper class, designed to scrape Reddit via search query.'''
+
 	name = 'reddit-search'
 	_validationFunc = lambda x: True
 	_apiField = 'q'

@@ -83,6 +83,7 @@ class Tweet(snscrape.base.Item):
 
 
 class Medium:
+	'''Base class for all Twitter media objects.'''
 	pass
 
 
@@ -287,12 +288,6 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 	'''Base class for all other Twitter scraper classes.'''
 
 	def __init__(self, baseUrl, guestTokenManager = None, **kwargs):
-		'''
-		Args:
-			baseUrl: Base URL for endpoint
-			guestTokenManager: [description]. Defaults to None.
-		'''
-
 		super().__init__(**kwargs)
 		self._baseUrl = baseUrl
 		if guestTokenManager is None:

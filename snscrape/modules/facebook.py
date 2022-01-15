@@ -165,6 +165,11 @@ class _FacebookCommonScraper(snscrape.base.Scraper):
 
 class _FacebookUserAndCommunityScraper(_FacebookCommonScraper):
 	def __init__(self, username, **kwargs):
+		'''
+		Args:
+			username: A Facebook username.
+		'''
+
 		super().__init__(**kwargs)
 		self._username = username
 		self._headers = {'User-Agent': 'Mozilla/5.0 (X11; Linux i686; rv:78.0) Gecko/20100101 Firefox/78.0', 'Accept-Language': 'en-US,en;q=0.5'}
@@ -323,6 +328,16 @@ class FacebookGroupScraper(_FacebookCommonScraper):
 		self._group = group
 
 	def get_items(self):
+		'''[summary]
+
+		Raises:
+			snscrape.base.ScraperException
+		Yields:
+			Individual post.
+		Returns:
+			An iterator of Facebook posts.
+		'''
+
 		headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36', 'Accept-Language': 'en-US,en;q=0.5'}
 
 		pageletDataPattern = re.compile(r'"GroupEntstreamPagelet",\{.*?\}(?=,\{)')
