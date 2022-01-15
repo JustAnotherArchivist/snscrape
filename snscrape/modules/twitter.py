@@ -2,7 +2,6 @@ __all__ = [
 	'Tweet', 'Medium', 'Photo', 'VideoVariant', 'Video', 'Gif', 'DescriptionUrl', 'Coordinates', 'Place',
 	'User', 'UserLabel',
 	'Trend',
-	'ScrollDirection',
 	'GuestTokenManager',
 	'TwitterSearchScraper',
 	'TwitterUserScraper',
@@ -199,7 +198,7 @@ class Trend(snscrape.base.Item):
 		return f'https://twitter.com/search?q={urllib.parse.quote(self.name)}'
 
 
-class ScrollDirection(enum.Enum):
+class _ScrollDirection(enum.Enum):
 	TOP = enum.auto()
 	BOTTOM = enum.auto()
 	BOTH = enum.auto()
@@ -362,7 +361,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			raise snscrape.base.ScraperException('Received invalid JSON from Twitter') from e
 		return obj
 
-	def _iter_api_data(self, endpoint, params, paginationParams = None, cursor = None, direction = ScrollDirection.BOTTOM):
+	def _iter_api_data(self, endpoint, params, paginationParams = None, cursor = None, direction = _ScrollDirection.BOTTOM):
 		# Iterate over endpoint with params/paginationParams, optionally starting from a cursor
 		# Handles guest token extraction using the baseUrl passed to __init__ etc.
 		# Order from params and paginationParams is preserved. To insert the cursor at a particular location, insert a 'cursor' key into paginationParams there (value is overwritten).
@@ -377,7 +376,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			reqParams = paginationParams.copy()
 			reqParams['cursor'] = cursor
 		bottomCursorAndStop = None
-		if direction is ScrollDirection.TOP or direction is ScrollDirection.BOTH:
+		if direction is _ScrollDirection.TOP or direction is _ScrollDirection.BOTH:
 			dir = 'top'
 		else:
 			dir = 'bottom'
@@ -406,7 +405,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 							stopOnEmptyResponse = entry['content']['operation']['cursor']['stopOnEmptyResponse']
 					elif entry['entryId'].startswith('cursor-showMoreThreadsPrompt-'): # E.g. 'offensive' replies button
 						promptCursor = entry['content']['operation']['cursor']['value']
-					elif direction is ScrollDirection.BOTH and bottomCursorAndStop is None and (entry['entryId'] == f'sq-cursor-bottom' or entry['entryId'].startswith('cursor-bottom-')):
+					elif direction is _ScrollDirection.BOTH and bottomCursorAndStop is None and (entry['entryId'] == f'sq-cursor-bottom' or entry['entryId'].startswith('cursor-bottom-')):
 						newBottomCursorAndStop = (entry['content']['operation']['cursor']['value'], entry['content']['operation']['cursor'].get('stopOnEmptyResponse', False))
 			if bottomCursorAndStop is None and newBottomCursorAndStop is not None:
 				bottomCursorAndStop = newBottomCursorAndStop
@@ -420,7 +419,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 				# End of pagination
 				if promptCursor is not None:
 					newCursor = promptCursor
-				elif direction is ScrollDirection.BOTH and bottomCursorAndStop is not None:
+				elif direction is _ScrollDirection.BOTH and bottomCursorAndStop is not None:
 					dir = 'bottom'
 					newCursor, stopOnEmptyResponse = bottomCursorAndStop
 					bottomCursorAndStop = None
@@ -629,9 +628,9 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 		return UserLabel(**labelKwargs)
 
 	@classmethod
-	def cli_construct(cls, argparseArgs, *args, **kwargs):
+	def _cli_construct(cls, argparseArgs, *args, **kwargs):
 		kwargs['guestTokenManager'] = _CLIGuestTokenManager()
-		return super().cli_construct(argparseArgs, *args, **kwargs)
+		return super()._cli_construct(argparseArgs, *args, **kwargs)
 
 
 class TwitterSearchScraper(_TwitterAPIScraper):
@@ -726,14 +725,14 @@ class TwitterSearchScraper(_TwitterAPIScraper):
 			yield from self._instructions_to_tweets(obj)
 
 	@classmethod
-	def cli_setup_parser(cls, subparser):
+	def _cli_setup_parser(cls, subparser):
 		subparser.add_argument('--cursor', metavar = 'CURSOR')
 		subparser.add_argument('--top', action = 'store_true', default = False, help = 'Enable fetching top tweets instead of live/chronological')
 		subparser.add_argument('query', type = snscrape.base.nonempty_string('query'), help = 'A Twitter search string')
 
 	@classmethod
-	def cli_from_args(cls, args):
-		return cls.cli_construct(args, args.query, cursor = args.cursor, top = args.top)
+	def _cli_from_args(cls, args):
+		return cls._cli_construct(args, args.query, cursor = args.cursor, top = args.top)
 
 
 class TwitterUserScraper(TwitterSearchScraper):
@@ -741,28 +740,21 @@ class TwitterUserScraper(TwitterSearchScraper):
 
 	name = 'twitter-user'
 
-	def __init__(self, username, isUserId = False, **kwargs):
+	def __init__(self, user, **kwargs):
 		'''
 		Args:
-			username: Username of the desired profile.
-			isUserId: Set to True if ``username`` is a string containing an all-numeric user ID,
-				set to False if ``username`` is a Twitter username. Defaults to False.
+			user: Username of the desired profile, without the @ sign.
 
 		Raises:
-			ValueError: When ``username`` is not a valid Twitter username or user ID.
-
-		Note:
-			Twitter username or handle is a string that comes after @ sign.
-			User ID is an all-numeric string.
-			Please also note that user ID will internally be resolved into Twitter username.
+			ValueError: When ``user`` is not a valid Twitter username.
 		'''
 
-		if not self.is_valid_username(username):
+		self._isUserId = isinstance(user, int)
+		if not self._isUserId and not self.is_valid_username(user):
 			raise ValueError('Invalid username')
-		super().__init__(f'from:{username}', **kwargs)
-		self._username = username
-		self._isUserId = isUserId
-		self._baseUrl = f'https://twitter.com/{self._username}' if not self._isUserId else f'https://twitter.com/i/user/{self._username}'
+		super().__init__(f'from:{user}', **kwargs)
+		self._user = user
+		self._baseUrl = f'https://twitter.com/{self._user}' if not self._isUserId else f'https://twitter.com/i/user/{self._user}'
 
 	def _get_entity(self):
 		self._ensure_guest_token()
@@ -772,7 +764,7 @@ class TwitterUserScraper(TwitterSearchScraper):
 		else:
 			fieldName = 'userId'
 			endpoint = 'https://twitter.com/i/api/graphql/WN6Hck-Pwm-YP0uxVj1oMQ/UserByRestIdWithoutResults'
-		params = {'variables': json.dumps({fieldName: self._username, 'withHighlightedLabel': True}, separators = (',', ':'))}
+		params = {'variables': json.dumps({fieldName: str(self._user), 'withHighlightedLabel': True}, separators = (',', ':'))}
 		obj = self._get_api_data(endpoint, params = urllib.parse.urlencode(params, quote_via=urllib.parse.quote))
 		if not obj['data']:
 			return None
@@ -784,7 +776,7 @@ class TwitterUserScraper(TwitterSearchScraper):
 			label = self._user_label_to_user_label(labelO)
 		return User(
 			username = user['legacy']['screen_name'],
-			id = user['rest_id'],
+			id = int(user['rest_id']),
 			displayname = user['legacy']['name'],
 			description = description,
 			rawDescription = rawDescription,
@@ -809,28 +801,28 @@ class TwitterUserScraper(TwitterSearchScraper):
 	def get_items(self):
 		if self._isUserId:
 			# Resolve user ID to username
-			self._username = self.entity.username
+			self._user = self.entity.username
 			self._isUserId = False
-			self._query = f'from:{self._username}'
+			self._query = f'from:{self._user}'
 		yield from super().get_items()
 
 	@staticmethod
 	def is_valid_username(s):
-		return (1 <= len(s) <= 15 and s.strip(string.ascii_letters + string.digits + '_') == '') or (s and s.strip(string.digits) == '')
+		return 1 <= len(s) <= 15 and s.strip(string.ascii_letters + string.digits + '_') == ''
 
 	@classmethod
-	def cli_setup_parser(cls, subparser):
-		def username(s):
-			if cls.is_valid_username(s):
+	def _cli_setup_parser(cls, subparser):
+		def user(s):
+			if cls.is_valid_username(s) or s.isdigit():
 				return s
-			raise ValueError('Invalid username')
+			raise ValueError('Invalid username or ID')
 
 		subparser.add_argument('--user-id', dest = 'isUserId', action = 'store_true', default = False, help = 'Use user ID instead of username')
-		subparser.add_argument('username', type = username, help = 'A Twitter username (without @)')
+		subparser.add_argument('user', type = user, help = 'A Twitter username (without @)')
 
 	@classmethod
-	def cli_from_args(cls, args):
-		return cls.cli_construct(args, args.username, args.isUserId)
+	def _cli_from_args(cls, args):
+		return cls._cli_construct(args, user = int(args.user) if args.isUserId else args.user)
 
 
 class TwitterProfileScraper(TwitterUserScraper):
@@ -840,7 +832,7 @@ class TwitterProfileScraper(TwitterUserScraper):
 		if not self._isUserId:
 			userId = self.entity.id
 		else:
-			userId = self._username
+			userId = self._user
 		paginationParams = {
 			'include_profile_interstitial_type': '1',
 			'include_blocking': '1',
@@ -891,12 +883,12 @@ class TwitterHashtagScraper(TwitterSearchScraper):
 		self._hashtag = hashtag
 
 	@classmethod
-	def cli_setup_parser(cls, subparser):
+	def _cli_setup_parser(cls, subparser):
 		subparser.add_argument('hashtag', type = snscrape.base.nonempty_string('hashtag'), help = 'A Twitter hashtag (without #)')
 
 	@classmethod
-	def cli_from_args(cls, args):
-		return cls.cli_construct(args, args.hashtag)
+	def _cli_from_args(cls, args):
+		return cls._cli_construct(args, args.hashtag)
 
 
 class TwitterTweetScraperMode(enum.Enum):
@@ -905,7 +897,7 @@ class TwitterTweetScraperMode(enum.Enum):
 	RECURSE = 'recurse'
 
 	@classmethod
-	def from_args(cls, args):
+	def _cli_from_args(cls, args):
 		if args.scroll:
 			return cls.SCROLL
 		if args.recurse:
@@ -929,7 +921,7 @@ class TwitterTweetScraper(_TwitterAPIScraper):
 
 		self._tweetId = tweetId
 		self._mode = mode
-		super().__init__(f'https://twitter.com/i/web/{self._tweetId}', **kwargs)
+		super().__init__(f'https://twitter.com/i/web/status/{self._tweetId}', **kwargs)
 
 	def get_items(self):
 		paginationParams = {
@@ -965,7 +957,7 @@ class TwitterTweetScraper(_TwitterAPIScraper):
 			obj = self._get_api_data(f'https://twitter.com/i/api/2/timeline/conversation/{self._tweetId}.json', params)
 			yield self._tweet_to_tweet(obj['globalObjects']['tweets'][str(self._tweetId)], obj)
 		elif self._mode is TwitterTweetScraperMode.SCROLL:
-			for obj in self._iter_api_data(f'https://twitter.com/i/api/2/timeline/conversation/{self._tweetId}.json', params, paginationParams, direction = ScrollDirection.BOTH):
+			for obj in self._iter_api_data(f'https://twitter.com/i/api/2/timeline/conversation/{self._tweetId}.json', params, paginationParams, direction = _ScrollDirection.BOTH):
 				yield from self._instructions_to_tweets(obj, includeConversationThreads = True)
 		elif self._mode is TwitterTweetScraperMode.RECURSE:
 			seenTweets = set()
@@ -973,7 +965,7 @@ class TwitterTweetScraper(_TwitterAPIScraper):
 			queue.append(self._tweetId)
 			while queue:
 				tweetId = queue.popleft()
-				for obj in self._iter_api_data(f'https://twitter.com/i/api/2/timeline/conversation/{tweetId}.json', params, paginationParams, direction = ScrollDirection.BOTH):
+				for obj in self._iter_api_data(f'https://twitter.com/i/api/2/timeline/conversation/{tweetId}.json', params, paginationParams, direction = _ScrollDirection.BOTH):
 					for tweet in self._instructions_to_tweets(obj, includeConversationThreads = True):
 						if tweet.id not in seenTweets:
 							yield tweet
@@ -982,15 +974,15 @@ class TwitterTweetScraper(_TwitterAPIScraper):
 								queue.append(tweet.id)
 
 	@classmethod
-	def cli_setup_parser(cls, subparser):
+	def _cli_setup_parser(cls, subparser):
 		group = subparser.add_mutually_exclusive_group(required = False)
 		group.add_argument('--scroll', action = 'store_true', default = False, help = 'Enable scrolling in both directions')
 		group.add_argument('--recurse', '--recursive', action = 'store_true', default = False, help = 'Enable recursion through all tweets encountered (warning: slow, potentially memory-intensive!)')
 		subparser.add_argument('tweetId', type = int, help = 'A tweet ID')
 
 	@classmethod
-	def cli_from_args(cls, args):
-		return cls.cli_construct(args, args.tweetId, TwitterTweetScraperMode.from_args(args))
+	def _cli_from_args(cls, args):
+		return cls._cli_construct(args, args.tweetId, TwitterTweetScraperMode._cli_from_args(args))
 
 
 class TwitterListPostsScraper(TwitterSearchScraper):
@@ -1008,12 +1000,12 @@ class TwitterListPostsScraper(TwitterSearchScraper):
 		self._listName = listName
 
 	@classmethod
-	def cli_setup_parser(cls, subparser):
+	def _cli_setup_parser(cls, subparser):
 		subparser.add_argument('list', type = snscrape.base.nonempty_string('list'), help = 'A Twitter list ID or a string of the form "username/listname" (replace spaces with dashes)')
 
 	@classmethod
-	def cli_from_args(cls, args):
-		return cls.cli_construct(args, args.list)
+	def _cli_from_args(cls, args):
+		return cls._cli_construct(args, args.list)
 
 
 class TwitterTrendsScraper(_TwitterAPIScraper):

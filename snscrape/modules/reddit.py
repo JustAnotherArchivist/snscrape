@@ -221,7 +221,7 @@ class _RedditPushshiftScraper(snscrape.base.Scraper):
 		yield from self._iter_api_submissions_and_comments({type(self)._apiField: self._name})
 
 	@classmethod
-	def cli_setup_parser(cls, subparser):
+	def _cli_setup_parser(cls, subparser):
 		subparser.add_argument('--no-submissions', dest = 'noSubmissions', action = 'store_true', default = False, help = 'Don\'t list submissions')
 		subparser.add_argument('--no-comments', dest = 'noComments', action = 'store_true', default = False, help = 'Don\'t list comments')
 		subparser.add_argument('--before', metavar = 'TIMESTAMP', type = int, help = 'Fetch results before a Unix timestamp')
@@ -230,9 +230,9 @@ class _RedditPushshiftScraper(snscrape.base.Scraper):
 		subparser.add_argument(name, type = snscrape.base.nonempty_string(name))
 
 	@classmethod
-	def cli_from_args(cls, args):
+	def _cli_from_args(cls, args):
 		name = cls.name.split('-', 1)[1]
-		return cls.cli_construct(args, getattr(args, name), submissions = not args.noSubmissions, comments = not args.noComments, before = args.before, after = args.after)
+		return cls._cli_construct(args, getattr(args, name), submissions = not args.noSubmissions, comments = not args.noComments, before = args.before, after = args.after)
 
 
 class RedditUserScraper(_RedditPushshiftScraper):
