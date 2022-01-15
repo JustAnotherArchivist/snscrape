@@ -59,6 +59,10 @@ class WeiboUserScraper(snscrape.base.Scraper):
 	name = 'weibo-user'
 
 	def __init__(self, user, **kwargs):
+		'''
+		Args:
+			user: a Weibo username.
+		'''
 		super().__init__(**kwargs)
 		self._user = user
 		self._isUserId = isinstance(user, int)

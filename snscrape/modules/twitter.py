@@ -88,12 +88,14 @@ class Medium:
 
 @dataclasses.dataclass
 class Photo(Medium):
+	'''An object representing a photo in Twitter.'''
 	previewUrl: str
 	fullUrl: str
 
 
 @dataclasses.dataclass
 class VideoVariant:
+	'''An object representing specs/variant of a Twitter video.'''
 	contentType: str
 	url: str
 	bitrate: typing.Optional[int]
@@ -101,6 +103,7 @@ class VideoVariant:
 
 @dataclasses.dataclass
 class Video(Medium):
+	'''An object representing a video in Twitter.'''
 	thumbnailUrl: str
 	variants: typing.List[VideoVariant]
 	duration: float
@@ -109,12 +112,14 @@ class Video(Medium):
 
 @dataclasses.dataclass
 class Gif(Medium):
+	'''An object representing a gif image in Twitter.'''
 	thumbnailUrl: str
 	variants: typing.List[VideoVariant]
 
 
 @dataclasses.dataclass
 class DescriptionURL:
+	'''An object representing URL description in a tweet.'''
 	text: typing.Optional[str]
 	url: str
 	tcourl: str
@@ -123,12 +128,14 @@ class DescriptionURL:
 
 @dataclasses.dataclass
 class Coordinates:
+	'''An object representing a coordinate in Twitter.'''
 	longitude: float
 	latitude: float
 
 
 @dataclasses.dataclass
 class Place:
+	'''An object representing a named place in Twitter.'''
 	fullName: str
 	name: str
 	type: str
@@ -177,7 +184,7 @@ class User(snscrape.base.Entity):
 class UserLabel:
 	'''An object representing user label.
 
-	Label is a badge that shows whether the Twitter account is affiliated with any governments or other certain organizations.
+	Label is a badge that shows whether the Twitter account is affiliated with any government or other certain organizations.
 	'''
 
 	description: str
@@ -808,6 +815,12 @@ class TwitterUserScraper(TwitterSearchScraper):
 
 	@staticmethod
 	def is_valid_username(s):
+		'''Check if s is a valid Twitter username.
+
+		Args:
+			s: Twitter username
+		'''
+
 		return 1 <= len(s) <= 15 and s.strip(string.ascii_letters + string.digits + '_') == ''
 
 	@classmethod

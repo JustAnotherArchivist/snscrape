@@ -18,6 +18,7 @@ _logger = logging.getLogger(__name__)
 
 @dataclasses.dataclass
 class Toot(snscrape.base.Item):
+	'''An object representing one toot.'''
 	url: str
 	id: str
 	user: 'User'
@@ -68,6 +69,11 @@ class PollOption:
 
 @dataclasses.dataclass
 class User(snscrape.base.Entity):
+	'''An object representing one user.
+
+	Most fields can be None if not known.
+	'''
+
 	account: str # @username@domain.invalid
 	displayName: typing.Optional[str] = None
 	displayNameWithCustomEmojis: typing.Optional[typing.List[typing.Union[str, 'CustomEmoji']]] = None
@@ -92,6 +98,8 @@ class CustomEmoji:
 
 
 class _MastodonCommonScraper(snscrape.base.Scraper):
+	'''Base class for all other Mastodon scraper classes.'''
+
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		self._headers = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:52.0) Gecko/20100101 Firefox/52.0', 'Accept-Language': 'en-US,en;q=0.5'}
@@ -243,9 +251,15 @@ class _MastodonCommonScraper(snscrape.base.Scraper):
 
 
 class MastodonProfileScraper(_MastodonCommonScraper):
+	'''Scraper class, designed to scrape toots of a specific user profile.'''
+
 	name = 'mastodon-profile'
 
 	def __init__(self, account, *args, **kwargs):
+		'''
+		Args:
+			account: The desired Mastodon account.
+		'''
 		super().__init__(*args, **kwargs)
 		if account.startswith('@') and account.count('@') == 2:
 			account, domain = account[1:].split('@')
@@ -308,9 +322,16 @@ class MastodonTootScraperMode(enum.Enum):
 
 
 class MastodonTootScraper(_MastodonCommonScraper):
+	'''Scraper object designed to scrape a specific toot and thread surrounding it.'''
+
 	name = 'mastodon-toot'
 
 	def __init__(self, url, mode, *args, **kwargs):
+		'''
+		Args:
+			url: URL for the desired toot.
+			mode: [description]
+		'''
 		super().__init__(*args, **kwargs)
 		self._url = url
 		self._mode = mode

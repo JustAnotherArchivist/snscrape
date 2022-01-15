@@ -56,12 +56,14 @@ class VKontaktePost(snscrape.base.Item):
 
 @dataclasses.dataclass
 class Photo:
+	'''An object representing a photo in VK.'''
 	variants: typing.List['PhotoVariant']
 	url: typing.Optional[str] = None
 
 
 @dataclasses.dataclass
 class PhotoVariant:
+	'''An object representing a photo variant in VK.'''
 	url: str
 	width: int
 	height: int
@@ -69,6 +71,7 @@ class PhotoVariant:
 
 @dataclasses.dataclass
 class Video:
+	'''An object representing a video in VK.'''
 	id: str
 	list: str
 	duration: int
