@@ -37,6 +37,7 @@ class Toot(snscrape.base.Item):
 
 @dataclasses.dataclass
 class Boost(snscrape.base.Item):
+	'''An object representing a boost of toot by a user.'''
 	user: 'User'
 	toot: Toot
 
@@ -47,12 +48,14 @@ class Boost(snscrape.base.Item):
 
 @dataclasses.dataclass
 class Attachment:
+	'''An object representing attachment in a toot.'''
 	url: str
 	name: str
 
 
 @dataclasses.dataclass
 class Poll:
+	'''An object representing a poll.'''
 	id: str
 	expirationDate: datetime.datetime
 	multiple: bool
@@ -63,6 +66,7 @@ class Poll:
 
 @dataclasses.dataclass
 class PollOption:
+	'''An object representing an option in polls.'''
 	title: str
 	votesCount: int
 
@@ -311,6 +315,7 @@ class MastodonProfileScraper(_MastodonCommonScraper):
 
 
 class MastodonTootScraperMode(enum.Enum):
+	'''Enumeration for Mastodon toot scraping mode'''
 	SINGLE = 'single'
 	THREAD = 'thread'
 
@@ -322,7 +327,7 @@ class MastodonTootScraperMode(enum.Enum):
 
 
 class MastodonTootScraper(_MastodonCommonScraper):
-	'''Scraper object designed to scrape a specific toot and thread surrounding it.'''
+	'''Scraper class, designed to scrape a specific toot and thread surrounding it.'''
 
 	name = 'mastodon-toot'
 
