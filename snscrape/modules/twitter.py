@@ -195,7 +195,7 @@ class UserLabel:
 
 @dataclasses.dataclass
 class Trend(snscrape.base.Item):
-	'''An object representing one trend.'''
+	'''An object representing one trend, i.e. a topic which is trending.'''
 
 	name: str
 	domainContext: str
@@ -839,6 +839,8 @@ class TwitterUserScraper(TwitterSearchScraper):
 
 
 class TwitterProfileScraper(TwitterUserScraper):
+	'''Scraper class, designed to scrape tweets of a specific user profile.'''
+
 	name = 'twitter-profile'
 
 	def get_items(self):
@@ -905,6 +907,7 @@ class TwitterHashtagScraper(TwitterSearchScraper):
 
 
 class TwitterTweetScraperMode(enum.Enum):
+	'''Enumeration of modes for :class:`TwitterTweetScraper`'''
 	SINGLE = 'single'
 	SCROLL = 'scroll'
 	RECURSE = 'recurse'
@@ -927,7 +930,7 @@ class TwitterTweetScraper(_TwitterAPIScraper):
 		'''
 		Args:
 			tweetId: ID of the tweet.
-			mode: [description]. Defaults to TwitterTweetScraperMode.SINGLE.
+			mode: Scraping mode. Defaults to TwitterTweetScraperMode.SINGLE.
 		Yields:
 			Individual tweet.
 		'''
