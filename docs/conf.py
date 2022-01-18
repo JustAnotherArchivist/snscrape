@@ -14,6 +14,11 @@ import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
 
+# Tools for importing snscrape at build time
+# Avoid name conflict with sphinx configuration variable "version"
+from importlib import import_module
+from importlib.metadata import version as _version
+
 
 # -- Project information -----------------------------------------------------
 
@@ -22,7 +27,7 @@ copyright = '2021, JustAnotherArchivist'
 author = 'JustAnotherArchivist'
 
 # The full version, including alpha/beta/rc tags
-release = 'v0.4.0.20211208'
+release = _version(project)
 
 
 # -- General configuration ---------------------------------------------------
