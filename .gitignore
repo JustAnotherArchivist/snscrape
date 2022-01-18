@@ -5,3 +5,4 @@ __pycache__/
 /docs/_build/**
 /docs/_autosummary/**
 .vscode/
+venv/
