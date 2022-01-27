@@ -131,7 +131,7 @@ class _RedditPushshiftScraper(snscrape.base.Scraper):
 					else: # E.g. submission 617p51 but can likely happen for comments as well
 						permalink = f'/comments/{d["link_id"][3:]}/_/{d["id"]}/'
 				else:
-					_logger.warning(f'Unable to find or construct permalink')
+					_logger.warning('Unable to find or construct permalink')
 					permalink = '/'
 
 		kwargs = {
