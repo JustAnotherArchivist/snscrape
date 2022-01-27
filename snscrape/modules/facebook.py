@@ -342,10 +342,13 @@ class FacebookGroupScraper(_FacebookCommonScraper):
 		while (data := pageletDataPattern.search(r.text).group(0)[pageletDataPrefixLength:]):
 			# As on the user profile pages, the web app sends a lot of additional parameters, but those all seem to be unnecessary (although some change the response format, e.g. from JSON to HTML)
 			r = self._get(
-				f'https://upload.facebook.com/ajax/pagelet/generic.php/GroupEntstreamPagelet',
-				params = {'data': data, '__a': 1},
-				headers = headers,
-			  )
+			    'https://upload.facebook.com/ajax/pagelet/generic.php/GroupEntstreamPagelet',
+			    params={
+			        'data': data,
+			        '__a': 1
+			    },
+			    headers=headers,
+			)
 			if r.status_code != 200:
 				raise snscrape.base.ScraperException(f'Got status code {r.status_code}')
 			obj = json.loads(spuriousForLoopPattern.sub('', r.text))
