@@ -931,8 +931,6 @@ class TwitterTweetScraper(_TwitterAPIScraper):
 		Args:
 			tweetId: ID of the tweet.
 			mode: Scraping mode. Defaults to TwitterTweetScraperMode.SINGLE.
-		Yields:
-			Individual tweet.
 		'''
 
 		self._tweetId = tweetId
@@ -940,6 +938,11 @@ class TwitterTweetScraper(_TwitterAPIScraper):
 		super().__init__(f'https://twitter.com/i/web/status/{self._tweetId}', **kwargs)
 
 	def get_items(self):
+		'''Get items according to specifications given when instantiating this scraper.
+
+		Yields:
+			Individual tweet.
+		'''
 		paginationParams = {
 			'include_profile_interstitial_type': '1',
 			'include_blocking': '1',
