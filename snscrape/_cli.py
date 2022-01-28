@@ -69,7 +69,7 @@ def _requests_response_repr(name, response, withHistory = True):
 	if withHistory and response.history:
 		ret.append(f'\n  {name}.history = [')
 		for previousResponse in response.history:
-			ret.append(f'\n    ')
+			ret.append('\n    ')
 			ret.append(_requests_response_repr('_', previousResponse, withHistory = False).replace('\n', '\n    '))
 		ret.append('\n  ]')
 	ret.append(f'\n  {name}.status_code = {response.status_code}')
@@ -83,8 +83,8 @@ def _requests_response_repr(name, response, withHistory = True):
 def _requests_exception_repr(name, exc):
 	ret = []
 	ret.append(f'{name} = {exc!r}')
-	ret.append(f'\n  ' + _repr(f'{name}.request', exc.request).replace('\n', '\n  '))
-	ret.append(f'\n  ' + _repr(f'{name}.response', exc.response).replace('\n', '\n  '))
+	ret.append('\n  ' + _repr(f'{name}.request', exc.request).replace('\n', '\n  '))
+	ret.append('\n  ' + _repr(f'{name}.response', exc.response).replace('\n', '\n  '))
 	return ''.join(ret)
 
 
@@ -151,7 +151,7 @@ def _dump_stack_and_locals(trace, exc = None):
 				fp.write('\n')
 			fp.write('\n')
 			if 'self' in locals_ and hasattr(locals_['self'], '__dict__'):
-				fp.write(f'Object dict:\n')
+				fp.write('Object dict:\n')
 				fp.write(repr(locals_['self'].__dict__))
 				fp.write('\n\n')
 		name = fp.name

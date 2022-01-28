@@ -387,7 +387,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 							stopOnEmptyResponse = entry['content']['operation']['cursor']['stopOnEmptyResponse']
 					elif entry['entryId'].startswith('cursor-showMoreThreadsPrompt-'): # E.g. 'offensive' replies button
 						promptCursor = entry['content']['operation']['cursor']['value']
-					elif direction is _ScrollDirection.BOTH and bottomCursorAndStop is None and (entry['entryId'] == f'sq-cursor-bottom' or entry['entryId'].startswith('cursor-bottom-')):
+					elif direction is _ScrollDirection.BOTH and bottomCursorAndStop is None and (entry['entryId'] == 'sq-cursor-bottom' or entry['entryId'].startswith('cursor-bottom-')):
 						newBottomCursorAndStop = (entry['content']['operation']['cursor']['value'], entry['content']['operation']['cursor'].get('stopOnEmptyResponse', False))
 			if bottomCursorAndStop is None and newBottomCursorAndStop is not None:
 				bottomCursorAndStop = newBottomCursorAndStop
@@ -631,9 +631,9 @@ class TwitterSearchScraper(_TwitterAPIScraper):
 			# Accept a 429 response as "valid" to prevent retries; handled explicitly in get_items
 			return True, None
 		if r.headers.get('content-type').replace(' ', '') != 'application/json;charset=utf-8':
-			return False, f'content type is not JSON'
+			return False, 'content type is not JSON'
 		if r.status_code != 200:
-			return False, f'non-200 status code'
+			return False, 'non-200 status code'
 		return True, None
 
 	def get_items(self):
