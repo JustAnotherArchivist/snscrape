@@ -92,8 +92,8 @@ class CustomEmoji:
 
 
 class _MastodonCommonScraper(snscrape.base.Scraper):
-	def __init__(self, *args, **kwargs):
-		super().__init__(*args, **kwargs)
+	def __init__(self, **kwargs):
+		super().__init__(**kwargs)
 		self._headers = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:52.0) Gecko/20100101 Firefox/52.0', 'Accept-Language': 'en-US,en;q=0.5'}
 		self._lastRequest = 0
 
@@ -245,8 +245,8 @@ class _MastodonCommonScraper(snscrape.base.Scraper):
 class MastodonProfileScraper(_MastodonCommonScraper):
 	name = 'mastodon-profile'
 
-	def __init__(self, account, *args, **kwargs):
-		super().__init__(*args, **kwargs)
+	def __init__(self, account, **kwargs):
+		super().__init__(**kwargs)
 		if account.startswith('@') and account.count('@') == 2:
 			account, domain = account[1:].split('@')
 			url = f'https://{domain}/@{account}'
@@ -310,8 +310,8 @@ class MastodonTootScraperMode(enum.Enum):
 class MastodonTootScraper(_MastodonCommonScraper):
 	name = 'mastodon-toot'
 
-	def __init__(self, url, mode, *args, **kwargs):
-		super().__init__(*args, **kwargs)
+	def __init__(self, url, *, mode = MastodonTootScraperMode.SINGLE, **kwargs):
+		super().__init__(**kwargs)
 		self._url = url
 		self._mode = mode
 
@@ -337,4 +337,4 @@ class MastodonTootScraper(_MastodonCommonScraper):
 
 	@classmethod
 	def _cli_from_args(cls, args):
-		return cls._cli_construct(args, args.url, MastodonTootScraperMode._cli_from_args(args))
+		return cls._cli_construct(args, args.url, mode = MastodonTootScraperMode._cli_from_args(args))

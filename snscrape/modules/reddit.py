@@ -47,7 +47,7 @@ class Comment(snscrape.base.Item):
 
 
 class _RedditPushshiftScraper(snscrape.base.Scraper):
-	def __init__(self, name, submissions = True, comments = True, before = None, after = None, **kwargs):
+	def __init__(self, name, *, submissions = True, comments = True, before = None, after = None, **kwargs):
 		super().__init__(**kwargs)
 		self._name = name
 		self._submissions = submissions

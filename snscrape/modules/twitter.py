@@ -268,7 +268,7 @@ class _CLIGuestTokenManager(GuestTokenManager):
 
 
 class _TwitterAPIScraper(snscrape.base.Scraper):
-	def __init__(self, baseUrl, guestTokenManager = None, **kwargs):
+	def __init__(self, baseUrl, *, guestTokenManager = None, **kwargs):
 		super().__init__(**kwargs)
 		self._baseUrl = baseUrl
 		if guestTokenManager is None:
@@ -618,7 +618,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 class TwitterSearchScraper(_TwitterAPIScraper):
 	name = 'twitter-search'
 
-	def __init__(self, query, cursor = None, top = False, **kwargs):
+	def __init__(self, query, *, cursor = None, top = False, **kwargs):
 		if not query.strip():
 			raise ValueError('empty query')
 		super().__init__(baseUrl = 'https://twitter.com/search?' + urllib.parse.urlencode({'f': 'live', 'lang': 'en', 'q': query, 'src': 'spelling_expansion_revert_click'}), **kwargs)
@@ -847,7 +847,7 @@ class TwitterTweetScraperMode(enum.Enum):
 class TwitterTweetScraper(_TwitterAPIScraper):
 	name = 'twitter-tweet'
 
-	def __init__(self, tweetId, mode = TwitterTweetScraperMode.SINGLE, **kwargs):
+	def __init__(self, tweetId, *, mode = TwitterTweetScraperMode.SINGLE, **kwargs):
 		self._tweetId = tweetId
 		self._mode = mode
 		super().__init__(f'https://twitter.com/i/web/status/{self._tweetId}', **kwargs)
@@ -911,7 +911,7 @@ class TwitterTweetScraper(_TwitterAPIScraper):
 
 	@classmethod
 	def _cli_from_args(cls, args):
-		return cls._cli_construct(args, args.tweetId, TwitterTweetScraperMode._cli_from_args(args))
+		return cls._cli_construct(args, args.tweetId, mode = TwitterTweetScraperMode._cli_from_args(args))
 
 
 class TwitterListPostsScraper(TwitterSearchScraper):
