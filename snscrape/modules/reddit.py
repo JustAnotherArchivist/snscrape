@@ -1,4 +1,4 @@
-__all__ = ['Submission', 'Comment', 'RedditUserScraper', 'RedditSubredditScraper', 'RedditSearchScraper']
+__all__ = ['Submission', 'Comment', 'RedditUserScraper', 'RedditSubredditScraper', 'RedditSearchScraper', 'RedditSubmissionScraper']
 
 
 import dataclasses
@@ -244,3 +244,38 @@ class RedditSearchScraper(_RedditPushshiftSearchScraper):
 	name = 'reddit-search'
 	_validationFunc = lambda x: True
 	_apiField = 'q'
+
+
+class RedditSubmissionScraper(_RedditPushshiftScraper):
+	name = 'reddit-submission'
+
+	def __init__(self, submissionId, **kwargs):
+		if (submissionId[3:] if submissionId.startswith('t3_') else submissionId).strip(string.ascii_lowercase + string.digits) != '':
+			raise ValueError('invalid submissionId')
+		super().__init__(**kwargs)
+		self._submissionId = submissionId
+
+	def get_items(self):
+		obj = self._get_api(f'https://api.pushshift.io/reddit/search/submission/?ids={self._submissionId}')
+		if not obj['data']:
+			return
+		if len(obj['data']) != 1:
+			raise snscrape.base.ScraperException(f'Got {len(obj["data"])} results instead of 1')
+		yield self._api_obj_to_item(obj['data'][0])
+
+		obj = self._get_api(f'https://api.pushshift.io/reddit/submission/comment_ids/{self._submissionId}')
+		if not obj['data']:
+			return
+		commentIds = obj['data']
+		for i in range(0, len(commentIds), 500):
+			ids = commentIds[i : i + 500]
+			obj = self._get_api(f'https://api.pushshift.io/reddit/comment/search?ids={",".join(ids)}')
+			yield from map(self._api_obj_to_item, obj['data'])
+
+	@classmethod
+	def _cli_setup_parser(cls, subparser):
+		subparser.add_argument('submissionId', type = snscrape.base.nonempty_string('submissionId'))
+
+	@classmethod
+	def _cli_from_args(cls, args):
+		return cls._cli_construct(args, args.submissionId)
