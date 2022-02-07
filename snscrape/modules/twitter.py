@@ -398,7 +398,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 					instructions = obj['data']['user']['result']['timeline']['timeline']['instructions']
 				else:
 					# TweetDetail
-					instructions = obj['data']['threaded_conversation_with_injections']['instructions']
+					instructions = obj['data'].get('threaded_conversation_with_injections', {}).get('instructions', [])
 			tweetCount = 0
 			for instruction in instructions:
 				if 'addEntries' in instruction:
@@ -944,6 +944,8 @@ class TwitterTweetScraper(_TwitterAPIScraper):
 		url = 'https://twitter.com/i/api/graphql/8svRea_Lc0_mdhwP6dqe0Q/TweetDetail'
 		if self._mode is TwitterTweetScraperMode.SINGLE:
 			obj = self._get_api_data(url, _TwitterAPIType.GRAPHQL, params = variables)
+			if not obj['data']:
+				return
 			for instruction in obj['data']['threaded_conversation_with_injections']['instructions']:
 				if instruction['type'] != 'TimelineAddEntries':
 					continue
@@ -953,6 +955,8 @@ class TwitterTweetScraper(_TwitterAPIScraper):
 						break
 		elif self._mode is TwitterTweetScraperMode.SCROLL:
 			for obj in self._iter_api_data(url, _TwitterAPIType.GRAPHQL, variables, paginationVariables, direction = _ScrollDirection.BOTH):
+				if not obj['data']:
+					continue
 				yield from self._graphql_timeline_instructions_to_tweets(obj['data']['threaded_conversation_with_injections']['instructions'], includeConversationThreads = True)
 		elif self._mode is TwitterTweetScraperMode.RECURSE:
 			seenTweets = set()
@@ -965,6 +969,8 @@ class TwitterTweetScraper(_TwitterAPIScraper):
 				thisVariables = thisPagVariables.copy()
 				del thisPagVariables['cursor'], thisPagVariables['referrer']
 				for obj in self._iter_api_data(url, _TwitterAPIType.GRAPHQL, thisVariables, thisPagVariables, direction = _ScrollDirection.BOTH):
+					if not obj['data']:
+						continue
 					for tweet in self._graphql_timeline_instructions_to_tweets(obj['data']['threaded_conversation_with_injections']['instructions'], includeConversationThreads = True):
 						if tweet.id not in seenTweets:
 							yield tweet
