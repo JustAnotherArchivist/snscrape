@@ -975,7 +975,7 @@ class TwitterTweetScraper(_TwitterAPIScraper):
 						if tweet.id not in seenTweets:
 							yield tweet
 							seenTweets.add(tweet.id)
-							if tweet.replyCount:
+							if tweet.id != self._tweetId:  # Already queued at the beginning
 								queue.append(tweet.id)
 
 	@classmethod
