@@ -467,11 +467,11 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 				continue
 			for entry in entries:
 				if entry['entryId'].startswith('sq-I-t-') or entry['entryId'].startswith('tweet-'):
-					yield from self._instruction_tweet_entry_to_tweet(entry['entryId'], entry['content'], obj)
+					yield from self._v2_instruction_tweet_entry_to_tweet(entry['entryId'], entry['content'], obj)
 				elif includeConversationThreads and entry['entryId'].startswith('conversationThread-') and not entry['entryId'].endswith('-show_more_cursor'):
 					for item in entry['content']['timelineModule']['items']:
 						if item['entryId'].startswith('tweet-'):
-							yield from self._instruction_tweet_entry_to_tweet(item['entryId'], item, obj)
+							yield from self._v2_instruction_tweet_entry_to_tweet(item['entryId'], item, obj)
 
 	def _v2_instruction_tweet_entry_to_tweet(self, entryId, entry, obj):
 		if 'tweet' in entry['item']['content']:
