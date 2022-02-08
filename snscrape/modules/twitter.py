@@ -36,6 +36,7 @@ import urllib.parse
 _logger = logging.getLogger(__name__)
 _API_AUTHORIZATION_HEADER = 'Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs=1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA'
 _globalGuestTokenManager = None
+_GUEST_TOKEN_VALIDITY = 10800
 
 
 @dataclasses.dataclass
@@ -248,6 +249,9 @@ class _CLIGuestTokenManager(GuestTokenManager):
 				o = json.load(fp)
 		self._token = o['token']
 		self._setTime = o['setTime']
+		if self._setTime < time.time() - _GUEST_TOKEN_VALIDITY:
+			_logger.info('Guest token expired')
+			self.reset()
 
 	def _write(self):
 		with self._lock:
@@ -330,7 +334,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 				self._guestTokenManager.token = o['guest_token']
 			assert self._guestTokenManager.token
 		_logger.debug(f'Using guest token {self._guestTokenManager.token}')
-		self._session.cookies.set('gt', self._guestTokenManager.token, domain = '.twitter.com', path = '/', secure = True, expires = self._guestTokenManager.setTime + 10800)
+		self._session.cookies.set('gt', self._guestTokenManager.token, domain = '.twitter.com', path = '/', secure = True, expires = self._guestTokenManager.setTime + _GUEST_TOKEN_VALIDITY)
 		self._apiHeaders['x-guest-token'] = self._guestTokenManager.token
 
 	def _unset_guest_token(self):
