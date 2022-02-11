@@ -88,7 +88,7 @@ class _ParlerAPIScraper(snscrape.base.Scraper):
         }
 
     def _check_api_response(self, r):
-        if r != 200:
+        if r.status_code != 200:
             return False, "non-200 status code"
         return True, None
 
@@ -144,14 +144,13 @@ class ParlerProfileScraper(_ParlerAPIScraper):
         current_page = 1
         page = 1
         data = {}
-        data['user'] = (None, self._username)
+        data['user'] = (self._username)
         while True:
-            data['page'] = (None, page)
+            data['page'] = (page)
             if data['page'] == 1:
                 del data['page']
-            import requests
-            current_page = requests.post("https://parler.com/open-api/profile-feed.php", files=data).text
-            #current_page = self._get_api_data("https://parler.com/open-api/profile-feed.php", data)
+            #current_page = requests.post("https://parler.com/open-api/profile-feed.php", files=data).text
+            current_page = self._get_api_data("https://parler.com/open-api/profile-feed.php", data)
             if previous_page == current_page:
                 break
             previous_page = current_page
