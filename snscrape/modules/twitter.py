@@ -601,6 +601,13 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 		return self._make_tweet(tweet, user, **kwargs)
 
 	def _graphql_timeline_tweet_item_result_to_tweet(self, result):
+		if result['__typename'] == 'Tweet':
+			pass
+		elif result['__typename'] == 'TweetWithVisibilityResults':
+			#TODO Include result['softInterventionPivot'] in the Tweet object
+			result = result['tweet']
+		else:
+			raise snscrape.base.ScraperError(f'Unknown result type {result["__typename"]!r}')
 		tweet = result['legacy']
 		userId = int(result['core']['user_results']['result']['rest_id'])
 		user = self._user_to_user(result['core']['user_results']['result']['legacy'], id_ = userId)
