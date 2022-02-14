@@ -607,7 +607,6 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 		kwargs = {}
 		if 'retweeted_status_result' in tweet:
 			kwargs['retweetedTweet'] = self._graphql_timeline_tweet_item_result_to_tweet(tweet['retweeted_status_result']['result'])
-		#TODO Does retweetedRefResult exist?
 		if 'quoted_status_result' in result:
 			if result['quoted_status_result']['result']['__typename'] == 'TweetTombstone':
 				kwargs['quotedTweet'] = TweetRef(id = int(tweet['quoted_status_id_str']))
