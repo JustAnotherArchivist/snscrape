@@ -600,6 +600,14 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			kwargs['cashtags'] = [o['text'] for o in tweet['entities']['symbols']]
 		if card:
 			kwargs['card'] = card
+			# Try to convert the URL to the non-shortened/t.co one
+			try:
+				i = kwargs['tcooutlinks'].index(card.url)
+			except ValueError:
+				_logger.warning('Could not find card URL in tcooutlinks')
+				pass
+			else:
+				card.url = kwargs['outlinks'][i]
 		return Tweet(**kwargs)
 
 	def _make_card(self, card, apiType):
