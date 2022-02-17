@@ -120,12 +120,12 @@ class _InstagramCommonScraper(snscrape.base.Scraper):
 
 		r = self._initial_page()
 		if r.status_code == 404:
-			_logger.warning(f'Page does not exist')
+			_logger.warning('Page does not exist')
 			return
 		response = r._snscrape_json_obj
 		rhxGis = response['rhx_gis'] if 'rhx_gis' in response else ''
 		if response['entry_data'][self._pageName][0]['graphql'][self._responseContainer][self._edgeXToMedia]['count'] == 0:
-			_logger.info(f'Page has no posts')
+			_logger.info('Page has no posts')
 			return
 		if not response['entry_data'][self._pageName][0]['graphql'][self._responseContainer][self._edgeXToMedia]['edges']:
 			_logger.warning('Private account')
