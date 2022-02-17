@@ -17,17 +17,25 @@ sys.path.insert(0, os.path.abspath('..'))
 # Tools for importing snscrape at build time
 # Avoid name conflict with sphinx configuration variable "version"
 from importlib import import_module
-from importlib.metadata import version as _version
+from importlib.metadata import metadata
 
 
 # -- Project information -----------------------------------------------------
 
+# Project name
 project = 'snscrape'
-copyright = '2021, JustAnotherArchivist'
-author = 'JustAnotherArchivist'
 
-# The full version, including alpha/beta/rc tags
-release = _version(project)
+# Metadata
+_metadata = metadata(project)
+
+# Version in format 0.4.0.20211208
+release = _metadata['version']
+author = _metadata['author']
+
+_major, _minor, _patch, _yyyymmdd = release.split('.')
+
+YEAR = _yyyymmdd[0:4]
+copyright = f'{YEAR}, {author}'
 
 
 # -- General configuration ---------------------------------------------------
