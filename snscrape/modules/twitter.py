@@ -135,9 +135,9 @@ class Place:
 @dataclasses.dataclass
 class Card:
 	title: str
-	description: str
 	url: str
-	thumbnailUrl: str
+	description: typing.Optional[str] = None
+	thumbnailUrl: typing.Optional[str] = None
 
 
 @dataclasses.dataclass
