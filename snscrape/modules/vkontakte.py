@@ -347,9 +347,11 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 			if websites:
 				kwargs['websites'] = websites
 
-		def parse_num(s):
+		def parse_num(s: str) -> int:
 			if s.endswith('K'):
 				return int(s[:-1]) * 1000, 1000
+			elif s.endswith('M'):
+				return int(float(s[:-1]) * 1000000), 1000000
 			else:
 				return int(s.replace(',', '')), 1
 
