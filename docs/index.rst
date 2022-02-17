@@ -21,7 +21,7 @@ Weibo (Sina Weibo) User profile
 Mastodon           User profile, thread
 ================== =======================================================
 
-``snscrape`` works without the need for logins/authentications. The drawback of doing so, however, is that some platforms (right now, or in the future) may try to impose limits for unathenticated or not-logged-in requests coming from your IP address. Such IP-based limits are usually temporary.
+``snscrape`` works without the need for logins/authentications. The drawback of doing so, however, is that some platforms (right now, or in the future) may try to impose limits for unauthenticated or not-logged-in requests coming from your IP address. Such IP-based limits are usually temporary.
 
 ``snscrape`` can be used either from CLI or imported as a library.
 
