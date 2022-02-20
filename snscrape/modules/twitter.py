@@ -605,7 +605,6 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 				i = kwargs['tcooutlinks'].index(card.url)
 			except ValueError:
 				_logger.warning('Could not find card URL in tcooutlinks')
-				pass
 			else:
 				card.url = kwargs['outlinks'][i]
 		return Tweet(**kwargs)
