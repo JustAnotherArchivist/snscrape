@@ -1,5 +1,3 @@
-__all__ = []
-
 import collections
 import dataclasses
 import snscrape.base
@@ -20,21 +18,20 @@ class Post(snscrape.base.Item):
     url: str
     badges: 'Badges'
     body: str
-    # disgusting. snake_case mixed with camelCase
     commentCount = int
     # FIXME: add commented
-    date_created: str # FIXME: maybe make this a datetime?
-    detected_language: str # what is this for?
-    domain_name: str
+    dateCreated: str # FIXME: maybe make this a datetime?
+    detectedLanguage: str # what is this for?
+    domainName: str
     echoCount: int # ???
     # FIXME: Add echoed, echoedWithCommentId, echoedWithoutCommentId
     edited: bool
     # FIXME: add embed_data
-    full_body: str
-    has_audio: bool
-    has_embed: bool
-    has_image: bool
-    has_video: bool
+    fullBody: str
+    hasAudio: bool
+    hasEmbed: bool
+    hasImage: bool
+    hasVideo: bool
     id: int
     image: str
     image_data: str
@@ -43,12 +40,11 @@ class Post(snscrape.base.Item):
     link: list # represented as a str, though, so we'll have to parse that
     long_link: str
     name: str
-    profile_photo: str
+    profilePhoto: str
     sensitive: bool
     time_ago: str
     title: str
     trolling: bool # don't even ask bc i don't know
-    upvoted: bool # presumably a bool if you're logged in, but snscrape doesn't do that
     username: str
     userv4uuid: str
     uuid: str
@@ -69,8 +65,7 @@ class Badges(snscrape.base.Item):
 
 @dataclasses.dataclass
 class Badge:
-    '''Meant for use in allBadges
-    '''
+    '''Meant for use in allBadges'''
 
     name: str
     icon: str
@@ -106,8 +101,7 @@ class ParlerProfileScraper(_ParlerAPIScraper):
     name = 'parler-user'
 
     def __init__(self, username, **kwargs):
-        '''
-        Args:
+        '''Args:
             username: Username of user to scrape. This is NOT their display name.
 
         Raises:
@@ -149,7 +143,6 @@ class ParlerProfileScraper(_ParlerAPIScraper):
             data['page'] = (page)
             if data['page'] == 1:
                 del data['page']
-            #current_page = requests.post("https://parler.com/open-api/profile-feed.php", files=data).text
             current_page = self._get_api_data("https://parler.com/open-api/profile-feed.php", data)
             if previous_page == current_page:
                 break
