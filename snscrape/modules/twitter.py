@@ -287,7 +287,11 @@ class _CLIGuestTokenManager(GuestTokenManager):
 	def reset(self):
 		super().reset()
 		with self._lock:
-			os.remove(self._file)
+			try:
+				os.remove(self._file)
+			except FileNotFoundError:
+				# Another process likely already removed the file
+				pass
 
 
 class _TwitterAPIType(enum.Enum):
