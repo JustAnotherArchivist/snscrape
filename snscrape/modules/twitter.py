@@ -287,6 +287,7 @@ class _CLIGuestTokenManager(GuestTokenManager):
 	def reset(self):
 		super().reset()
 		with self._lock:
+			_logger.info(f'Deleting guest token file {self._file}')
 			try:
 				os.remove(self._file)
 			except FileNotFoundError:
