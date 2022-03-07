@@ -666,6 +666,8 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 				kwargs['quotedTweet'] = TweetRef(id = int(tweet['quoted_status_id_str']))
 			else:
 				kwargs['quotedTweet'] = TweetRef(id = int(result['quotedRefResult']['result']['rest_id']))
+		elif 'quoted_status_id_str' in tweet:
+			kwargs['quotedTweet'] = TweetRef(id = int(tweet['quoted_status_id_str']))
 		if 'card' in result:
 			kwargs['card'] = self._make_card(result['card'], _TwitterAPIType.GRAPHQL)
 		return self._make_tweet(tweet, user, **kwargs)
