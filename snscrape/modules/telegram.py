@@ -9,7 +9,6 @@ import re
 import snscrape.base
 import typing
 import urllib.parse
-import base64
 
 _logger = logging.getLogger(__name__)
 _SINGLE_MEDIA_LINK_PATTERN = re.compile(r'^https://t\.me/[^/]+/\d+\?single$')
@@ -123,9 +122,6 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 						image = re.findall('url\(\'(.*?)\'\)', style)
 						if len(image) == 1:
 							images.append(image[0])
-							# resp = self._get(image[0])
-							# encoded_string = base64.b64encode(resp.content)
-						# Individual photo or video link
 						continue
 					href = urllib.parse.urljoin(pageUrl, link['href'])
 					if href not in outlinks:
