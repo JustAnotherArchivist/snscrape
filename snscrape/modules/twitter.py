@@ -344,7 +344,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 				r = self._post('https://api.twitter.com/1.1/guest/activate.json', data = b'', headers = self._apiHeaders, responseOkCallback = self._check_guest_token_response)
 				o = r.json()
 				if not o.get('guest_token'):
-					raise snscrape.base.ScraperError('Unable to retrieve guest token')
+					raise snscrape.base.ScraperException('Unable to retrieve guest token')
 				self._guestTokenManager.token = o['guest_token']
 			assert self._guestTokenManager.token
 		_logger.debug(f'Using guest token {self._guestTokenManager.token}')
@@ -649,7 +649,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			#TODO Include result['softInterventionPivot'] in the Tweet object
 			result = result['tweet']
 		else:
-			raise snscrape.base.ScraperError(f'Unknown result type {result["__typename"]!r}')
+			raise snscrape.base.ScraperException(f'Unknown result type {result["__typename"]!r}')
 		tweet = result['legacy']
 		userId = int(result['core']['user_results']['result']['rest_id'])
 		user = self._user_to_user(result['core']['user_results']['result']['legacy'], id_ = userId)
