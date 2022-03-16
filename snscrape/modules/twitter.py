@@ -68,7 +68,7 @@ class Tweet(snscrape.base.Item):
 	place: typing.Optional['Place'] = None
 	hashtags: typing.Optional[typing.List[str]] = None
 	cashtags: typing.Optional[typing.List[str]] = None
-	card: typing.Optional['Card'] = None
+	card: typing.Optional[dict] = None
 
 	username = snscrape.base._DeprecatedProperty('username', lambda self: self.user.username, 'user.username')
 	outlinksss = snscrape.base._DeprecatedProperty('outlinksss', lambda self: ' '.join(self.outlinks) if self.outlinks else '', 'outlinks')
@@ -130,14 +130,6 @@ class Place:
 	type: str
 	country: str
 	countryCode: str
-
-
-@dataclasses.dataclass
-class Card:
-	title: str
-	url: str
-	description: typing.Optional[str] = None
-	thumbnailUrl: typing.Optional[str] = None
 
 
 @dataclasses.dataclass
@@ -606,30 +598,14 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 		if card:
 			kwargs['card'] = card
 			# Try to convert the URL to the non-shortened/t.co one
-			try:
-				i = kwargs['tcooutlinks'].index(card.url)
-			except ValueError:
-				_logger.warning('Could not find card URL in tcooutlinks')
-			else:
-				card.url = kwargs['outlinks'][i]
+			if tweet['entities'].get('urls'):
+				try:
+					i = kwargs['tcooutlinks'].index(card['url'])
+				except ValueError:
+					_logger.warning('Could not find card URL in tcooutlinks')
+				else:
+					card['url'] = kwargs['outlinks'][i]
 		return Tweet(**kwargs)
-
-	def _make_card(self, card, apiType):
-		cardKwargs = {}
-		for key, kwarg in [('title', 'title'), ('description', 'description'), ('card_url', 'url'), ('thumbnail_image_original', 'thumbnailUrl')]:
-			if apiType is _TwitterAPIType.V2:
-				value = card['binding_values'].get(key)
-			elif apiType is _TwitterAPIType.GRAPHQL:
-				value = next((o['value'] for o in card['legacy']['binding_values'] if o['key'] == key), None)
-			if not value:
-				continue
-			if value['type'] == 'STRING':
-				cardKwargs[kwarg] = value['string_value']
-			elif value['type'] == 'IMAGE':
-				cardKwargs[kwarg] = value['image_value']['url']
-			else:
-				raise snscrape.base.ScraperError(f'Unknown card value type: {value["type"]!r}')
-		return Card(**cardKwargs)
 
 	def _tweet_to_tweet(self, tweet, obj):
 		user = self._user_to_user(obj['globalObjects']['users'][tweet['user_id_str']])
@@ -639,7 +615,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 		if 'quoted_status_id_str' in tweet and tweet['quoted_status_id_str'] in obj['globalObjects']['tweets']:
 			kwargs['quotedTweet'] = self._tweet_to_tweet(obj['globalObjects']['tweets'][tweet['quoted_status_id_str']], obj)
 		if 'card' in tweet:
-			kwargs['card'] = self._make_card(tweet['card'], _TwitterAPIType.V2)
+			kwargs['card'] = tweet['card']
 		return self._make_tweet(tweet, user, **kwargs)
 
 	def _graphql_timeline_tweet_item_result_to_tweet(self, result):
@@ -669,7 +645,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 		elif 'quoted_status_id_str' in tweet:
 			kwargs['quotedTweet'] = TweetRef(id = int(tweet['quoted_status_id_str']))
 		if 'card' in result:
-			kwargs['card'] = self._make_card(result['card'], _TwitterAPIType.GRAPHQL)
+			kwargs['card'] = result['card']
 		return self._make_tweet(tweet, user, **kwargs)
 
 	def _graphql_timeline_instructions_to_tweets(self, instructions, includeConversationThreads = False):
