@@ -179,7 +179,11 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 		membersDiv = soup.find('div', class_ = 'tgme_page_extra')
 		if membersDiv.text.endswith((' members', ' subscribers')):
 			kwargs['members'] = int(''.join(membersDiv.text.split(' ')[:-1]))
-		kwargs['photo'] = soup.find('img', class_ = 'tgme_page_photo_image').attrs['src']
+		photoImg = soup.find('img', class_ = 'tgme_page_photo_image')
+		if photoImg is not None:
+			kwargs['photo'] = photoImg.attrs['src']
+		else:
+			kwargs['photo'] = None
 
 		r, soup = self._initial_page()
 		if '/s/' not in r.url: # Redirect on channels without public posts
