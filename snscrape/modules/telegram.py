@@ -31,7 +31,7 @@ class TelegramPost(snscrape.base.Item):
 	content: str
 	outlinks: list
 	images: list
-	video: str
+	videos: list
 	forwarded: str
 	linkPreview: typing.Optional[LinkPreview] = None
 
@@ -94,13 +94,13 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 			url = rawUrl.replace('//t.me/', '//t.me/s/')
 			date = datetime.datetime.strptime(dateDiv.find('time', datetime = True)['datetime'].replace('-', '', 2).replace(':', ''), '%Y%m%dT%H%M%S%z')
 			images = []
-			video = None
+			videos = []
 			forwarded = None
 			if (message := post.find('div', class_ = 'tgme_widget_message_text')):
 				content = message.get_text(separator="\n")
 
 				for video_tag in post.find_all('video'):
-					video = video_tag['src']	
+					videos.append(video_tag['src'])
 
 				if (forward_tag := post.find('a', class_ = 'tgme_widget_message_forwarded_from_name')):
 					forwarded = forward_tag['href'].split('t.me/')[1].split('/')[0]			
@@ -134,7 +134,7 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 				content = None
 				outlinks = []
 				images = []
-				video = None
+				videos = []
 			linkPreview = None
 			if (linkPreviewA := post.find('a', class_ = 'tgme_widget_message_link_preview')):
 				kwargs = {}
@@ -151,7 +151,7 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 					else:
 						_logger.warning(f'Could not process link preview image on {url}')
 				linkPreview = LinkPreview(**kwargs)
-			yield TelegramPost(url = url, date = date, content = content, outlinks = outlinks, linkPreview = linkPreview, images = images, video = video, forwarded = forwarded)
+			yield TelegramPost(url = url, date = date, content = content, outlinks = outlinks, linkPreview = linkPreview, images = images, videos = videos, forwarded = forwarded)
 
 	def get_items(self):
 		r, soup = self._initial_page()
