@@ -25,23 +25,6 @@ class LinkPreview:
 
 
 @dataclasses.dataclass
-class TelegramPost(snscrape.base.Item):
-	url: str
-	date: datetime.datetime
-	content: str
-	outlinks: list
-	media: typing.Optional[typing.List['Medium']]
-	forwarded: str
-	views: int = None
-	linkPreview: typing.Optional[LinkPreview] = None
-
-	outlinksss = snscrape.base._DeprecatedProperty('outlinksss', lambda self: ' '.join(self.outlinks), 'outlinks')
-
-	def __str__(self):
-		return self.url
-
-
-@dataclasses.dataclass
 class Channel(snscrape.base.Entity):
 	username: str
 	title: str
@@ -61,6 +44,23 @@ class Channel(snscrape.base.Entity):
 
 	def __str__(self):
 		return f'https://t.me/s/{self.username}'
+
+@dataclasses.dataclass
+class TelegramPost(snscrape.base.Item):
+	url: str
+	date: datetime.datetime
+	content: str
+	outlinks: list
+	forwarded: typing.Optional['Channel'] = None
+	forwardedUrl: typing.Optional[str] = None
+	media: typing.Optional[typing.List['Medium']] = None
+	views: typing.Optional[int] = None
+	linkPreview: typing.Optional[LinkPreview] = None
+
+	outlinksss = snscrape.base._DeprecatedProperty('outlinksss', lambda self: ' '.join(self.outlinks), 'outlinks')
+
+	def __str__(self):
+		return self.url
 
 class Medium:
 	pass
@@ -118,6 +118,7 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 			date = datetime.datetime.strptime(dateDiv.find('time', datetime = True)['datetime'].replace('-', '', 2).replace(':', ''), '%Y%m%dT%H%M%S%z')
 			media = []
 			forwarded = None
+			forwardedUrl = None
 			if (message := post.find('div', class_ = 'tgme_widget_message_text')):
 				content = message.get_text(separator="\n")
 
@@ -143,7 +144,11 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 						mKwargs['duration'] = sum([int(s) * int(g) for s, g in zip([1, 60, 360], reversed(durationStr))])
 					media.append(cls(**mKwargs))
 				if (forward_tag := post.find('a', class_ = 'tgme_widget_message_forwarded_from_name')):
-					forwarded = forward_tag['href'].split('t.me/')[1].split('/')[0]			
+					forwardedUrl = forward_tag['href']
+					forwardedName = forwardedUrl.split('t.me/')[1].split('/')[0]
+					forwardedChannelScraper = TelegramChannelScraper(name = forwardedName)
+					forwarded = forwardedChannelScraper._get_entity()
+
 				outlinks = []
 				for link in post.find_all('a'):
 					if any(x in link.parent.attrs.get('class', []) for x in ('tgme_widget_message_user', 'tgme_widget_message_author')):
@@ -195,7 +200,7 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 			else:
 				views = parse_num(viewsSpan.text)
 			
-			yield TelegramPost(url = url, date = date, content = content, outlinks = outlinks, linkPreview = linkPreview, media = media, forwarded = forwarded, views = views)
+			yield TelegramPost(url = url, date = date, content = content, outlinks = outlinks, linkPreview = linkPreview, media = media, forwarded = forwarded, forwardedUrl = forwardedUrl, views = views)
 
 	def get_items(self):
 		r, soup = self._initial_page()
