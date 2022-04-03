@@ -96,6 +96,8 @@ class _InstagramCommonScraper(snscrape.base.Scraper):
 	def _check_json_callback(self, r):
 		if r.status_code != 200:
 			return False, f'status code {r.status_code}'
+		if r.url.startswith('https://www.instagram.com/accounts/login/'):
+			raise snscrape.base.ScraperException('Redirected to login page')
 		try:
 			obj = json.loads(r.text)
 		except json.JSONDecodeError as e:

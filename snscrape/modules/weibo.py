@@ -70,7 +70,7 @@ class WeiboUserScraper(snscrape.base.Scraper):
 			_logger.warning('User does not exist')
 			self._user = _userDoesNotExist
 		else:
-			raise snscrape.base.ScraperError(f'Got unexpected response on resolving username ({r.status_code})')
+			raise snscrape.base.ScraperException(f'Got unexpected response on resolving username ({r.status_code})')
 
 	def _check_timeline_response(self, r):
 		if r.status_code == 200 and r.content == b'{"ok":0,"msg":"\\u8fd9\\u91cc\\u8fd8\\u6ca1\\u6709\\u5185\\u5bb9","data":{"cards":[]}}':

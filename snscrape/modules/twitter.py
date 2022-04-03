@@ -287,7 +287,12 @@ class _CLIGuestTokenManager(GuestTokenManager):
 	def reset(self):
 		super().reset()
 		with self._lock:
-			os.remove(self._file)
+			_logger.info(f'Deleting guest token file {self._file}')
+			try:
+				os.remove(self._file)
+			except FileNotFoundError:
+				# Another process likely already removed the file
+				pass
 
 
 class _TwitterAPIType(enum.Enum):
@@ -339,7 +344,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 				r = self._post('https://api.twitter.com/1.1/guest/activate.json', data = b'', headers = self._apiHeaders, responseOkCallback = self._check_guest_token_response)
 				o = r.json()
 				if not o.get('guest_token'):
-					raise snscrape.base.ScraperError('Unable to retrieve guest token')
+					raise snscrape.base.ScraperException('Unable to retrieve guest token')
 				self._guestTokenManager.token = o['guest_token']
 			assert self._guestTokenManager.token
 		_logger.debug(f'Using guest token {self._guestTokenManager.token}')
@@ -647,7 +652,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			#TODO Include result['softInterventionPivot'] in the Tweet object
 			result = result['tweet']
 		else:
-			raise snscrape.base.ScraperError(f'Unknown result type {result["__typename"]!r}')
+			raise snscrape.base.ScraperException(f'Unknown result type {result["__typename"]!r}')
 		tweet = result['legacy']
 		userId = int(result['core']['user_results']['result']['rest_id'])
 		user = self._user_to_user(result['core']['user_results']['result']['legacy'], id_ = userId)
@@ -664,6 +669,8 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 				kwargs['quotedTweet'] = TweetRef(id = int(tweet['quoted_status_id_str']))
 			else:
 				kwargs['quotedTweet'] = TweetRef(id = int(result['quotedRefResult']['result']['rest_id']))
+		elif 'quoted_status_id_str' in tweet:
+			kwargs['quotedTweet'] = TweetRef(id = int(tweet['quoted_status_id_str']))
 		if 'card' in result:
 			kwargs['card'] = self._make_card(result['card'], _TwitterAPIType.GRAPHQL)
 		return self._make_tweet(tweet, user, **kwargs)
