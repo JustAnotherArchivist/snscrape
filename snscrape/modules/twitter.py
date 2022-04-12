@@ -211,10 +211,10 @@ class PeriscopeBroadcastCard(Card):
 	title: str
 	description: str
 	state: str
-	source: str
 	totalParticipants: int
 	thumbnailUrl: str
-	broadcaster: 'User'
+	source: typing.Optional[str] = None
+	broadcaster: typing.Optional['User'] = None
 	siteUser: typing.Optional['User'] = None
 
 
@@ -1022,9 +1022,10 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			if cardName == '745291183405076480:broadcast':
 				keyKwargMap = {**keyKwargMap, 'broadcast_id': 'id', 'broadcast_url': 'url', 'broadcast_title': 'title', 'broadcast_thumbnail_original': 'thumbnailUrl'}
 			else:
-				keyKwargMap = {**keyKwargMap, 'id': 'id', 'url': 'url', 'title': 'title', 'description': 'description', 'total_participants': 'totalParticipants', 'thumbnail_original': 'thumbnailUrl'}
+				keyKwargMap = {**keyKwargMap, 'id': 'id', 'url': 'url', 'title': 'title', 'description': 'description', 'total_participants': 'totalParticipants', 'full_size_thumbnail_url': 'thumbnailUrl'}
 			kwargs = _kwargs_from_map(keyKwargMap)
-			kwargs['broadcaster'] = User(id = int(bindingValues['broadcaster_twitter_id']), username = bindingValues['broadcaster_username'], displayname = bindingValues['broadcaster_display_name'])
+			if 'broadcaster_twitter_id' in bindingValues:
+				kwargs['broadcaster'] = User(id = int(bindingValues['broadcaster_twitter_id']), username = bindingValues['broadcaster_username'], displayname = bindingValues['broadcaster_display_name'])
 			if 'siteUser' not in kwargs:
 				kwargs['siteUser'] = None
 			if cardName == '745291183405076480:broadcast':
