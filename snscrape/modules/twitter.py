@@ -197,10 +197,10 @@ class BroadcastCard(Card):
 	id: str
 	url: str
 	title: str
-	state: str
-	source: str
-	thumbnailUrl: str
-	broadcaster: 'User'
+	state: typing.Optional[str] = None
+	broadcaster: typing.Optional['User'] = None
+	thumbnailUrl: typing.Optional[str] = None
+	source: typing.Optional[str] = None
 	siteUser: typing.Optional['User'] = None
 
 
@@ -226,9 +226,9 @@ class EventCard(Card):
 @dataclasses.dataclass
 class Event:
 	id: int
-	title: str
 	category: str
 	photo: Photo
+	title: typing.Optional[str] = None
 	description: typing.Optional[str] = None
 
 	@property
@@ -1036,7 +1036,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 		elif cardName == '745291183405076480:live_event':
 			kwargs = _kwargs_from_map({'event_id': 'id', 'event_title': 'title', 'event_category': 'category', 'event_subtitle': 'description'})
 			kwargs['id'] = int(kwargs['id'])
-			kwargs['photo'] = Photo(previewUrl = bindingValues['event_thumbnail_small'], fullUrl = bindingValues['event_thumbnail_original'])
+			kwargs['photo'] = Photo(previewUrl = bindingValues['event_thumbnail_small'], fullUrl = bindingValues.get('event_thumbnail_original') or bindingValues['event_thumbnail'])
 			return EventCard(event = Event(**kwargs))
 		elif cardName == '3337203208:newsletter_publication':
 			kwargs = _kwargs_from_map({'newsletter_title': 'title', 'newsletter_description': 'description', 'newsletter_image_original': 'imageUrl', 'card_url': 'url', 'revue_account_id': 'revueAccountId', 'issue_count': 'issueCount'})
