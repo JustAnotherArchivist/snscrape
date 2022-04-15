@@ -798,8 +798,9 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 		return tweet['id'] if 'id' in tweet else int(tweet['id_str'])
 
 	def _make_tweet(self, tweet, user, retweetedTweet = None, quotedTweet = None, card = None):
+		tweetId = self._get_tweet_id(tweet)
 		kwargs = {}
-		kwargs['id'] = self._get_tweet_id(tweet)
+		kwargs['id'] = tweetId
 		kwargs['content'] = tweet['full_text']
 		kwargs['renderedContent'] = self._render_text_with_urls(tweet['full_text'], tweet['entities'].get('urls'))
 		kwargs['user'] = user
@@ -807,7 +808,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 		if tweet['entities'].get('urls'):
 			kwargs['outlinks'] = [u['expanded_url'] for u in tweet['entities']['urls']]
 			kwargs['tcooutlinks'] = [u['url'] for u in tweet['entities']['urls']]
-		kwargs['url'] = f'https://twitter.com/{user.username}/status/{kwargs["id"]}'
+		kwargs['url'] = f'https://twitter.com/{user.username}/status/{tweetId}'
 		kwargs['replyCount'] = tweet['reply_count']
 		kwargs['retweetCount'] = tweet['retweet_count']
 		kwargs['likeCount'] = tweet['favorite_count']
@@ -822,7 +823,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 		if 'extended_entities' in tweet and 'media' in tweet['extended_entities']:
 			media = []
 			for medium in tweet['extended_entities']['media']:
-				if (mediumO := self._make_medium(medium, kwargs['id'])):
+				if (mediumO := self._make_medium(medium, tweetId)):
 					media.append(mediumO)
 			if media:
 				kwargs['media'] = media
@@ -869,7 +870,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 				try:
 					i = kwargs['tcooutlinks'].index(card.url)
 				except ValueError:
-					_logger.warning(f'Could not find card URL in tcooutlinks on tweet {kwargs["id"]}')
+					_logger.warning(f'Could not find card URL in tcooutlinks on tweet {tweetId}')
 				else:
 					card.url = kwargs['outlinks'][i]
 		return Tweet(**kwargs)
