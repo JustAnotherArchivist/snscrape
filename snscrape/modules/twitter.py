@@ -383,6 +383,15 @@ class UnifiedCardTwitterListDetailsComponentObject(UnifiedCardComponentObject):
 
 
 @dataclasses.dataclass
+class UnifiedCardTwitterCommunityDetailsComponentObject(UnifiedCardComponentObject):
+	name: str
+	theme: str
+	membersCount: int
+	destinationKey: UnifiedCardDestinationKey
+	membersFacepile: typing.Optional[typing.List['User']] = None
+
+
+@dataclasses.dataclass
 class UnifiedCardDestination:
 	url: typing.Optional[str] = None
 	appKey: typing.Optional[UnifiedCardAppKey] = None
@@ -1117,7 +1126,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 					_logger.warning(f'Unsupported unified_card type on tweet {tweetId}: {unifiedCardType!r}')
 					return
 				kwargs['type'] = unifiedCardType
-			elif set(c['type'] for c in o['component_objects'].values()) != {'media', 'twitter_list_details'}:
+			elif set(c['type'] for c in o['component_objects'].values()) not in ({'media', 'twitter_list_details'}, {'media', 'community_details'}):
 				_logger.warning(f'Unsupported unified_card type on tweet {tweetId}')
 				return
 
@@ -1145,6 +1154,14 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 						subscriberCount = v['data']['subscriber_count'],
 						user = self._user_to_user(o['users'][v['data']['user_id']]),
 						destinationKey = v['data']['destination'],
+					)
+				elif v['type'] == 'community_details':
+					co = UnifiedCardTwitterCommunityDetailsComponentObject(
+						name = v['data']['name']['content'],
+						theme = v['data']['theme'],
+						membersCount = v['data']['member_count'],
+						destinationKey = v['data']['destination'],
+						membersFacepile = [self._user_to_user(u) for u in map(o['users'].get, v['data']['members_facepile']) if u],
 					)
 				else:
 					_logger.warning(f'Unsupported unified_card component type on tweet {tweetId}: {v["type"]!r}')
