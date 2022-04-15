@@ -865,14 +865,15 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			kwargs['cashtags'] = [o['text'] for o in tweet['entities']['symbols']]
 		if card:
 			kwargs['card'] = card
-			if hasattr(card, 'url') and '//t.co/' in card.url and 'tcooutlinks' in kwargs:
+			if hasattr(card, 'url') and '//t.co/' in card.url:
 				# Try to convert the URL to the non-shortened/t.co one
-				try:
-					i = kwargs['tcooutlinks'].index(card.url)
-				except ValueError:
-					_logger.warning(f'Could not find card URL in tcooutlinks on tweet {tweetId}')
+				# Retweets inherit the card but not the outlinks; try to get them from the retweeted tweet instead in that case.
+				if 'tcooutlinks' in kwargs and card.url in kwargs['tcooutlinks']:
+					card.url = kwargs['outlinks'][kwargs['tcooutlinks'].index(card.url)]
+				elif retweetedTweet and retweetedTweet.tcooutlinks and card.url in retweetedTweet.tcooutlinks:
+					card.url = retweetedTweet.outlinks[retweetedTweet.tcooutlinks.index(card.url)]
 				else:
-					card.url = kwargs['outlinks'][i]
+					_logger.warning(f'Could not translate t.co card URL on tweet {tweetId}')
 		return Tweet(**kwargs)
 
 	def _make_medium(self, medium, tweetId):
