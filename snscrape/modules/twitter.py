@@ -279,6 +279,13 @@ class SpacesCard(Card):
 	id: str
 
 
+@dataclasses.dataclass
+class MessageMeCard(Card):
+	recipient: 'User'
+	url: str
+	buttonText: str
+
+
 UnifiedCardComponentKey = str
 UnifiedCardDestinationKey = str
 UnifiedCardMediumKey = str
@@ -1077,6 +1084,14 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			return AppPlayerCard(**kwargs)
 		elif cardName == '3691233323:audiospace':
 			return SpacesCard(**_kwargs_from_map({'card_url': 'url', 'id': 'id'}))
+		elif cardName == '2586390716:message_me':
+			# Note that the strings in Twitter's JS appear to have an incorrect mapping that then gets changed somewhere in the 1.8 MiB of JS!
+			# cta_1, 3, and 4 should mean 'Message us', 'Send a private message', and 'Send me a private message', but the correct mapping is currently unknown.
+			ctas = {'message_me_card_cta_2': 'Send us a private message'}
+			if bindingValues['cta'] not in ctas:
+				_logger.warning(f'Unsupported message_me card cta on tweet {tweetId}: {bindingValues["cta"]!r}')
+				return
+			return MessageMeCard(**_kwargs_from_map({'recipient': 'recipient', 'card_url': 'url'}), buttonText = ctas[bindingValues['cta']])
 		elif cardName == 'unified_card':
 			o = json.loads(bindingValues['unified_card'])
 			kwargs = {}
