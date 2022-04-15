@@ -163,16 +163,19 @@ class Scraper:
 		return self._get_entity()
 
 	def _request(self, method, url, params = None, data = None, headers = None, timeout = 10, responseOkCallback = None, allowRedirects = True, proxies = None):
-		proxies = proxies or self._proxies
+		proxies = proxies or self._proxies or {}
 		for attempt in range(self._retries + 1):
 			# The request is newly prepared on each retry because of potential cookie updates.
 			req = self._session.prepare_request(requests.Request(method, url, params = params, data = data, headers = headers))
+			environmentSettings = self._session.merge_environment_settings(req.url, proxies, None, None, None)
 			logger.info(f'Retrieving {req.url}')
 			logger.debug(f'... with headers: {headers!r}')
 			if data:
 				logger.debug(f'... with data: {data!r}')
+			if environmentSettings:
+				logger.debug(f'... with environmentSettings: {environmentSettings!r}')
 			try:
-				r = self._session.send(req, allow_redirects = allowRedirects, timeout = timeout, proxies = proxies)
+				r = self._session.send(req, allow_redirects = allowRedirects, timeout = timeout, **environmentSettings)
 			except requests.exceptions.RequestException as exc:
 				if attempt < self._retries:
 					retrying = ', retrying'
