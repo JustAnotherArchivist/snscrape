@@ -251,10 +251,10 @@ class NewsletterIssueCard(Card):
 	newsletterTitle: str
 	newsletterDescription: str
 	issueTitle: str
-	issueDescription: str
 	issueNumber: int
 	url: str
 	revueAccountId: int
+	issueDescription: typing.Optional[str] = None
 	imageUrl: typing.Optional[str] = None
 
 
