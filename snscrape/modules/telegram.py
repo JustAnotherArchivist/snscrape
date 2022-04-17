@@ -214,8 +214,13 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 			yield from self._soup_to_items(soup, r.url)
 			pageLink = soup.find('a', attrs = {'class': 'tme_messages_more', 'data-before': True})
 			if not pageLink:
-				break
+				nextPostIndex = int(nextPageUrl.split('=')[-1]) - 20
+				if nextPostIndex > 20:
+					pageLink = {'href': nextPageUrl.split('=')[0] + f'={nextPostIndex}'}
+				else:
+					break
 			nextPageUrl = urllib.parse.urljoin(r.url, pageLink['href'])
+			print(f'nextPageUrl: {nextPageUrl}')
 			r = self._get(nextPageUrl, headers = self._headers, responseOkCallback = telegramResponseOkCallback)
 			if r.status_code != 200:
 				raise snscrape.base.ScraperException(f'Got status code {r.status_code}')
