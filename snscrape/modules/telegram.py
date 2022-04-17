@@ -27,9 +27,9 @@ class LinkPreview:
 @dataclasses.dataclass
 class Channel(snscrape.base.Entity):
 	username: str
-	title: str
-	verified: bool
-	photo: str
+	title: typing.Optional[str] = None
+	verified: typing.Optional[bool] = None
+	photo: typing.Optional[str] = None
 	description: typing.Optional[str] = None
 	members: typing.Optional[int] = None
 	photos: typing.Optional[snscrape.base.IntWithGranularity] = None
@@ -123,14 +123,18 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 				content = message.get_text(separator="\n")
 
 				for video_player in post.find_all('a', {'class': 'tgme_widget_message_video_player'}):
-
-					style = video_player.find('i')['style']
-					videoThumbnailUrl = re.findall('url\(\'(.*?)\'\)', style)
-					videoTag = video_player.find('video')
-					if videoTag is None:
-						videoUrl = None
+					iTag = video_player.find('i')
+					if iTag is None:
+						videoUrl = None 
+						videoThumbnailUrl = None
 					else:
-						videoUrl = videoTag['src']
+						style = iTag['style']
+						videoThumbnailUrl = re.findall('url\(\'(.*?)\'\)', style)[0]
+						videoTag = video_player.find('video')
+						if videoTag is None:
+							videoUrl = None
+						else:
+							videoUrl = videoTag['src']
 					mKwargs = {
 						'thumbnailUrl': videoThumbnailUrl,
 						'url': videoUrl,
@@ -146,8 +150,7 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 				if (forward_tag := post.find('a', class_ = 'tgme_widget_message_forwarded_from_name')):
 					forwardedUrl = forward_tag['href']
 					forwardedName = forwardedUrl.split('t.me/')[1].split('/')[0]
-					forwardedChannelScraper = TelegramChannelScraper(name = forwardedName)
-					forwarded = forwardedChannelScraper._get_entity()
+					forwarded = Channel(username = forwardedName)
 
 				outlinks = []
 				for link in post.find_all('a'):
@@ -213,7 +216,7 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 			if not pageLink:
 				break
 			nextPageUrl = urllib.parse.urljoin(r.url, pageLink['href'])
-			r = self._get(nextPageUrl, headers = self._headers)
+			r = self._get(nextPageUrl, headers = self._headers, responseOkCallback = telegramResponseOkCallback)
 			if r.status_code != 200:
 				raise snscrape.base.ScraperException(f'Got status code {r.status_code}')
 			soup = bs4.BeautifulSoup(r.text, 'lxml')
@@ -280,3 +283,11 @@ def parse_num(s):
 		return int(float(s[:-1]) * 1000), 10 ** (3 if '.' not in s else 3 - len(s[:-1].split('.')[1]))
 	else:
 		return int(s), 1
+
+def telegramResponseOkCallback(r):
+	if r.status_code == 200:
+		return (True, None)
+	elif r.status_code // 100 == 5:
+		return (False, f'status code: {r.status_code}')
+	else:
+		return (False, None)
