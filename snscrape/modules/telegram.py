@@ -123,14 +123,13 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 			forwarded = None
 			forwardedUrl = None
 
+			if (forward_tag := post.find('a', class_ = 'tgme_widget_message_forwarded_from_name')):
+				forwardedUrl = forward_tag['href']
+				forwardedName = forwardedUrl.split('t.me/')[1].split('/')[0]
+				forwarded = Channel(username = forwardedName)
+
 			if (message := post.find('div', class_ = 'tgme_widget_message_text')):
 				content = message.get_text(separator="\n")
-
-				if (forward_tag := post.find('a', class_ = 'tgme_widget_message_forwarded_from_name')):
-					forwardedUrl = forward_tag['href']
-					forwardedName = forwardedUrl.split('t.me/')[1].split('/')[0]
-					forwarded = Channel(username = forwardedName)
-
 			else:
 				content = None
 
