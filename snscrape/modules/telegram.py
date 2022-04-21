@@ -50,7 +50,9 @@ class TelegramPost(snscrape.base.Item):
 	url: str
 	date: datetime.datetime
 	content: str
-	outlinks: list
+	outlinks: typing.List[str] = None
+	mentions: typing.List[str] = None
+	hashtags: typing.List[str] = None
 	forwarded: typing.Optional['Channel'] = None
 	forwardedUrl: typing.Optional[str] = None
 	media: typing.Optional[typing.List['Medium']] = None
@@ -133,6 +135,8 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 				content = None
 
 			outlinks = []
+			mentions = []
+			hashtags = []
 			for link in post.find_all('a'):
 				if any(x in link.parent.attrs.get('class', []) for x in ('tgme_widget_message_user', 'tgme_widget_message_author')):
 					# Author links at the top (avatar and name)
@@ -154,8 +158,14 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 						# encoded_string = base64.b64encode(resp.content)
 					# Individual photo or video link
 					continue
+				if link.text.startswith('@'):
+					mentions.append(link.text.strip('@'))
+					continue
+				if link.text.startswith('#'):
+					hashtags.append(link.text.strip('#'))
+					continue
 				href = urllib.parse.urljoin(pageUrl, link['href'])
-				if (href not in outlinks) and (href != rawUrl):
+				if (href not in outlinks) and (href != rawUrl) and (href != forwardedUrl):
 					outlinks.append(href)
 
 			for voice_player in post.find_all('a', {'class': 'tgme_widget_message_voice_player'}):
@@ -217,7 +227,7 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 			else:
 				views = parse_num(viewsSpan.text)
 			
-			yield TelegramPost(url = url, date = date, content = content, outlinks = outlinks, linkPreview = linkPreview, media = media, forwarded = forwarded, forwardedUrl = forwardedUrl, views = views)
+			yield TelegramPost(url = url, date = date, content = content, outlinks = outlinks, mentions = mentions, hashtags = hashtags, linkPreview = linkPreview, media = media, forwarded = forwarded, forwardedUrl = forwardedUrl, views = views)
 
 	def get_items(self):
 		r, soup = self._initial_page()
