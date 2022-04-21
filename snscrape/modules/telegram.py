@@ -224,10 +224,20 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 		if '/s/' not in r.url:
 			_logger.warning('No public post list for this user')
 			return
+		nextPageUrl = ''
 		while True:
 			yield from self._soup_to_items(soup, r.url)
+			try:
+				if soup.find('a', attrs = {'class': 'tgme_widget_message_date'}, href = True)['href'].split('/')[-1] == '1':
+					# if message 1 is the first message in the page, terminate scraping
+					break
+			except:
+				pass
 			pageLink = soup.find('a', attrs = {'class': 'tme_messages_more', 'data-before': True})
 			if not pageLink:
+				# some pages are missing a "tme_messages_more" tag, causing early termination
+				if '=' not in nextPageUrl:
+					nextPageUrl =  soup.find('link', attrs = {'rel': 'canonical'}, href = True)['href']
 				nextPostIndex = int(nextPageUrl.split('=')[-1]) - 20
 				if nextPostIndex > 20:
 					pageLink = {'href': nextPageUrl.split('=')[0] + f'={nextPostIndex}'}
