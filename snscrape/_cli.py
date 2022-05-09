@@ -133,12 +133,22 @@ def _dump_stack_and_locals(trace, exc = None):
 		fp.write('Stack:\n')
 		for frameRecord in trace:
 			fp.write(f'  File "{frameRecord.filename}", line {frameRecord.lineno}, in {frameRecord.function}\n')
-			for line in frameRecord.code_context:
-				fp.write(f'    {line.strip()}\n')
+			if frameRecord.code_context is not None:
+				for line in frameRecord.code_context:
+					fp.write(f'    {line.strip()}\n')
 		fp.write('\n')
 
-		for frameRecord in trace:
-			module = inspect.getmodule(frameRecord[0])
+		modules = [inspect.getmodule(frameRecord[0]) for frameRecord in trace]
+		for i, (module, frameRecord) in enumerate(zip(modules, trace)):
+			if module is None:
+				# Module-less frame, e.g. dataclass.__init__
+				for j in reversed(range(i)):
+					if modules[j] is not None:
+						break
+				else:
+					# No previous module scope
+					continue
+				module = modules[j]
 			if not module.__name__.startswith('snscrape.') and module.__name__ != 'snscrape':
 				continue
 			locals_ = frameRecord[0].f_locals
