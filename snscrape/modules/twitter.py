@@ -874,18 +874,6 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			kwargs['cashtags'] = [o['text'] for o in tweet['entities']['symbols']]
 		if card:
 			kwargs['card'] = card
-<<<<<<< HEAD
-			# Try to convert the URL to the non-shortened/t.co one
-			try:
-				i = kwargs['tcooutlinks'].index(card.url)
-			except ValueError:
-				_logger.warning('Could not find card URL in tcooutlinks')
-			except KeyError:
-				# retweets are missing this attribute
-				pass
-			else:
-				card.url = kwargs['outlinks'][i]
-=======
 			if hasattr(card, 'url') and '//t.co/' in card.url:
 				# Try to convert the URL to the non-shortened/t.co one
 				# Retweets inherit the card but not the outlinks; try to get them from the retweeted tweet instead in that case.
@@ -895,7 +883,6 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 					card.url = retweetedTweet.outlinks[retweetedTweet.tcooutlinks.index(card.url)]
 				else:
 					_logger.warning(f'Could not translate t.co card URL on tweet {tweetId}')
->>>>>>> ed3ea944d177157d688786470c8369198b0ce8ce
 		return Tweet(**kwargs)
 
 	def _make_medium(self, medium, tweetId):
