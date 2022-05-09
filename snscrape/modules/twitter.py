@@ -1343,10 +1343,10 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 class TwitterSearchScraper(_TwitterAPIScraper):
 	name = 'twitter-search'
 
-	def __init__(self, query, *, cursor = None, top = False, **kwargs):
+	def __init__(self, query, language = 'en', *, cursor = None, top = False, **kwargs):
 		if not query.strip():
 			raise ValueError('empty query')
-		super().__init__(baseUrl = 'https://twitter.com/search?' + urllib.parse.urlencode({'f': 'live', 'lang': 'en', 'q': query, 'src': 'spelling_expansion_revert_click'}), **kwargs)
+		super().__init__(baseUrl = 'https://twitter.com/search?' + urllib.parse.urlencode({'f': 'live', 'lang': language, 'q': query, 'src': 'spelling_expansion_revert_click'}), **kwargs)
 		self._query = query  # Note: may get replaced by subclasses when using user ID resolution
 		self._cursor = cursor
 		self._top = top
