@@ -177,11 +177,15 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 					continue
 				if 'data-video' in a.attrs:
 					# Video
+					if 'data-link-attr' in a.attrs:
+						hrefUrl = urllib.parse.unquote(a.attrs['data-link-attr'].split('to=')[1].split('&')[0])
+					else:
+						hrefUrl = f'https://vk.com{a["href"]}'
 					video = Video(
 						id = a['data-video'],
 						list = a['data-list'],
 						duration = int(a['data-duration']),
-						url = f'https://vk.com{a["href"]}',
+						url = hrefUrl,
 						thumbUrl = a['style'][(begin := a['style'].find('background-image: url(') + 22) : a['style'].find(')', begin)],
 					)
 					continue
