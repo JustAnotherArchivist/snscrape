@@ -40,6 +40,8 @@ _datePattern = re.compile(r'^(?P<date>today'
 
 @dataclasses.dataclass
 class VKontaktePost(snscrape.base.Item):
+	'''An object representing one VKontakte post.'''
+
 	url: str
 	date: typing.Optional[typing.Union[datetime.datetime, datetime.date]]
 	content: str
@@ -54,12 +56,14 @@ class VKontaktePost(snscrape.base.Item):
 
 @dataclasses.dataclass
 class Photo:
+	'''An object representing a photo in VK.'''
 	variants: typing.List['PhotoVariant']
 	url: typing.Optional[str] = None
 
 
 @dataclasses.dataclass
 class PhotoVariant:
+	'''An object representing a photo variant in VK.'''
 	url: str
 	width: int
 	height: int
@@ -67,6 +71,7 @@ class PhotoVariant:
 
 @dataclasses.dataclass
 class Video:
+	'''An object representing a video in VK.'''
 	id: str
 	list: str
 	duration: int
@@ -76,6 +81,8 @@ class Video:
 
 @dataclasses.dataclass
 class User(snscrape.base.Entity):
+	'''An object representing one VKontakte user.'''
+
 	username: str
 	name: str
 	verified: bool
@@ -98,9 +105,16 @@ class User(snscrape.base.Entity):
 
 
 class VKontakteUserScraper(snscrape.base.Scraper):
+	'''Scraper class designed to scrape for items in a VKontakte user profile.'''
+
 	name = 'vkontakte-user'
 
 	def __init__(self, username, **kwargs):
+		'''
+		Args:
+			username: a VK username.
+		'''
+
 		super().__init__(**kwargs)
 		self._username = username
 		self._baseUrl = f'https://vk.com/{self._username}'

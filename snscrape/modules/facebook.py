@@ -17,6 +17,8 @@ _logger = logging.getLogger(__name__)
 
 @dataclasses.dataclass
 class FacebookPost(snscrape.base.Item):
+	'''An entity representing one post.'''
+
 	cleanUrl: str
 	dirtyUrl: str
 	date: datetime.datetime
@@ -31,6 +33,8 @@ class FacebookPost(snscrape.base.Item):
 
 @dataclasses.dataclass
 class User(snscrape.base.Entity):
+	'''An entity representing one user.'''
+
 	username: str
 	pageId: int
 	name: str
@@ -50,6 +54,8 @@ class User(snscrape.base.Entity):
 
 
 class _FacebookCommonScraper(snscrape.base.Scraper):
+	'''Base class for all other Facebook scraper classes.'''
+
 	def _clean_url(self, dirtyUrl):
 		u = urllib.parse.urlparse(dirtyUrl)
 		if u.path == '/permalink.php':
@@ -159,6 +165,11 @@ class _FacebookCommonScraper(snscrape.base.Scraper):
 
 class _FacebookUserAndCommunityScraper(_FacebookCommonScraper):
 	def __init__(self, username, **kwargs):
+		'''
+		Args:
+			username: A Facebook username.
+		'''
+
 		super().__init__(**kwargs)
 		self._username = username
 		self._headers = {'User-Agent': 'Mozilla/5.0 (X11; Linux i686; rv:78.0) Gecko/20100101 Firefox/78.0', 'Accept-Language': 'en-US,en;q=0.5'}
@@ -214,6 +225,8 @@ class _FacebookUserAndCommunityScraper(_FacebookCommonScraper):
 
 
 class FacebookUserScraper(_FacebookUserAndCommunityScraper):
+	'''Scraper class, designed to scrape specific user's profile for posts.'''
+
 	name = 'facebook-user'
 
 	def __init__(self, *args, **kwargs):
@@ -292,6 +305,8 @@ class FacebookUserScraper(_FacebookUserAndCommunityScraper):
 
 
 class FacebookCommunityScraper(_FacebookUserAndCommunityScraper):
+	'''Scraper class, designed to collect community/visitor posts.'''
+
 	name = 'facebook-community'
 
 	def __init__(self, *args, **kwargs):
@@ -300,13 +315,29 @@ class FacebookCommunityScraper(_FacebookUserAndCommunityScraper):
 
 
 class FacebookGroupScraper(_FacebookCommonScraper):
+	'''Scraper class, designed to collect posts in a Facebook group.'''
+
 	name = 'facebook-group'
 
-	def __init__(self, group, **kwargs):
+	def __init__(self, group: str, **kwargs):
+		'''
+		Args:
+			group: A group name or ID.
+		'''
 		super().__init__(**kwargs)
 		self._group = group
 
 	def get_items(self):
+		'''[summary]
+
+		Raises:
+			snscrape.base.ScraperException
+		Yields:
+			Individual post.
+		Returns:
+			An iterator of Facebook posts.
+		'''
+
 		headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36', 'Accept-Language': 'en-US,en;q=0.5'}
 
 		pageletDataPattern = re.compile(r'"GroupEntstreamPagelet",\{.*?\}(?=,\{)')

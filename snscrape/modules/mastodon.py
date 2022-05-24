@@ -18,6 +18,7 @@ _logger = logging.getLogger(__name__)
 
 @dataclasses.dataclass
 class Toot(snscrape.base.Item):
+	'''An object representing one toot.'''
 	url: str
 	id: str
 	user: 'User'
@@ -36,6 +37,7 @@ class Toot(snscrape.base.Item):
 
 @dataclasses.dataclass
 class Boost(snscrape.base.Item):
+	'''An object representing a boost of toot by a user.'''
 	user: 'User'
 	toot: Toot
 
@@ -46,12 +48,14 @@ class Boost(snscrape.base.Item):
 
 @dataclasses.dataclass
 class Attachment:
+	'''An object representing attachment in a toot.'''
 	url: str
 	name: str
 
 
 @dataclasses.dataclass
 class Poll:
+	'''An object representing a poll.'''
 	id: str
 	expirationDate: datetime.datetime
 	multiple: bool
@@ -62,12 +66,18 @@ class Poll:
 
 @dataclasses.dataclass
 class PollOption:
+	'''An object representing an option in polls.'''
 	title: str
 	votesCount: int
 
 
 @dataclasses.dataclass
 class User(snscrape.base.Entity):
+	'''An object representing one user.
+
+	Most fields can be None if not known.
+	'''
+
 	account: str # @username@domain.invalid
 	displayName: typing.Optional[str] = None
 	displayNameWithCustomEmojis: typing.Optional[typing.List[typing.Union[str, 'CustomEmoji']]] = None
@@ -92,6 +102,8 @@ class CustomEmoji:
 
 
 class _MastodonCommonScraper(snscrape.base.Scraper):
+	'''Base class for all other Mastodon scraper classes.'''
+
 	def __init__(self, **kwargs):
 		super().__init__(**kwargs)
 		self._headers = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:52.0) Gecko/20100101 Firefox/52.0', 'Accept-Language': 'en-US,en;q=0.5'}
@@ -243,9 +255,16 @@ class _MastodonCommonScraper(snscrape.base.Scraper):
 
 
 class MastodonProfileScraper(_MastodonCommonScraper):
+	'''Scraper class, designed to scrape toots of a specific user profile.'''
+
 	name = 'mastodon-profile'
 
 	def __init__(self, account, **kwargs):
+		'''
+		Args:
+			account: The desired Mastodon account.
+		'''
+
 		super().__init__(**kwargs)
 		if account.startswith('@') and account.count('@') == 2:
 			account, domain = account[1:].split('@')
@@ -297,6 +316,7 @@ class MastodonProfileScraper(_MastodonCommonScraper):
 
 
 class MastodonTootScraperMode(enum.Enum):
+	'''Enumeration for Mastodon toot scraping mode'''
 	SINGLE = 'single'
 	THREAD = 'thread'
 
@@ -308,9 +328,17 @@ class MastodonTootScraperMode(enum.Enum):
 
 
 class MastodonTootScraper(_MastodonCommonScraper):
+	'''Scraper class, designed to scrape a specific toot and thread surrounding it.'''
+
 	name = 'mastodon-toot'
 
 	def __init__(self, url, *, mode = MastodonTootScraperMode.SINGLE, **kwargs):
+		'''
+		Args:
+			url: URL for the desired toot.
+			mode: Defaults to MastodonTootScraperMode.SINGLE.
+		'''
+
 		super().__init__(**kwargs)
 		self._url = url
 		self._mode = mode

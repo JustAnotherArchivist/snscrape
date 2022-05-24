@@ -2,3 +2,7 @@ __pycache__/
 /dist/
 /snscrape.egg-info/
 /.eggs/
+/docs/_build/**
+/docs/_autosummary/**
+.vscode/
+venv/

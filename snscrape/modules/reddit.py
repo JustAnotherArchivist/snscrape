@@ -19,6 +19,8 @@ _logger = logging.getLogger(__name__)
 
 @dataclasses.dataclass
 class Submission(snscrape.base.Item):
+	'''An object representing one Reddit submission post.'''
+
 	author: typing.Optional[str] # E.g. submission hf7k6
 	date: datetime.datetime
 	id: str
@@ -36,6 +38,8 @@ class Submission(snscrape.base.Item):
 
 @dataclasses.dataclass
 class Comment(snscrape.base.Item):
+	'''An object representing one Reddit comment post.'''
+
 	author: typing.Optional[str]
 	body: str
 	date: datetime.datetime
@@ -76,6 +80,11 @@ def _cmp_id(id1, id2):
 
 
 class _RedditPushshiftScraper(snscrape.base.Scraper):
+	'''Base scraper for all other Reddit scraper classes
+
+	Note: Reddit scraper uses Pushshift.
+	'''
+
 	def __init__(self, **kwargs):
 		super().__init__(**kwargs)
 		self._headers = {'User-Agent': f'snscrape/{snscrape.version.__version__}'}
@@ -215,6 +224,13 @@ class _RedditPushshiftSearchScraper(_RedditPushshiftScraper):
 					break
 
 	def get_items(self):
+		'''Get posts according to the specifications given when instantiating this scraper.
+
+		Yields:
+			Individual post.
+		Returns:
+			An iterator of posts.
+		'''
 		yield from self._iter_api_submissions_and_comments({type(self)._apiField: self._name})
 
 	@classmethod
@@ -233,18 +249,24 @@ class _RedditPushshiftSearchScraper(_RedditPushshiftScraper):
 
 
 class RedditUserScraper(_RedditPushshiftSearchScraper):
+	'''Scraper class, designed to scrape posts made by specific user.'''
+
 	name = 'reddit-user'
 	_validationFunc = lambda x: re.match('^[A-Za-z0-9_-]{3,20}$', x)
 	_apiField = 'author'
 
 
 class RedditSubredditScraper(_RedditPushshiftSearchScraper):
+	'''Scraper class, designed to scrape a subreddit for posts.'''
+
 	name = 'reddit-subreddit'
 	_validationFunc = lambda x: re.match('^[A-Za-z0-9][A-Za-z0-9_]{2,20}$', x)
 	_apiField = 'subreddit'
 
 
 class RedditSearchScraper(_RedditPushshiftSearchScraper):
+	'''Scraper class, designed to scrape Reddit via search query.'''
+
 	name = 'reddit-search'
 	_validationFunc = lambda x: True
 	_apiField = 'q'

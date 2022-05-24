@@ -16,6 +16,8 @@ _logger = logging.getLogger(__name__)
 
 @dataclasses.dataclass
 class InstagramPost(snscrape.base.Item):
+	'''An object representing one Instagram post.'''
+
 	url: str
 	date: datetime.datetime
 	content: typing.Optional[str]
@@ -33,6 +35,8 @@ class InstagramPost(snscrape.base.Item):
 
 @dataclasses.dataclass
 class User(snscrape.base.Entity):
+	'''An object representing one Instagram user.'''
+
 	username: str
 	name: typing.Optional[str]
 	followers: snscrape.base.IntWithGranularity
@@ -48,6 +52,8 @@ class User(snscrape.base.Entity):
 
 
 class _InstagramCommonScraper(snscrape.base.Scraper):
+	'''Base class for all other Instagram scrapers.'''
+
 	def __init__(self, **kwargs):
 		super().__init__(**kwargs)
 		self._headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
@@ -106,6 +112,14 @@ class _InstagramCommonScraper(snscrape.base.Scraper):
 		return True, None
 
 	def get_items(self):
+		'''Get posts according to the specifications given when instantiating this scraper.
+
+		Raises:
+			snscrape.base.ScraperException: [description]
+		Yields:
+			Individual post.
+		'''
+
 		r = self._initial_page()
 		if r.status_code == 404:
 			_logger.warning('Page does not exist')
@@ -145,9 +159,15 @@ class _InstagramCommonScraper(snscrape.base.Scraper):
 
 
 class InstagramUserScraper(_InstagramCommonScraper):
+	'''Scraper class, designed to scrape posts from a specific user profile.'''
+
 	name = 'instagram-user'
 
 	def __init__(self, username, **kwargs):
+		'''
+		Args:
+			username: Username of the desired profile, without the @ sign.
+		'''
 		super().__init__(**kwargs)
 		self._initialUrl = f'https://www.instagram.com/{username}/'
 		self._pageName = 'ProfilePage'
@@ -200,9 +220,15 @@ class InstagramUserScraper(_InstagramCommonScraper):
 
 
 class InstagramHashtagScraper(_InstagramCommonScraper):
+	'''Scraper object, designed to scrape Instagram through hashtag.'''
+
 	name = 'instagram-hashtag'
 
 	def __init__(self, hashtag, **kwargs):
+		'''
+		Args:
+			hashtag: Hashtag query, without the # sign.
+		'''
 		super().__init__(**kwargs)
 		self._initialUrl = f'https://www.instagram.com/explore/tags/{hashtag}/'
 		self._pageName = 'TagPage'
@@ -222,9 +248,15 @@ class InstagramHashtagScraper(_InstagramCommonScraper):
 
 
 class InstagramLocationScraper(_InstagramCommonScraper):
+	'''Scraper class, designed to scrape for posts according to its location ID.'''
+
 	name = 'instagram-location'
 
 	def __init__(self, locationId, **kwargs):
+		'''
+		Args:
+			locationId: Desired location ID.
+		'''
 		super().__init__(**kwargs)
 		self._initialUrl = f'https://www.instagram.com/explore/locations/{locationId}/'
 		self._pageName = 'LocationsPage'
