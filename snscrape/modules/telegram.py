@@ -203,36 +203,6 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 					mKwargs['duration'] = durationStrToSeconds(durationStr)
 				media.append(cls(**mKwargs))
 
-<<<<<<< HEAD
-				outlinks = []
-				for link in post.find_all('a'):
-					if any(x in link.parent.attrs.get('class', []) for x in ('tgme_widget_message_user', 'tgme_widget_message_author')):
-						# Author links at the top (avatar and name)
-						continue
-					if link['href'] == rawUrl or link['href'] == url:
-						style = link.attrs.get('style', '')
-						# Generic filter of links to the post itself, catches videos, photos, and the date link
-						if style != '':
-							image = re.findall('url\(\'(.*?)\'\)', style)
-							if len(image) == 1:
-								images.append(image[0])
-							continue
-					if _SINGLE_MEDIA_LINK_PATTERN.match(link['href']):
-						style = link.attrs.get('style', '')
-						image = re.findall('url\(\'(.*?)\'\)', style)
-						if len(image) == 1:
-							images.append(image[0])
-						continue
-					href = urllib.parse.urljoin(pageUrl, link['href'])
-					if href not in outlinks:
-						outlinks.append(href)
-			else:
-				content = None
-				outlinks = []
-				images = []
-				video = None
-=======
->>>>>>> master
 			linkPreview = None
 			if (linkPreviewA := post.find('a', class_ = 'tgme_widget_message_link_preview')):
 				kwargs = {}
