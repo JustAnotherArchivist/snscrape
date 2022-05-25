@@ -99,7 +99,7 @@ class VideoVariant:
 class Video(Medium):
 	thumbnailUrl: str
 	variants: typing.List[VideoVariant]
-	duration: float
+	duration: typing.Optional[float] = None
 	views: typing.Optional[int] = None
 
 
@@ -132,12 +132,300 @@ class Place:
 	countryCode: str
 
 
-@dataclasses.dataclass
 class Card:
+	pass
+
+
+@dataclasses.dataclass
+class SummaryCard(Card):
 	title: str
 	url: str
 	description: typing.Optional[str] = None
 	thumbnailUrl: typing.Optional[str] = None
+	siteUser: typing.Optional['User'] = None
+	creatorUser: typing.Optional['User'] = None
+
+
+@dataclasses.dataclass
+class AppCard(SummaryCard):
+	pass
+
+
+@dataclasses.dataclass
+class PollCard(Card):
+	options: typing.List['PollOption']
+	endDate: datetime.datetime
+	duration: int
+	finalResults: bool
+	lastUpdateDate: typing.Optional[datetime.datetime] = None
+	medium: typing.Optional[Medium] = None
+
+
+@dataclasses.dataclass
+class PollOption:
+	label: str
+	count: typing.Optional[int] = None
+
+
+@dataclasses.dataclass
+class PlayerCard(Card):
+	title: str
+	url: str
+	description: typing.Optional[str] = None
+	imageUrl: typing.Optional[str] = None
+	siteUser: typing.Optional['User'] = None
+
+
+@dataclasses.dataclass
+class PromoConvoCard(Card):
+	actions: typing.List['PromoConvoAction']
+	thankYouText: str
+	medium: Medium
+	thankYouUrl: typing.Optional[str] = None
+	thankYouTcoUrl: typing.Optional[str] = None
+	cover: typing.Optional['Photo'] = None
+
+
+@dataclasses.dataclass
+class PromoConvoAction:
+	label: str
+	tweet: str
+
+
+@dataclasses.dataclass
+class BroadcastCard(Card):
+	id: str
+	url: str
+	title: str
+	state: typing.Optional[str] = None
+	broadcaster: typing.Optional['User'] = None
+	thumbnailUrl: typing.Optional[str] = None
+	source: typing.Optional[str] = None
+	siteUser: typing.Optional['User'] = None
+
+
+@dataclasses.dataclass
+class PeriscopeBroadcastCard(Card):
+	id: str
+	url: str
+	title: str
+	description: str
+	state: str
+	totalParticipants: int
+	thumbnailUrl: str
+	source: typing.Optional[str] = None
+	broadcaster: typing.Optional['User'] = None
+	siteUser: typing.Optional['User'] = None
+
+
+@dataclasses.dataclass
+class EventCard(Card):
+	event: 'Event'
+
+
+@dataclasses.dataclass
+class Event:
+	id: int
+	category: str
+	photo: Photo
+	title: typing.Optional[str] = None
+	description: typing.Optional[str] = None
+
+	@property
+	def url(self):
+		return f'https://twitter.com/i/events/{self.id}'
+
+
+@dataclasses.dataclass
+class NewsletterCard(Card):
+	title: str
+	description: str
+	imageUrl: str
+	url: str
+	revueAccountId: int
+	issueCount: int
+
+
+@dataclasses.dataclass
+class NewsletterIssueCard(Card):
+	newsletterTitle: str
+	newsletterDescription: str
+	issueTitle: str
+	issueNumber: int
+	url: str
+	revueAccountId: int
+	issueDescription: typing.Optional[str] = None
+	imageUrl: typing.Optional[str] = None
+
+
+@dataclasses.dataclass
+class AmplifyCard(Card):
+	id: str
+	video: Video
+
+
+@dataclasses.dataclass
+class AppPlayerCard(Card):
+	title: str
+	video: Video
+	appCategory: str
+	playerOwnerId: int
+	siteUser: typing.Optional['User'] = None
+
+
+@dataclasses.dataclass
+class SpacesCard(Card):
+	url: str
+	id: str
+
+
+@dataclasses.dataclass
+class MessageMeCard(Card):
+	recipient: 'User'
+	url: str
+	buttonText: str
+
+
+UnifiedCardComponentKey = str
+UnifiedCardDestinationKey = str
+UnifiedCardMediumKey = str
+UnifiedCardAppKey = str
+
+
+@dataclasses.dataclass
+class UnifiedCard(Card):
+	componentObjects: typing.Dict[UnifiedCardComponentKey, 'UnifiedCardComponentObject']
+	destinations: typing.Dict[UnifiedCardDestinationKey, 'UnifiedCardDestination']
+	media: typing.Dict[UnifiedCardMediumKey, Medium]
+	apps: typing.Optional[typing.Dict[UnifiedCardAppKey, typing.List['UnifiedCardApp']]] = None
+	components: typing.Optional[typing.List[UnifiedCardComponentKey]] = None
+	swipeableLayoutSlides: typing.Optional[typing.List['UnifiedCardSwipeableLayoutSlide']] = None
+	type: typing.Optional[str] = None
+
+	def __post_init__(self):
+		if (self.components is None) == (self.swipeableLayoutSlides is None):
+			raise ValueError('did not get exactly one of components or swipeableLayoutSlides')
+		if self.components and not all(k in self.componentObjects for k in self.components):
+			raise ValueError('missing components')
+		if self.swipeableLayoutSlides and not all(s.mediumComponentKey in self.componentObjects and s.componentKey in self.componentObjects for s in self.swipeableLayoutSlides):
+			raise ValueError('missing components')
+		if any(c.destinationKey not in self.destinations for c in self.componentObjects.values() if hasattr(c, 'destinationKey')):
+			raise ValueError('missing destinations')
+		if any(b.destinationKey not in self.destinations for c in self.componentObjects.values() if isinstance(c, UnifiedCardButtonGroupComponentObject) for b in c.buttons):
+			raise ValueError('missing destinations')
+		mediaKeys = []
+		for c in self.componentObjects.values():
+			if isinstance(c, UnifiedCardMediumComponentObject):
+				mediaKeys.append(c.mediumKey)
+			elif isinstance(c, UnifiedCardSwipeableMediaComponentObject):
+				mediaKeys.extend(x.mediumKey for x in c.media)
+		mediaKeys.extend(d.mediumKey for d in self.destinations.values() if d.mediumKey is not None)
+		mediaKeys.extend(a.iconMediumKey for l in (self.apps.values() if self.apps is not None else []) for a in l if a.iconMediumKey is not None)
+		if any(k not in self.media for k in mediaKeys):
+			raise ValueError('missing media')
+		if any(c.appKey not in self.apps for c in self.componentObjects.values() if hasattr(c, 'appKey')):
+			raise ValueError('missing apps')
+		if any(d.appKey not in self.apps for d in self.destinations.values() if d.appKey is not None):
+			raise ValueError('missing apps')
+
+
+class UnifiedCardComponentObject:
+	pass
+
+
+@dataclasses.dataclass
+class UnifiedCardDetailComponentObject(UnifiedCardComponentObject):
+	content: str
+	destinationKey: UnifiedCardDestinationKey
+
+
+@dataclasses.dataclass
+class UnifiedCardMediumComponentObject(UnifiedCardComponentObject):
+	mediumKey: UnifiedCardMediumKey
+	destinationKey: UnifiedCardDestinationKey
+
+
+@dataclasses.dataclass
+class UnifiedCardButtonGroupComponentObject(UnifiedCardComponentObject):
+	buttons: typing.List['UnifiedCardButton']
+
+
+@dataclasses.dataclass
+class UnifiedCardButton:
+	text: str
+	destinationKey: UnifiedCardDestinationKey
+
+
+@dataclasses.dataclass
+class UnifiedCardSwipeableMediaComponentObject(UnifiedCardComponentObject):
+	media: typing.List['UnifiedCardSwipeableMediaMedium']
+
+
+@dataclasses.dataclass
+class UnifiedCardSwipeableMediaMedium:
+	mediumKey: UnifiedCardMediumKey
+	destinationKey: UnifiedCardDestinationKey
+
+
+@dataclasses.dataclass
+class UnifiedCardAppStoreComponentObject(UnifiedCardComponentObject):
+	appKey: UnifiedCardAppKey
+	destinationKey: UnifiedCardDestinationKey
+
+
+@dataclasses.dataclass
+class UnifiedCardTwitterListDetailsComponentObject(UnifiedCardComponentObject):
+	name: str
+	memberCount: int
+	subscriberCount: int
+	user: 'User'
+	destinationKey: UnifiedCardDestinationKey
+
+
+@dataclasses.dataclass
+class UnifiedCardTwitterCommunityDetailsComponentObject(UnifiedCardComponentObject):
+	name: str
+	theme: str
+	membersCount: int
+	destinationKey: UnifiedCardDestinationKey
+	membersFacepile: typing.Optional[typing.List['User']] = None
+
+
+@dataclasses.dataclass
+class UnifiedCardDestination:
+	url: typing.Optional[str] = None
+	appKey: typing.Optional[UnifiedCardAppKey] = None
+	mediumKey: typing.Optional[UnifiedCardMediumKey] = None
+
+	def __post_init__(self):
+		if (self.url is None) == (self.appKey is None):
+			raise ValueError('did not get exactly one of url and appKey')
+
+
+@dataclasses.dataclass
+class UnifiedCardApp:
+	type: str
+	id: str
+	title: str
+	category: str
+	countryCode: str
+	url: str
+	description: typing.Optional[str] = None
+	iconMediumKey: typing.Optional[UnifiedCardMediumKey] = None
+	size: typing.Optional[int] = None
+	installs: typing.Optional[int] = None
+	ratingAverage: typing.Optional[float] = None
+	ratingCount: typing.Optional[int] = None
+	isFree: typing.Optional[bool] = None
+	isEditorsChoice: typing.Optional[bool] = None
+	hasInAppPurchases: typing.Optional[bool] = None
+	hasInAppAds: typing.Optional[bool] = None
+
+
+@dataclasses.dataclass
+class UnifiedCardSwipeableLayoutSlide:
+	mediumComponentKey: UnifiedCardComponentKey
+	componentKey: UnifiedCardComponentKey
 
 
 @dataclasses.dataclass
@@ -190,6 +478,11 @@ class UserLabel:
 	url: typing.Optional[str] = None
 	badgeUrl: typing.Optional[str] = None
 	longDescription: typing.Optional[str] = None
+
+
+@dataclasses.dataclass
+class UserRef:
+	id: int
 
 
 @dataclasses.dataclass
@@ -287,7 +580,12 @@ class _CLIGuestTokenManager(GuestTokenManager):
 	def reset(self):
 		super().reset()
 		with self._lock:
-			os.remove(self._file)
+			_logger.info(f'Deleting guest token file {self._file}')
+			try:
+				os.remove(self._file)
+			except FileNotFoundError:
+				# Another process likely already removed the file
+				pass
 
 
 class _TwitterAPIType(enum.Enum):
@@ -339,7 +637,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 				r = self._post('https://api.twitter.com/1.1/guest/activate.json', data = b'', headers = self._apiHeaders, responseOkCallback = self._check_guest_token_response)
 				o = r.json()
 				if not o.get('guest_token'):
-					raise snscrape.base.ScraperError('Unable to retrieve guest token')
+					raise snscrape.base.ScraperException('Unable to retrieve guest token')
 				self._guestTokenManager.token = o['guest_token']
 			assert self._guestTokenManager.token
 		_logger.debug(f'Using guest token {self._guestTokenManager.token}')
@@ -505,9 +803,13 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			raise snscrape.base.ScraperException(f'Unable to handle entry {entryId!r}')
 		yield self._tweet_to_tweet(tweet, obj)
 
+	def _get_tweet_id(self, tweet):
+		return tweet['id'] if 'id' in tweet else int(tweet['id_str'])
+
 	def _make_tweet(self, tweet, user, retweetedTweet = None, quotedTweet = None, card = None):
+		tweetId = self._get_tweet_id(tweet)
 		kwargs = {}
-		kwargs['id'] = tweet['id'] if 'id' in tweet else int(tweet['id_str'])
+		kwargs['id'] = tweetId
 		kwargs['content'] = tweet['full_text']
 		kwargs['renderedContent'] = self._render_text_with_urls(tweet['full_text'], tweet['entities'].get('urls'))
 		kwargs['user'] = user
@@ -515,7 +817,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 		if tweet['entities'].get('urls'):
 			kwargs['outlinks'] = [u['expanded_url'] for u in tweet['entities']['urls']]
 			kwargs['tcooutlinks'] = [u['url'] for u in tweet['entities']['urls']]
-		kwargs['url'] = f'https://twitter.com/{user.username}/status/{kwargs["id"]}'
+		kwargs['url'] = f'https://twitter.com/{user.username}/status/{tweetId}'
 		kwargs['replyCount'] = tweet['reply_count']
 		kwargs['retweetCount'] = tweet['retweet_count']
 		kwargs['likeCount'] = tweet['favorite_count']
@@ -530,36 +832,8 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 		if 'extended_entities' in tweet and 'media' in tweet['extended_entities']:
 			media = []
 			for medium in tweet['extended_entities']['media']:
-				if medium['type'] == 'photo':
-					if '.' not in medium['media_url_https']:
-						_logger.warning(f'Skipping malformed medium URL on tweet {kwargs["id"]}: {medium["media_url_https"]!r} contains no dot')
-						continue
-					baseUrl, format = medium['media_url_https'].rsplit('.', 1)
-					if format not in ('jpg', 'png'):
-						_logger.warning(f'Skipping photo with unknown format on tweet {kwargs["id"]}: {format!r}')
-						continue
-					media.append(Photo(
-						previewUrl = f'{baseUrl}?format={format}&name=small',
-						fullUrl = f'{baseUrl}?format={format}&name=large',
-					))
-				elif medium['type'] == 'video' or medium['type'] == 'animated_gif':
-					variants = []
-					for variant in medium['video_info']['variants']:
-						variants.append(VideoVariant(contentType = variant['content_type'], url = variant['url'], bitrate = variant.get('bitrate')))
-					mKwargs = {
-						'thumbnailUrl': medium['media_url_https'],
-						'variants': variants,
-					}
-					if medium['type'] == 'video':
-						mKwargs['duration'] = medium['video_info']['duration_millis'] / 1000
-						if (ext := medium.get('ext')) and (mediaStats := ext['mediaStats']) and isinstance(r := mediaStats['r'], dict) and 'ok' in r and isinstance(r['ok'], dict):
-							mKwargs['views'] = int(r['ok']['viewCount'])
-						elif (mediaStats := medium.get('mediaStats')):
-							mKwargs['views'] = mediaStats['viewCount']
-						cls = Video
-					elif medium['type'] == 'animated_gif':
-						cls = Gif
-					media.append(cls(**mKwargs))
+				if (mediumO := self._make_medium(medium, tweetId)):
+					media.append(mediumO)
 			if media:
 				kwargs['media'] = media
 		if retweetedTweet:
@@ -600,31 +874,357 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			kwargs['cashtags'] = [o['text'] for o in tweet['entities']['symbols']]
 		if card:
 			kwargs['card'] = card
-			# Try to convert the URL to the non-shortened/t.co one
-			try:
-				i = kwargs['tcooutlinks'].index(card.url)
-			except ValueError:
-				_logger.warning('Could not find card URL in tcooutlinks')
-			else:
-				card.url = kwargs['outlinks'][i]
+			if hasattr(card, 'url') and '//t.co/' in card.url:
+				# Try to convert the URL to the non-shortened/t.co one
+				# Retweets inherit the card but not the outlinks; try to get them from the retweeted tweet instead in that case.
+				if 'tcooutlinks' in kwargs and card.url in kwargs['tcooutlinks']:
+					card.url = kwargs['outlinks'][kwargs['tcooutlinks'].index(card.url)]
+				elif retweetedTweet and retweetedTweet.tcooutlinks and card.url in retweetedTweet.tcooutlinks:
+					card.url = retweetedTweet.outlinks[retweetedTweet.tcooutlinks.index(card.url)]
+				else:
+					_logger.warning(f'Could not translate t.co card URL on tweet {tweetId}')
 		return Tweet(**kwargs)
 
-	def _make_card(self, card, apiType):
-		cardKwargs = {}
-		for key, kwarg in [('title', 'title'), ('description', 'description'), ('card_url', 'url'), ('thumbnail_image_original', 'thumbnailUrl')]:
-			if apiType is _TwitterAPIType.V2:
-				value = card['binding_values'].get(key)
-			elif apiType is _TwitterAPIType.GRAPHQL:
-				value = next((o['value'] for o in card['legacy']['binding_values'] if o['key'] == key), None)
-			if not value:
+	def _make_medium(self, medium, tweetId):
+		if medium['type'] == 'photo':
+			if '?format=' in medium['media_url_https'] or '&format=' in medium['media_url_https']:
+				return Photo(previewUrl = medium['media_url_https'], fullUrl = medium['media_url_https'])
+			if '.' not in medium['media_url_https']:
+				_logger.warning(f'Skipping malformed medium URL on tweet {tweetId}: {medium["media_url_https"]!r} contains no dot')
+				return
+			baseUrl, format = medium['media_url_https'].rsplit('.', 1)
+			if format not in ('jpg', 'png'):
+				_logger.warning(f'Skipping photo with unknown format on tweet {tweetId}: {format!r}')
+				return
+			return Photo(
+				previewUrl = f'{baseUrl}?format={format}&name=small',
+				fullUrl = f'{baseUrl}?format={format}&name=large',
+			)
+		elif medium['type'] == 'video' or medium['type'] == 'animated_gif':
+			variants = []
+			for variant in medium['video_info']['variants']:
+				variants.append(VideoVariant(contentType = variant['content_type'], url = variant['url'], bitrate = variant.get('bitrate')))
+			mKwargs = {
+				'thumbnailUrl': medium['media_url_https'],
+				'variants': variants,
+			}
+			if medium['type'] == 'video':
+				mKwargs['duration'] = medium['video_info']['duration_millis'] / 1000
+				if (ext := medium.get('ext')) and (mediaStats := ext.get('mediaStats')) and isinstance(r := mediaStats['r'], dict) and 'ok' in r and isinstance(r['ok'], dict):
+					mKwargs['views'] = int(r['ok']['viewCount'])
+				elif (mediaStats := medium.get('mediaStats')):
+					mKwargs['views'] = mediaStats['viewCount']
+				cls = Video
+			elif medium['type'] == 'animated_gif':
+				cls = Gif
+			return cls(**mKwargs)
+		else:
+			_logger.warning(f'Unsupported medium type on tweet {tweetId}: {medium["type"]!r}')
+
+	def _make_card(self, card, apiType, tweetId):
+		bindingValues = {}
+
+		def _kwargs_from_map(keyKwargMap):
+			nonlocal bindingValues
+			return {kwarg: bindingValues[key] for key, kwarg in keyKwargMap.items() if key in bindingValues}
+
+		userRefs = {}
+		if apiType is _TwitterAPIType.V2:
+			for o in card.get('users', {}).values():
+				userId = o['id']
+				assert userId not in userRefs
+				userRefs[userId] = self._user_to_user(o)
+		elif apiType is _TwitterAPIType.GRAPHQL:
+			for o in card['legacy'].get('user_refs', {}):
+				userId = int(o['rest_id'])
+				if userId in userRefs:
+					_logger.warning(f'Duplicate user {userId} in card on tweet {tweetId}')
+					continue
+				if 'legacy' in o:
+					userRefs[userId] = self._user_to_user(o['legacy'], id_ = userId)
+				else:
+					userRefs[userId] = UserRef(id = userId)
+
+		if apiType is _TwitterAPIType.V2:
+			messyBindingValues = card['binding_values'].items()
+		elif apiType is _TwitterAPIType.GRAPHQL:
+			messyBindingValues = ((x['key'], x['value']) for x in card['legacy']['binding_values'])
+		for key, value in messyBindingValues:
+			if 'type' not in value:
+				# Silently ignore creator/site entries since they frequently appear like this.
+				if key not in ('creator', 'site'):
+					_logger.warning(f'Skipping type-less card value {key!r} on tweet {tweetId}')
 				continue
 			if value['type'] == 'STRING':
-				cardKwargs[kwarg] = value['string_value']
+				bindingValues[key] = value['string_value']
+				if key.endswith('_datetime_utc'):
+					bindingValues[key] = datetime.datetime.strptime(bindingValues[key], '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo = datetime.timezone.utc)
 			elif value['type'] == 'IMAGE':
-				cardKwargs[kwarg] = value['image_value']['url']
+				bindingValues[key] = value['image_value']['url']
+			elif value['type'] == 'IMAGE_COLOR':
+				# Silently discard this.
+				pass
+			elif value['type'] == 'BOOLEAN':
+				bindingValues[key] = value['boolean_value']
+			elif value['type'] == 'USER':
+				bindingValues[key] = userRefs[int(value['user_value']['id_str'])]
 			else:
-				raise snscrape.base.ScraperError(f'Unknown card value type: {value["type"]!r}')
-		return Card(**cardKwargs)
+				_logger.warning(f'Unsupported card value type on {key!r} on tweet {tweetId}: {value["type"]!r}')
+
+		if apiType is _TwitterAPIType.V2:
+			cardName = card['name']
+		elif apiType is _TwitterAPIType.GRAPHQL:
+			cardName = card['legacy']['name']
+
+		if cardName in ('summary', 'summary_large_image', 'app', 'direct_store_link_app'):
+			keyKwargMap = {
+				'title': 'title',
+				'description': 'description',
+				'card_url': 'url',
+				'site': 'siteUser',
+				'creator': 'creatorUser',
+			}
+			if cardName in ('app', 'direct_store_link_app'):
+				keyKwargMap['thumbnail_original'] = 'thumbnailUrl'
+				return AppCard(**_kwargs_from_map(keyKwargMap))
+			else:
+				keyKwargMap['thumbnail_image_original'] = 'thumbnailUrl'
+				return SummaryCard(**_kwargs_from_map(keyKwargMap))
+		elif any(cardName.startswith(x) for x in ('poll2choice_', 'poll3choice_', 'poll4choice_')) and cardName.split('_', 1)[1] in ('text_only', 'image', 'video'):
+			kwargs = _kwargs_from_map({'end_datetime_utc': 'endDate', 'last_updated_datetime_utc': 'lastUpdateDate', 'duration_minutes': 'duration', 'counts_are_final': 'finalResults'})
+
+			options = []
+			for key in sorted(bindingValues):
+				if key.startswith('choice') and key.endswith('_label'):
+					optKwargs = {'label': bindingValues[key]}
+					if (count := bindingValues.get(f'{key[:-5]}count')):
+						optKwargs['count'] = int(count)
+					options.append(PollOption(**optKwargs))
+			kwargs['options'] = options
+			kwargs['duration'] = int(kwargs['duration'])
+
+			if cardName.endswith('_image'):
+				kwargs['medium'] = Photo(previewUrl = bindingValues['image_small'], fullUrl = bindingValues['image_original'])
+			elif cardName.endswith('_video'):
+				variants = []
+				variants.append(VideoVariant(contentType = 'application/x-mpegurl', url = bindingValues['player_hls_url'], bitrate = None))
+				if 'vmap' not in bindingValues['player_stream_url']:
+					_logger.warning(f'Non-VMAP URL in {cardName} player_stream_url on tweet {tweetId}')
+				variants.append(VideoVariant(contentType = 'text/xml', url = bindingValues['player_stream_url'], bitrate = None))
+				kwargs['medium'] = Video(thumbnailUrl = bindingValues['player_image_original'], variants = variants, duration = int(bindingValues['content_duration_seconds']))
+
+			return PollCard(**kwargs)
+		elif cardName == 'player':
+			return PlayerCard(**_kwargs_from_map({'title': 'title', 'description': 'description', 'card_url': 'url', 'player_image_original': 'imageUrl', 'site': 'siteUser'}))
+		elif cardName in ('promo_image_convo', 'promo_video_convo'):
+			kwargs = _kwargs_from_map({'thank_you_text': 'thankYouText', 'thank_you_url': 'thankYouUrl', 'thank_you_shortened_url': 'thankYouTcoUrl'})
+			kwargs['actions'] = []
+			for l in ('one', 'two', 'three', 'four'):
+				if f'cta_{l}' in bindingValues:
+					kwargs['actions'].append(PromoConvoAction(label = bindingValues[f'cta_{l}'], tweet = bindingValues[f'cta_{l}_tweet']))
+			if 'image' in cardName:
+				kwargs['medium'] = Photo(previewUrl = bindingValues['promo_image_small'], fullUrl = bindingValues['promo_image_original'])
+				if 'cover_promo_image' in bindingValues:
+					kwargs['cover'] = Photo(previewUrl = bindingValues['cover_promo_image_small'], fullUrl = bindingValues['cover_promo_image_original'])
+			elif 'video' in cardName:
+				variants = []
+				variants.append(VideoVariant(contentType = bindingValues['player_stream_content_type'], url = bindingValues['player_stream_url'], bitrate = None))
+				if bindingValues['player_stream_url'] != bindingValues['player_url']:
+					if 'vmap' not in bindingValues['player_url']:
+						_logger.warning(f'Non-VMAP URL in {cardName} player_url on tweet {tweetId}')
+					variants.append(VideoVariant(contentType = 'text/xml', url = bindingValues['player_url'], bitrate = None))
+				kwargs['medium'] = Video(thumbnailUrl = bindingValues['player_image_original'], variants = variants, duration = int(bindingValues['content_duration_seconds']))
+			return PromoConvoCard(**kwargs)
+		elif cardName in ('745291183405076480:broadcast', '3691233323:periscope_broadcast'):
+			keyKwargMap = {'broadcast_state': 'state', 'broadcast_source': 'source', 'site': 'siteUser'}
+			if cardName == '745291183405076480:broadcast':
+				keyKwargMap = {**keyKwargMap, 'broadcast_id': 'id', 'broadcast_url': 'url', 'broadcast_title': 'title', 'broadcast_thumbnail_original': 'thumbnailUrl'}
+			else:
+				keyKwargMap = {**keyKwargMap, 'id': 'id', 'url': 'url', 'title': 'title', 'description': 'description', 'total_participants': 'totalParticipants', 'full_size_thumbnail_url': 'thumbnailUrl'}
+			kwargs = _kwargs_from_map(keyKwargMap)
+			if 'broadcaster_twitter_id' in bindingValues:
+				kwargs['broadcaster'] = User(id = int(bindingValues['broadcaster_twitter_id']), username = bindingValues['broadcaster_username'], displayname = bindingValues['broadcaster_display_name'])
+			if 'siteUser' not in kwargs:
+				kwargs['siteUser'] = None
+			if cardName == '745291183405076480:broadcast':
+				return BroadcastCard(**kwargs)
+			else:
+				kwargs['totalParticipants'] = int(kwargs['totalParticipants'])
+				return PeriscopeBroadcastCard(**kwargs)
+		elif cardName == '745291183405076480:live_event':
+			kwargs = _kwargs_from_map({'event_id': 'id', 'event_title': 'title', 'event_category': 'category', 'event_subtitle': 'description'})
+			kwargs['id'] = int(kwargs['id'])
+			kwargs['photo'] = Photo(previewUrl = bindingValues['event_thumbnail_small'], fullUrl = bindingValues.get('event_thumbnail_original') or bindingValues['event_thumbnail'])
+			return EventCard(event = Event(**kwargs))
+		elif cardName == '3337203208:newsletter_publication':
+			kwargs = _kwargs_from_map({'newsletter_title': 'title', 'newsletter_description': 'description', 'newsletter_image_original': 'imageUrl', 'card_url': 'url', 'revue_account_id': 'revueAccountId', 'issue_count': 'issueCount'})
+			kwargs['revueAccountId'] = int(kwargs['revueAccountId'])
+			kwargs['issueCount'] = int(kwargs['issueCount'])
+			return NewsletterCard(**kwargs)
+		elif cardName == '3337203208:newsletter_issue':
+			kwargs = _kwargs_from_map({
+				'newsletter_title': 'newsletterTitle',
+				'newsletter_description': 'newsletterDescription',
+				'issue_title': 'issueTitle',
+				'issue_description': 'issueDescription',
+				'issue_number': 'issueNumber',
+				'issue_image_original': 'imageUrl',
+				'card_url': 'url',
+				'revue_account_id': 'revueAccountId'
+			})
+			kwargs['issueNumber'] = int(kwargs['issueNumber'])
+			kwargs['revueAccountId'] = int(kwargs['revueAccountId'])
+			return NewsletterIssueCard(**kwargs)
+		elif cardName == 'amplify':
+			return AmplifyCard(
+				id = bindingValues['amplify_content_id'],
+				video = Video(
+					thumbnailUrl = bindingValues['player_image'],
+					variants = [VideoVariant(contentType = bindingValues['player_stream_content_type'], url = bindingValues['amplify_url_vmap'], bitrate = None)],
+				),
+			)
+		elif cardName == 'appplayer':
+			kwargs = _kwargs_from_map({'title': 'title', 'app_category': 'appCategory', 'player_owner_id': 'playerOwnerId', 'site': 'siteUser'})
+			kwargs['playerOwnerId'] = int(kwargs['playerOwnerId'])
+			variants = []
+			variants.append(VideoVariant(contentType = 'application/x-mpegurl', url = bindingValues['player_hls_url'], bitrate = None))
+			if 'vmap' not in bindingValues['player_url']:
+				_logger.warning(f'Non-VMAP URL in {cardName} player_url on tweet {tweetId}')
+			variants.append(VideoVariant(contentType = 'text/xml', url = bindingValues['player_url'], bitrate = None))
+			kwargs['video'] = Video(thumbnailUrl = bindingValues['player_image_original'], variants = variants, duration = int(bindingValues['content_duration_seconds']))
+			return AppPlayerCard(**kwargs)
+		elif cardName == '3691233323:audiospace':
+			return SpacesCard(**_kwargs_from_map({'card_url': 'url', 'id': 'id'}))
+		elif cardName == '2586390716:message_me':
+			# Note that the strings in Twitter's JS appear to have an incorrect mapping that then gets changed somewhere in the 1.8 MiB of JS!
+			# cta_1, 3, and 4 should mean 'Message us', 'Send a private message', and 'Send me a private message', but the correct mapping is currently unknown.
+			ctas = {'message_me_card_cta_2': 'Send us a private message'}
+			if bindingValues['cta'] not in ctas:
+				_logger.warning(f'Unsupported message_me card cta on tweet {tweetId}: {bindingValues["cta"]!r}')
+				return
+			return MessageMeCard(**_kwargs_from_map({'recipient': 'recipient', 'card_url': 'url'}), buttonText = ctas[bindingValues['cta']])
+		elif cardName == 'unified_card':
+			o = json.loads(bindingValues['unified_card'])
+			kwargs = {}
+			if 'type' in o:
+				unifiedCardType = o.get('type')
+				if unifiedCardType not in (
+					'image_app',
+					'image_carousel_app',
+					'image_carousel_website',
+					'image_multi_dest_carousel_website',
+					'image_website',
+					'mixed_media_multi_dest_carousel_website',
+					'mixed_media_single_dest_carousel_app',
+					'mixed_media_single_dest_carousel_website',
+					'video_app',
+					'video_carousel_app',
+					'video_carousel_website',
+					'video_multi_dest_carousel_website',
+					'video_website',
+				):
+					_logger.warning(f'Unsupported unified_card type on tweet {tweetId}: {unifiedCardType!r}')
+					return
+				kwargs['type'] = unifiedCardType
+			elif set(c['type'] for c in o['component_objects'].values()) not in ({'media', 'twitter_list_details'}, {'media', 'community_details'}):
+				_logger.warning(f'Unsupported unified_card type on tweet {tweetId}')
+				return
+
+			kwargs['componentObjects'] = {}
+			for k, v in o['component_objects'].items():
+				if v['type'] == 'details':
+					co = UnifiedCardDetailComponentObject(content = v['data']['title']['content'], destinationKey = v['data']['destination'])
+				elif v['type'] == 'media':
+					co = UnifiedCardMediumComponentObject(mediumKey = v['data']['id'], destinationKey = v['data']['destination'])
+				elif v['type'] == 'button_group':
+					if not all(b['type'] == 'cta' for b in v['data']['buttons']):
+						_logger.warning(f'Unsupported unified_card button_group button type on tweet {tweetId}')
+						return
+					buttons = [UnifiedCardButton(text = b['action'][0].upper() + re.sub('[A-Z]', lambda x: f' {x[0]}', b['action'][1:]), destinationKey = b['destination']) for b in v['data']['buttons']]
+					co = UnifiedCardButtonGroupComponentObject(buttons = buttons)
+				elif v['type'] == 'swipeable_media':
+					media = [UnifiedCardSwipeableMediaMedium(mediumKey = m['id'], destinationKey = m['destination']) for m in v['data']['media_list']]
+					co = UnifiedCardSwipeableMediaComponentObject(media = media)
+				elif v['type'] == 'app_store_details':
+					co = UnifiedCardAppStoreComponentObject(appKey = v['data']['app_id'], destinationKey = v['data']['destination'])
+				elif v['type'] == 'twitter_list_details':
+					co = UnifiedCardTwitterListDetailsComponentObject(
+						name = v['data']['name']['content'],
+						memberCount = v['data']['member_count'],
+						subscriberCount = v['data']['subscriber_count'],
+						user = self._user_to_user(o['users'][v['data']['user_id']]),
+						destinationKey = v['data']['destination'],
+					)
+				elif v['type'] == 'community_details':
+					co = UnifiedCardTwitterCommunityDetailsComponentObject(
+						name = v['data']['name']['content'],
+						theme = v['data']['theme'],
+						membersCount = v['data']['member_count'],
+						destinationKey = v['data']['destination'],
+						membersFacepile = [self._user_to_user(u) for u in map(o['users'].get, v['data']['members_facepile']) if u],
+					)
+				else:
+					_logger.warning(f'Unsupported unified_card component type on tweet {tweetId}: {v["type"]!r}')
+					return
+				kwargs['componentObjects'][k] = co
+
+			kwargs['destinations'] = {}
+			for k, v in o['destination_objects'].items():
+				dKwargs = {}
+				if 'url_data' in v['data']:
+					dKwargs['url'] = v['data']['url_data']['url']
+				if 'app_id' in v['data']:
+					dKwargs['appKey'] = v['data']['app_id']
+				if 'media_id' in v['data']:
+					dKwargs['mediumKey'] = v['data']['media_id']
+				kwargs['destinations'][k] = UnifiedCardDestination(**dKwargs)
+
+			kwargs['media'] = {}
+			for k, v in o['media_entities'].items():
+				if (medium := self._make_medium(v, tweetId)):
+					kwargs['media'][k] = medium
+
+			if 'app_store_data' in o:
+				kwargs['apps'] = {}
+				for k, v in o['app_store_data'].items():
+					variants = []
+					for var in v:
+						vKwargsMap = {
+							'type': 'type',
+							'id': 'id',
+							'icon_media_key': 'iconMediumKey',
+							'country_code': 'countryCode',
+							'num_installs': 'installs',
+							'size_bytes': 'size',
+							'is_free': 'isFree',
+							'is_editors_choice': 'isEditorsChoice',
+							'has_in_app_purchases': 'hasInAppPurchases',
+							'has_in_app_ads': 'hasInAppAds',
+						}
+						vKwargs = {kwarg: var[key] for key, kwarg in vKwargsMap.items() if key in var}
+						vKwargs['title'] = var['title']['content']
+						if 'description' in var:
+							vKwargs['description'] = var['description']['content']
+						vKwargs['category'] = var['category']['content']
+						if (ratings := var['ratings']):
+							vKwargs['ratingAverage'] = var['ratings']['star']
+							vKwargs['ratingCount'] = var['ratings']['count']
+						vKwargs['url'] = f'https://play.google.com/store/apps/details?id={var["id"]}' if var['type'] == 'android_app' else f'https://itunes.apple.com/app/id{var["id"]}'
+						variants.append(UnifiedCardApp(**vKwargs))
+					kwargs['apps'][k] = variants
+
+			if o['components']:
+				kwargs['components'] = o['components']
+
+			if 'layout' in o:
+				if o['layout']['type'] != 'swipeable':
+					_logger.warning(f'Unsupported unified_card layout type on tweet {tweetId}: {o["layout"]["type"]!r}')
+					return
+				kwargs['swipeableLayoutSlides'] = [UnifiedCardSwipeableLayoutSlide(mediumComponentKey = v[0], componentKey = v[1]) for v in o['layout']['data']['slides']]
+
+			return UnifiedCard(**kwargs)
+
+		_logger.warning(f'Unsupported card type on tweet {tweetId}: {cardName!r}')
 
 	def _tweet_to_tweet(self, tweet, obj):
 		user = self._user_to_user(obj['globalObjects']['users'][tweet['user_id_str']])
@@ -634,7 +1234,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 		if 'quoted_status_id_str' in tweet and tweet['quoted_status_id_str'] in obj['globalObjects']['tweets']:
 			kwargs['quotedTweet'] = self._tweet_to_tweet(obj['globalObjects']['tweets'][tweet['quoted_status_id_str']], obj)
 		if 'card' in tweet:
-			kwargs['card'] = self._make_card(tweet['card'], _TwitterAPIType.V2)
+			kwargs['card'] = self._make_card(tweet['card'], _TwitterAPIType.V2, self._get_tweet_id(tweet))
 		return self._make_tweet(tweet, user, **kwargs)
 
 	def _graphql_timeline_tweet_item_result_to_tweet(self, result):
@@ -644,7 +1244,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			#TODO Include result['softInterventionPivot'] in the Tweet object
 			result = result['tweet']
 		else:
-			raise snscrape.base.ScraperError(f'Unknown result type {result["__typename"]!r}')
+			raise snscrape.base.ScraperException(f'Unknown result type {result["__typename"]!r}')
 		tweet = result['legacy']
 		userId = int(result['core']['user_results']['result']['rest_id'])
 		user = self._user_to_user(result['core']['user_results']['result']['legacy'], id_ = userId)
@@ -661,8 +1261,10 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 				kwargs['quotedTweet'] = TweetRef(id = int(tweet['quoted_status_id_str']))
 			else:
 				kwargs['quotedTweet'] = TweetRef(id = int(result['quotedRefResult']['result']['rest_id']))
+		elif 'quoted_status_id_str' in tweet:
+			kwargs['quotedTweet'] = TweetRef(id = int(tweet['quoted_status_id_str']))
 		if 'card' in result:
-			kwargs['card'] = self._make_card(result['card'], _TwitterAPIType.GRAPHQL)
+			kwargs['card'] = self._make_card(result['card'], _TwitterAPIType.GRAPHQL, self._get_tweet_id(tweet))
 		return self._make_tweet(tweet, user, **kwargs)
 
 	def _graphql_timeline_instructions_to_tweets(self, instructions, includeConversationThreads = False):
