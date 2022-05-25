@@ -20,13 +20,15 @@ _logger = logging.getLogger(__name__)
 @dataclasses.dataclass
 class Submission(snscrape.base.Item):
 	author: typing.Optional[str] # E.g. submission hf7k6
-	created: datetime.datetime
+	date: datetime.datetime
 	id: str
 	link: typing.Optional[str]
 	selftext: typing.Optional[str]
 	subreddit: typing.Optional[str] # E.g. submission 617p51
 	title: str
 	url: str
+
+	created = snscrape.base._DeprecatedProperty('created', lambda self: self.date, 'date')
 
 	def __str__(self):
 		return self.url
@@ -36,11 +38,13 @@ class Submission(snscrape.base.Item):
 class Comment(snscrape.base.Item):
 	author: typing.Optional[str]
 	body: str
-	created: datetime.datetime
+	date: datetime.datetime
 	id: str
 	parentId: typing.Optional[str]
 	subreddit: typing.Optional[str]
 	url: str
+
+	created = snscrape.base._DeprecatedProperty('created', lambda self: self.date, 'date')
 
 	def __str__(self):
 		return self.url
@@ -111,7 +115,7 @@ class _RedditPushshiftScraper(snscrape.base.Scraper):
 
 		kwargs = {
 			'author': d.get('author'),
-			'created': datetime.datetime.fromtimestamp(d['created_utc'], datetime.timezone.utc),
+			'date': datetime.datetime.fromtimestamp(d['created_utc'], datetime.timezone.utc),
 			'url': f'https://old.reddit.com{permalink}',
 			'subreddit': d.get('subreddit'),
 		}
@@ -192,7 +196,7 @@ class _RedditPushshiftSearchScraper(_RedditPushshiftScraper):
 
 		while True:
 			# Return newer first; if both have the same creation datetime, return the comment first
-			if tipSubmission.created > tipComment.created:
+			if tipSubmission.date > tipComment.date:
 				yield tipSubmission
 				try:
 					tipSubmission = next(submissionsIter)
