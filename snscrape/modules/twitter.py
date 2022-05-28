@@ -58,6 +58,7 @@ class Tweet(snscrape.base.Item):
 	sourceLabel: typing.Optional[str] = None
 	outlinks: typing.Optional[typing.List[str]] = None
 	tcooutlinks: typing.Optional[typing.List[str]] = None
+	display_outlinks: typing.Optional[typing.List[str]] = None
 	media: typing.Optional[typing.List['Medium']] = None
 	retweetedTweet: typing.Optional['Tweet'] = None
 	quotedTweet: typing.Optional['Tweet'] = None
@@ -817,6 +818,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 		if tweet['entities'].get('urls'):
 			kwargs['outlinks'] = [u['expanded_url'] for u in tweet['entities']['urls']]
 			kwargs['tcooutlinks'] = [u['url'] for u in tweet['entities']['urls']]
+			kwargs['display_outlinks'] = [u.get('display_url') for u in tweet['entities']['urls']]
 		kwargs['url'] = f'https://twitter.com/{user.username}/status/{tweetId}'
 		kwargs['replyCount'] = tweet['reply_count']
 		kwargs['retweetCount'] = tweet['retweet_count']
