@@ -1303,7 +1303,12 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 		kwargs['description'] = self._render_text_with_urls(user['description'], user['entities']['description'].get('urls'))
 		kwargs['rawDescription'] = user['description']
 		if user['entities']['description'].get('urls'):
-			kwargs['descriptionUrls'] = [{'text': x.get('display_url'), 'url': x['expanded_url'], 'tcourl': x['url'], 'indices': tuple(x['indices'])} for x in user['entities']['description']['urls']]
+			kwargs['descriptionUrls'] = [DescriptionURL(
+			                               text = x.get('display_url'),
+			                               url = x['expanded_url'],
+			                               tcourl = x['url'],
+			                               indices = tuple(x['indices']),
+			                             ) for x in user['entities']['description']['urls']]
 		kwargs['verified'] = user.get('verified')
 		kwargs['created'] = email.utils.parsedate_to_datetime(user['created_at'])
 		kwargs['followersCount'] = user['followers_count']
@@ -1451,7 +1456,12 @@ class TwitterUserScraper(TwitterSearchScraper):
 			displayname = user['legacy']['name'],
 			description = description,
 			rawDescription = rawDescription,
-			descriptionUrls = [{'text': x.get('display_url'), 'url': x['expanded_url'], 'tcourl': x['url'], 'indices': tuple(x['indices'])} for x in user['legacy']['entities']['description']['urls']],
+			descriptionUrls = [DescriptionURL(
+			                     text = x.get('display_url'),
+			                     url = x['expanded_url'],
+			                     tcourl = x['url'],
+			                     indices = tuple(x['indices']),
+			                   ) for x in user['legacy']['entities']['description']['urls']],
 			verified = user['legacy']['verified'],
 			created = email.utils.parsedate_to_datetime(user['legacy']['created_at']),
 			followersCount = user['legacy']['followers_count'],
