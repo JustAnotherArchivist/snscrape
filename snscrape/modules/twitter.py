@@ -1,5 +1,5 @@
 __all__ = [
-	'Tweet', 'Medium', 'Photo', 'VideoVariant', 'Video', 'Gif', 'DescriptionUrl', 'Coordinates', 'Place',
+	'Tweet', 'Medium', 'Photo', 'VideoVariant', 'Video', 'Gif', 'DescriptionURL', 'Coordinates', 'Place',
 	'User', 'UserLabel',
 	'Trend',
 	'GuestTokenManager',
