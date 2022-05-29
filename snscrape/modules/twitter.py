@@ -1349,8 +1349,8 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			if not entity or entity['url'] != user['url']:
 				self.logger.warning(f'Link inconsistency on user {kwargs["id"]}')
 			if not entity:
-				entity = {'display_url': None, 'expanded_url': user['url'], 'indices': (0, len(user['url']))}
-			kwargs['link'] = TextLink(text = entity['display_url'], url = entity['expanded_url'], tcourl = user['url'], indices = tuple(entity['indices']))
+				entity = {'indices': (0, len(user['url']))}
+			kwargs['link'] = TextLink(text = entity.get('display_url'), url = entity.get('expanded_url', user['url']), tcourl = user['url'], indices = tuple(entity['indices']))
 		kwargs['profileImageUrl'] = user['profile_image_url_https']
 		kwargs['profileBannerUrl'] = user.get('profile_banner_url')
 		if 'ext' in user and (label := user['ext']['highlightedLabel']['r']['ok'].get('label')):
@@ -1482,8 +1482,8 @@ class TwitterUserScraper(TwitterSearchScraper):
 			if not entity or entity['url'] != user['legacy']['url']:
 				self.logger.warning(f'Link inconsistency on user')
 			if not entity:
-				entity = {'display_url': None, 'expanded_url': user['legacy']['url'], 'indices': (0, len(user['legacy']['url']))}
-			link = TextLink(text = entity['display_url'], url = entity['expanded_url'], tcourl = user['legacy']['url'], indices = tuple(entity['indices']))
+				entity = {'indices': (0, len(user['legacy']['url']))}
+			link = TextLink(text = entity.get('display_url'), url = entity.get('expanded_url', user['legacy']['url']), tcourl = user['legacy']['url'], indices = tuple(entity['indices']))
 		label = None
 		if (labelO := user['affiliates_highlighted_label'].get('label')):
 			label = self._user_label_to_user_label(labelO)
