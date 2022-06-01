@@ -229,7 +229,7 @@ class Scraper:
 
 	@classmethod
 	def _cli_from_args(cls, args):
-		return cls._construct(args)
+		return cls._cli_construct(args)
 
 	@classmethod
 	def _cli_construct(cls, argparseArgs, *args, **kwargs):
