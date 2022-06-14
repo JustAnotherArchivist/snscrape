@@ -55,7 +55,7 @@ _GUEST_TOKEN_VALIDITY = 10800
 class Tweet(snscrape.base.Item):
 	url: str
 	date: datetime.datetime
-	content: str
+	rawContent: str
 	renderedContent: str
 	id: int
 	user: 'User'
@@ -86,6 +86,7 @@ class Tweet(snscrape.base.Item):
 	outlinksss = snscrape.base._DeprecatedProperty('outlinksss', lambda self: ' '.join(x.url for x in self.links) if self.links else '', 'links (url attribute)')
 	tcooutlinks = snscrape.base._DeprecatedProperty('tcooutlinks', lambda self: [x.tcourl for x in self.links] if self.links else [], 'links (tcourl attribute)')
 	tcooutlinksss = snscrape.base._DeprecatedProperty('tcooutlinksss', lambda self: ' '.join(x.tcourl for x in self.links) if self.links else '', 'links (tcourl attribute)')
+	content = snscrape.base._DeprecatedProperty('content', lambda self: self.rawContent, 'rawContent')
 
 	def __str__(self):
 		return self.url
@@ -458,8 +459,8 @@ class User(snscrape.base.Entity):
 	username: str
 	id: int
 	displayname: typing.Optional[str] = None
-	description: typing.Optional[str] = None # Description as it's displayed on the web interface with URLs replaced
 	rawDescription: typing.Optional[str] = None # Raw description with the URL(s) intact
+	renderedDescription: typing.Optional[str] = None # Description as it's displayed on the web interface with URLs replaced
 	descriptionLinks: typing.Optional[typing.List[TextLink]] = None
 	verified: typing.Optional[bool] = None
 	created: typing.Optional[datetime.datetime] = None
@@ -479,6 +480,7 @@ class User(snscrape.base.Entity):
 	descriptionUrls = snscrape.base._DeprecatedProperty('descriptionUrls', lambda self: self.descriptionLinks, 'descriptionLinks')
 	linkUrl = snscrape.base._DeprecatedProperty('linkUrl', lambda self: self.link.url if self.link else None, 'link.url')
 	linkTcourl = snscrape.base._DeprecatedProperty('linkTcourl', lambda self: self.link.tcourl if self.link else None, 'link.tcourl')
+	description = snscrape.base._DeprecatedProperty('description', lambda self: self.renderedDescription, 'renderedDescription')
 
 	@property
 	def url(self):
@@ -826,7 +828,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 		tweetId = self._get_tweet_id(tweet)
 		kwargs = {}
 		kwargs['id'] = tweetId
-		kwargs['content'] = tweet['full_text']
+		kwargs['rawContent'] = tweet['full_text']
 		kwargs['renderedContent'] = self._render_text_with_urls(tweet['full_text'], tweet['entities'].get('urls'))
 		kwargs['user'] = user
 		kwargs['date'] = email.utils.parsedate_to_datetime(tweet['created_at'])
@@ -1325,8 +1327,8 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 		kwargs['username'] = user['screen_name']
 		kwargs['id'] = id_ if id_ else user['id'] if 'id' in user else int(user['id_str'])
 		kwargs['displayname'] = user['name']
-		kwargs['description'] = self._render_text_with_urls(user['description'], user['entities']['description'].get('urls'))
 		kwargs['rawDescription'] = user['description']
+		kwargs['renderedDescription'] = self._render_text_with_urls(user['description'], user['entities']['description'].get('urls'))
 		if user['entities']['description'].get('urls'):
 			kwargs['descriptionLinks'] = [TextLink(
 			                                text = x.get('display_url'),
@@ -1475,7 +1477,7 @@ class TwitterUserScraper(TwitterSearchScraper):
 			return None
 		user = obj['data']['user']['result']
 		rawDescription = user['legacy']['description']
-		description = self._render_text_with_urls(rawDescription, user['legacy']['entities']['description']['urls'])
+		renderedDescription = self._render_text_with_urls(rawDescription, user['legacy']['entities']['description']['urls'])
 		link = None
 		if user['legacy'].get('url'):
 			entity = user['legacy']['entities'].get('url', {}).get('urls', [None])[0]
@@ -1491,8 +1493,8 @@ class TwitterUserScraper(TwitterSearchScraper):
 			username = user['legacy']['screen_name'],
 			id = int(user['rest_id']),
 			displayname = user['legacy']['name'],
-			description = description,
 			rawDescription = rawDescription,
+			renderedDescription = renderedDescription,
 			descriptionLinks = [TextLink(
 			                      text = x.get('display_url'),
 			                      url = x['expanded_url'],
