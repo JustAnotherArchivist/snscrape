@@ -566,7 +566,12 @@ class _CLIGuestTokenManager(GuestTokenManager):
 				return None
 			_logger.info(f'Reading guest token from {self._file}')
 			with open(self._file, 'r') as fp:
-				o = json.load(fp)
+				try:
+					o = json.load(fp)
+				except json.JSONDecodeError as e:
+					_logger.warning(f'Malformed guest token file {self._file}: {e!s}')
+					self.reset()
+					return None
 		self._token = o['token']
 		self._setTime = o['setTime']
 		if self._setTime < time.time() - _GUEST_TOKEN_VALIDITY:
