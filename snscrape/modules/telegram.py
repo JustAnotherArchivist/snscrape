@@ -321,7 +321,7 @@ def parse_num(s):
 
 def durationStrToSeconds(durationStr):
 	durationList = durationStr.split(':')
-	return sum([int(s) * int(g) for s, g in zip([1, 60, 360], reversed(durationList))])
+	return sum([int(s) * int(g) for s, g in zip([1, 60, 3600], reversed(durationList))])
 
 def telegramResponseOkCallback(r):
 	if r.status_code == 200:
