@@ -56,7 +56,7 @@ class TelegramPost(snscrape.base.Item):
 	forwarded: typing.Optional['Channel'] = None
 	forwardedUrl: typing.Optional[str] = None
 	media: typing.Optional[typing.List['Medium']] = None
-	views: typing.Optional[int] = None
+	views: typing.Optional[snscrape.base.IntWithGranularity] = None
 	linkPreview: typing.Optional[LinkPreview] = None
 
 	outlinksss = snscrape.base._DeprecatedProperty('outlinksss', lambda self: ' '.join(self.outlinks), 'outlinks')
@@ -175,7 +175,7 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 			for voicePlayer in post.find_all('a', {'class': 'tgme_widget_message_voice_player'}):
 				audioUrl = voicePlayer.find('audio')['src']
 				durationStr = voicePlayer.find('time').text
-				duration = durationStrToSeconds(durationStr)
+				duration = _durationStrToSeconds(durationStr)
 				barHeights = [float(s['style'].split(':')[-1].strip(';%')) for s in voicePlayer.find('div', {'class': 'bar'}).find_all('s')]
 
 				media.append(VoiceMessage(url = audioUrl, duration = duration, bars = barHeights))
@@ -200,7 +200,7 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 				else:
 					cls = Video
 					durationStr = videoPlayer.find('time').text
-					mKwargs['duration'] = durationStrToSeconds(durationStr)
+					mKwargs['duration'] = _durationStrToSeconds(durationStr)
 				media.append(cls(**mKwargs))
 
 			linkPreview = None
@@ -223,7 +223,12 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 					outlinks.remove(kwargs['href'])
 
 			viewsSpan = post.find('span', class_ = 'tgme_widget_message_views')
-			views = None if viewsSpan is None else parse_num(viewsSpan.text)
+			views = None if viewsSpan is None else _parse_num(viewsSpan.text)
+
+			outlinks = outlinks if outlinks else None
+			media = media if media else None
+			mentions = mentions if mentions else None
+			hashtags = hashtags if hashtags else None
 			
 			yield TelegramPost(url = url, date = date, content = content, outlinks = outlinks, mentions = mentions, hashtags = hashtags, linkPreview = linkPreview, media = media, forwarded = forwarded, forwardedUrl = forwardedUrl, views = views)
 
@@ -252,7 +257,7 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 				else:
 					break
 			nextPageUrl = urllib.parse.urljoin(r.url, pageLink['href'])
-			r = self._get(nextPageUrl, headers = self._headers, responseOkCallback = telegramResponseOkCallback)
+			r = self._get(nextPageUrl, headers = self._headers, responseOkCallback = _telegramResponseOkCallback)
 			if r.status_code != 200:
 				raise snscrape.base.ScraperException(f'Got status code {r.status_code}')
 			soup = bs4.BeautifulSoup(r.text, 'lxml')
@@ -293,7 +298,7 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 			kwargs['description'] = descriptionDiv.text
 
 		for div in channelInfoDiv.find_all('div', class_ = 'tgme_channel_info_counter'):
-			value, granularity = parse_num(div.find('span', class_ = 'counter_value').text)
+			value, granularity = _parse_num(div.find('span', class_ = 'counter_value').text)
 			type_ = div.find('span', class_ = 'counter_type').text
 			if type_ == 'members':
 				# Already extracted more accurately from /channel, skip
@@ -311,7 +316,7 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 	def _cli_from_args(cls, args):
 		return cls._cli_construct(args, args.channel)
 
-def parse_num(s):
+def _parse_num(s):
 	s = s.replace(' ', '')
 	if s.endswith('M'):
 		return int(float(s[:-1]) * 1e6), 10 ** (6 if '.' not in s else 6 - len(s[:-1].split('.')[1]))
@@ -319,11 +324,11 @@ def parse_num(s):
 		return int(float(s[:-1]) * 1000), 10 ** (3 if '.' not in s else 3 - len(s[:-1].split('.')[1]))
 	return int(s), 1
 
-def durationStrToSeconds(durationStr):
+def _durationStrToSeconds(durationStr):
 	durationList = durationStr.split(':')
 	return sum([int(s) * int(g) for s, g in zip([1, 60, 3600], reversed(durationList))])
 
-def telegramResponseOkCallback(r):
+def _telegramResponseOkCallback(r):
 	if r.status_code == 200:
 		return (True, None)
 	return (False, f'{r.status_code=}')
