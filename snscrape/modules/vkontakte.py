@@ -32,7 +32,7 @@ _logger = logging.getLogger(__name__)
 _months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 _datePattern = re.compile(r'^(?P<date>today'
                                   r'|yesterday'
-                                  r'|(?P<day1>\d+)\s+(?P<month1>' + '|'.join(_months) + ')(\s+(?P<year1>\d{4}))?'
+                                  r'|(?P<day1>\d+)\s+(?P<month1>' + '|'.join(_months) + r')(\s+(?P<year1>\d{4}))?'
                                   r'|(?P<month2>' + '|'.join(_months) + r')\s+(?P<day2>\d+),\s+(?P<year2>\d{4})'
                            ')'
                           r'\s+at\s+(?P<hour>\d+):(?P<minute>\d+)\s+(?P<ampm>[ap]m)$')
