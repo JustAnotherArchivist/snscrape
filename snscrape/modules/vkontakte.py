@@ -39,10 +39,34 @@ _datePattern = re.compile(r'^(?P<date>today'
 
 
 @dataclasses.dataclass
+class User(snscrape.base.Entity):
+	username: str
+	name: str
+	verified: bool
+	description: typing.Optional[str] = None
+	websites: typing.Optional[typing.List[str]] = None
+	followers: typing.Optional[snscrape.base.IntWithGranularity] = None
+	posts: typing.Optional[snscrape.base.IntWithGranularity] = None
+	photos: typing.Optional[snscrape.base.IntWithGranularity] = None
+	tags: typing.Optional[snscrape.base.IntWithGranularity] = None
+	following: typing.Optional[snscrape.base.IntWithGranularity] = None
+
+	followersGranularity = snscrape.base._DeprecatedProperty('followersGranularity', lambda self: self.followers.granularity, 'followers.granularity')
+	postsGranularity = snscrape.base._DeprecatedProperty('postsGranularity', lambda self: self.posts.granularity, 'posts.granularity')
+	photosGranularity = snscrape.base._DeprecatedProperty('photosGranularity', lambda self: self.photos.granularity, 'photos.granularity')
+	tagsGranularity = snscrape.base._DeprecatedProperty('tagsGranularity', lambda self: self.tags.granularity, 'tags.granularity')
+	followingGranularity = snscrape.base._DeprecatedProperty('followingGranularity', lambda self: self.following.granularity, 'following.granularity')
+
+	def __str__(self):
+		return f'https://vk.com/{self.username}'
+
+
+@dataclasses.dataclass
 class VKontaktePost(snscrape.base.Item):
 	url: str
 	date: typing.Optional[typing.Union[datetime.datetime, datetime.date]]
 	content: str
+	user: User
 	outlinks: typing.Optional[typing.List[str]] = None
 	photos: typing.Optional[typing.List['Photo']] = None
 	video: typing.Optional['Video'] = None
@@ -72,29 +96,6 @@ class Video:
 	duration: int
 	url: str
 	thumbUrl: str
-
-
-@dataclasses.dataclass
-class User(snscrape.base.Entity):
-	username: str
-	name: str
-	verified: bool
-	description: typing.Optional[str] = None
-	websites: typing.Optional[typing.List[str]] = None
-	followers: typing.Optional[snscrape.base.IntWithGranularity] = None
-	posts: typing.Optional[snscrape.base.IntWithGranularity] = None
-	photos: typing.Optional[snscrape.base.IntWithGranularity] = None
-	tags: typing.Optional[snscrape.base.IntWithGranularity] = None
-	following: typing.Optional[snscrape.base.IntWithGranularity] = None
-
-	followersGranularity = snscrape.base._DeprecatedProperty('followersGranularity', lambda self: self.followers.granularity, 'followers.granularity')
-	postsGranularity = snscrape.base._DeprecatedProperty('postsGranularity', lambda self: self.posts.granularity, 'posts.granularity')
-	photosGranularity = snscrape.base._DeprecatedProperty('photosGranularity', lambda self: self.photos.granularity, 'photos.granularity')
-	tagsGranularity = snscrape.base._DeprecatedProperty('tagsGranularity', lambda self: self.tags.granularity, 'tags.granularity')
-	followingGranularity = snscrape.base._DeprecatedProperty('followingGranularity', lambda self: self.following.granularity, 'following.granularity')
-
-	def __str__(self):
-		return f'https://vk.com/{self.username}'
 
 
 class VKontakteUserScraper(snscrape.base.Scraper):
@@ -216,14 +217,24 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 				photoUrl = f'https://vk.com{a["href"]}' if 'href' in a.attrs and a['href'].startswith('/photo') and a['href'][6:].strip('0123456789-_') == '' else None
 				photos.append(Photo(variants = photoVariants, url = photoUrl))
 		quotedPost = self._post_div_to_item(quoteDiv, isCopy = True) if (quoteDiv := post.find('div', class_ = 'copy_quote')) else None
+		authorHeading = post.find('h5', class_ = ['post_author', 'copy_post_author'])
+		authorLink = authorHeading.find('a', class_ = ['author', 'copy_author'])
+		username = authorLink['href'].split('/')[-1]
+		name = authorLink.text
+		if authorHeading.find('div', class_ = 'page_verified') is not None:
+			verified = True
+		else:
+			verified = False
+		user = User(username = username, name = name, verified = verified)
 		return VKontaktePost(
-		  url = url,
-		  date = self._date_span_to_date(dateSpan),
-		  content = textDiv.text if textDiv else None,
-		  outlinks = outlinks or None,
-		  photos = photos or None,
-		  video = video or None,
-		  quotedPost = quotedPost,
+			url = url,
+			date = self._date_span_to_date(dateSpan),
+			content = textDiv.text if textDiv else None,
+			user = user,
+			outlinks = outlinks or None,
+			photos = photos or None,
+			video = video or None,
+			quotedPost = quotedPost,
 		 )
 
 	def _soup_to_items(self, soup):
@@ -379,6 +390,13 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 		# On public pages, this is where followers are listed
 		if (followersDiv := soup.find('div', id = 'public_followers')):
 			if (topDiv := followersDiv.find('div', class_ = 'header_top')) and topDiv.find('span', class_ = 'header_label').text == 'Followers':
+				kwargs['followers'] = snscrape.base.IntWithGranularity(*parse_num(topDiv.find('span', class_ = 'header_count').text))
+		# On community groups, this is where followers are listed
+		elif (followersDiv := soup.find('div', class_ = 'group_friends_text')):
+			kwargs['followers'] = snscrape.base.IntWithGranularity(*parse_num(followersDiv.find('span', class_ = 'group_friends_count').text))
+		# On public groups, this is where followers are listed
+		elif (followersDiv := soup.find('div', id = 'group_followers')):
+			if (topDiv := followersDiv.find('div', class_ = 'header_top')) and topDiv.find('span', class_ = 'header_label').text == 'Members':
 				kwargs['followers'] = snscrape.base.IntWithGranularity(*parse_num(topDiv.find('span', class_ = 'header_count').text))
 
 		return User(**kwargs)
