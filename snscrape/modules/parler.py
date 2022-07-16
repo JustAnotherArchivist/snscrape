@@ -14,16 +14,16 @@ class Post(snscrape.base.Item):
     '''
 
     V2LINKLONG: str
-    # FIXME: audio_data missing because I don't know what it does
+    audio_data: str
     url: str
     badges: 'Badges'
     body: str
-    commentCount = int
-    # FIXME: add commented
-    dateCreated: str # FIXME: maybe make this a datetime?
-    detectedLanguage: str # what is this for?
+    commentCount: int
+    commented: bool
+    dateCreated: str
+    detectedLanguage: str
     domainName: str
-    echoCount: int # ???
+    echoCount: int
     # FIXME: Add echoed, echoedWithCommentId, echoedWithoutCommentId
     edited: bool
     # FIXME: add embed_data
@@ -108,14 +108,18 @@ class ParlerProfileScraper(_ParlerAPIScraper):
             ValueError: When username is invalid.
         '''
 
-        self._is_valid_username
+        usernameIsInvalid = self._is_username_invalid(username)
+        if usernameIsInvalid:
+            raise ValueError(f"Bad username: {usernameIsInvalid}")
+
         super().__init__(**kwargs)
-        self._username = username
+        self._username = username.strip()
         self._apiHeaders['user'] = self._username
 
-    def _is_valid_username(self):
-        if not self._username.strip():
-            raise ValueError('empty query')
+    def _is_username_invalid(self, username):
+        if not username:
+            return "empty query"
+        return False
         # FIXME: add more checks for invalid username
 
     def get_items(self) -> typing.Iterator[Post]:
@@ -133,7 +137,6 @@ class ParlerProfileScraper(_ParlerAPIScraper):
             Please keep in mind that the scraping results can potentially be a lot of posts.
         '''
 
-        self._is_valid_username()
         previous_page = 0
         current_page = 1
         page = 1
@@ -143,7 +146,7 @@ class ParlerProfileScraper(_ParlerAPIScraper):
             data['page'] = (page)
             if data['page'] == 1:
                 del data['page']
-            current_page = self._get_api_data("https://parler.com/open-api/profile-feed.php", data)
+            current_page = self._get_api_data("https://parler.com/open-api/ProfileFeedEndpoint.php", data)
             if previous_page == current_page:
                 break
             previous_page = current_page
