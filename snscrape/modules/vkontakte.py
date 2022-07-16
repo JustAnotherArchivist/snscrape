@@ -117,6 +117,9 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 			return urllib.parse.unquote(a['href'][13 : end])
 		return None
 
+	def is_photo(self, a):
+		return 'aria-label' in a.attrs and a.attrs['aria-label'].startswith('photo')
+
 	def _date_span_to_date(self, dateSpan):
 		if not dateSpan:
 			return None
@@ -172,7 +175,7 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 		   not (not isCopy and thumbsDiv.parent.name == 'div' and 'class' in thumbsDiv.parent.attrs and 'copy_quote' in thumbsDiv.parent.attrs['class']): # Skip post quotes
 			photos = []
 			for a in thumbsDiv.find_all('a', class_ = 'page_post_thumb_wrap'):
-				if 'data-photo-id' not in a.attrs and 'data-video' not in a.attrs:
+				if not self.is_photo(a) and 'data-video' not in a.attrs:
 					_logger.warning(f'Skipping non-photo and non-video thumb wrap on {url}')
 					continue
 				if 'data-video' in a.attrs:
