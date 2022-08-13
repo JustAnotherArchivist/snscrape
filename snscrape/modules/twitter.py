@@ -1242,6 +1242,10 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 							vKwargs['ratingAverage'] = var['ratings']['star']
 							vKwargs['ratingCount'] = var['ratings']['count']
 						vKwargs['url'] = f'https://play.google.com/store/apps/details?id={var["id"]}' if var['type'] == 'android_app' else f'https://itunes.apple.com/app/id{var["id"]}'
+						if 'iconMediumKey' in vKwargs and vKwargs['iconMediumKey'] not in kwargs['media']:
+							# https://github.com/JustAnotherArchivist/snscrape/issues/470
+							_logger.warning(f'Tweet {tweetId} contains an app icon medium key {vKwargs["iconMediumKey"]!r} on app {vKwargs["type"]!r}/{vKwargs["id"]!r}, but the corresponding medium is missing; dropping')
+							del vKwargs['iconMediumKey']
 						variants.append(UnifiedCardApp(**vKwargs))
 					kwargs['apps'][k] = variants
 
