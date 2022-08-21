@@ -226,7 +226,7 @@ class PeriscopeBroadcastCard(Card):
 	description: str
 	state: str
 	totalParticipants: int
-	thumbnailUrl: str
+	thumbnailUrl: typing.Optional[str] = None
 	source: typing.Optional[str] = None
 	broadcaster: typing.Optional['User'] = None
 	siteUser: typing.Optional['User'] = None
