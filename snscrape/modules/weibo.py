@@ -81,6 +81,8 @@ class WeiboUserScraper(snscrape.base.Scraper):
 		return True, None
 
 	def _mblog_to_item(self, mblog):
+		if mblog.get('page_info', {}).get('type') not in (None, 'video', 'webpage'):
+			_logger.warning(f'Skipping unknown page info {mblog["page_info"]["type"]!r} on status {mblog["id"]}')
 		return Post(
 			url = f'https://m.weibo.cn/status/{mblog["bid"]}',
 			id = mblog['id'],
