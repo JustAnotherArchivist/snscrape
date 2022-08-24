@@ -94,7 +94,7 @@ class WeiboUserScraper(snscrape.base.Scraper):
 			likesCount = mblog.get('attitudes_count'),
 			picturesCount = mblog.get('pic_num'),
 			pictures = [x['large']['url'] for x in mblog['pics']] if 'pics' in mblog else None,
-			video = (urls := mblog['page_info']['urls']).get('mp4_720p_mp4') or urls.get('mp4_hd_mp4') or urls['mp4_ld_mp4'] if 'page_info' in mblog and mblog['page_info']['type'] == 'video' else None,
+			video = urls.get('mp4_720p_mp4') or urls.get('mp4_hd_mp4') or urls['mp4_ld_mp4'] if 'page_info' in mblog and mblog['page_info']['type'] == 'video' and (urls := mblog['page_info']['urls']) else None,
 			link = mblog['page_info']['page_url'] if 'page_info' in mblog and mblog['page_info']['type'] == 'webpage' else None,
 			repostedPost = self._mblog_to_item(mblog['retweeted_status']) if 'retweeted_status' in mblog else None,
 		  )
