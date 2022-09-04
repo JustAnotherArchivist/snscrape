@@ -254,10 +254,10 @@ class Event:
 class NewsletterCard(Card):
 	title: str
 	description: str
-	imageUrl: str
 	url: str
 	revueAccountId: int
 	issueCount: int
+	imageUrl: typing.Optional[str] = None
 
 
 @dataclasses.dataclass
