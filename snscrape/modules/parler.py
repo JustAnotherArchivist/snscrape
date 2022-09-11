@@ -16,7 +16,7 @@ class Post(snscrape.base.Item):
 
     ad: bool
     V2LINKLONG: typing.List[str]
-    audio_data: str
+    audio_data: typing.Optional[str]
     badges: 'Badges'
     body: str
     date_created: str
@@ -26,7 +26,7 @@ class Post(snscrape.base.Item):
     domain_name: str
     edited: bool
     engagement: 'EngagementData'
-    embed_data: typing.Dict[str, str] # Too few examples to try to parse this
+    embed_data: typing.Optional[typing.Dict[str, str]] # Too few examples to try to parse this
     full_body: str
     has_audio: bool
     has_embed: bool
@@ -36,11 +36,12 @@ class Post(snscrape.base.Item):
     image: str
     image_data: str
     image_nsfw: bool
-    is_echo: bool
+    is_echo: typing.Optional[bool]
     link: typing.List[str]
     long_link: str
     name: str
-    parent_context_uuid: str
+    root_post_uuid: typing.Optional[str] # Inferring
+    parent_context_uuid: typing.Optional[str]
     profile_photo: str
     sensitive: bool
     time_ago: str
