@@ -15,45 +15,64 @@ class Post(snscrape.base.Item):
     '''
 
     ad: bool
-    V2LINKLONG: str
+    V2LINKLONG: typing.List[str]
     audio_data: str
-    url: str
     badges: 'Badges'
     body: str
-    commentCount: int
-    commented: bool
-    dateCreated: str
-    detectedLanguage: str
-    domainName: str
-    echoCount: int
-    # FIXME: Add echoed, echoedWithCommentId, echoedWithoutCommentId
+    date_created: str
+    date_str: str
+    detected_language: str
+    depth: int
+    domain_name: str
     edited: bool
-    # FIXME: add embed_data
-    fullBody: str
-    hasAudio: bool
-    hasEmbed: bool
-    hasImage: bool
-    hasVideo: bool
+    engagement: 'EngagementData'
+    embed_data: typing.Dict[str, str] # Too few examples to try to parse this
+    full_body: str
+    has_audio: bool
+    has_embed: bool
+    has_image: bool
+    has_video: bool
     id: int
     image: str
     image_data: str
     image_nsfw: bool
     is_echo: bool
-    link: list[str]
+    link: typing.List[str]
     long_link: str
     name: str
-    profilePhoto: str
+    parent_context_uuid: str
+    profile_photo: str
     sensitive: bool
     time_ago: str
+    time_str: str
     title: str
     trolling: bool # don't even ask bc i don't know
     username: str
     userv4uuid: str
+    user_context: 'UserContext'
     uuid: str
     v4uuid: str
-    video: bool
-    video_data: str
-    voteCount: int
+    video_data: typing.Optional['Video']
+    view_count: int
+
+@dataclasses.dataclass
+class EngagementData:
+    target: str
+    target_id: int
+    target_uuid: str
+    echo_simple: bool
+    echo_discuss: bool
+    comment_count: int
+    echo_count: int
+    vote_count: int
+
+@dataclasses.dataclass
+class UserContext:
+    owned_by_current_user: bool
+    echo_of_current_user: bool
+    reply_to_current_user: bool
+    suggested: bool
+    self_reported: bool
 
 @dataclasses.dataclass
 class Badges(snscrape.base.Item):
@@ -75,6 +94,18 @@ class Badge:
     description: str
 
 @dataclasses.dataclass
+class Video:
+    '''A Parler video.'''
+
+    contentType: str
+    definition: int
+    filenameExtension: str
+    rootPath: str
+    videoSrc: str
+    thumbnailUrl: str
+    videoId: str
+
+@dataclasses.dataclass
 class User(snscrape.base.Entity):
     '''A Parler user.'''
 
@@ -85,8 +116,8 @@ class User(snscrape.base.Entity):
     readableFollowingCount: str
     coverPhoto: str
     profilePhoto: str
-    badges: list[str]
-    allBadges: list['Badge']
+    badges: typing.List[str]
+    allBadges: typing.List['Badge']
     isPrivateAccount: bool
     isPublicAccount: bool
     isPrivate: bool
@@ -174,7 +205,7 @@ class ParlerProfileScraper(_ParlerAPIScraper):
             An iterator of posts.
 
         Note:
-            This method is a generator. The number of tweets is not known beforehand.
+            This method is a generator. The number of posts is not known beforehand.
             Please keep in mind that the scraping results can potentially be a lot of posts.
         '''
 
@@ -188,9 +219,22 @@ class ParlerProfileScraper(_ParlerAPIScraper):
             if data['page'] == 1:
                 del data['page']
             current_page = self._get_api_data('https://parler.com/open-api/ProfileFeedEndpoint.php', data)
-            current_page['link'] = json.loads(current_page['link']) # why
+            for post in current_page['data']:
+                primary = post['primary']
+                post['user_context'] = {key: value for key, value in post['user_context'].items() if key in UserContext.__annotations__}
+                primary['user_context'] = UserContext(**post['user_context'])
+                primary['link'] = json.loads(primary['link']) if primary['link'] else [] # why
+                primary['V2LINKLONG'] = json.loads(primary['V2LINKLONG']) if primary['link'] else []
+                primary['ad'] = post['ad']
+                engagement = post['engagement']
+                engagement['comment_count'] = engagement['commentCount']
+                engagement['vote_count'] = engagement['voteCount']
+                engagement['echo_count'] = engagement['echoCount']
+                engagement = {key: value for key, value in engagement.items() if key in EngagementData.__annotations__}
+                primary['engagement'] = EngagementData(**engagement)
+                primary = {key: value for key, value in primary.items() if key in Post.__annotations__}
+                yield Post(**primary)
             if previous_page == current_page:
                 break
             previous_page = current_page
             page += 1
-            yield current_page
