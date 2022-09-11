@@ -1,3 +1,8 @@
+__all__ = [
+        'Post', 'EngagementData', 'UserContext', 'Badges', 'Badge',
+        'Video', 'User', 'ParlerProfileScraper'
+]
+
 import collections
 import dataclasses
 import json
@@ -55,6 +60,9 @@ class Post(snscrape.base.Item):
     v4uuid: str
     video_data: typing.Optional['Video']
     view_count: int
+
+    def __str__(self):
+        return f"https://parler.com/feed/{self.uuid}"
 
 @dataclasses.dataclass
 class EngagementData:
@@ -189,7 +197,8 @@ class ParlerProfileScraper(_ParlerAPIScraper):
         dataclass_friendly_data = {key: value for key, value in data.items() if key in User.__annotations__}
         return User(**dataclass_friendly_data)
 
-    def _is_username_invalid(self, username):
+    @staticmethod
+    def _is_username_invalid(username):
         if not username:
             return 'empty query'
         return False
@@ -233,9 +242,23 @@ class ParlerProfileScraper(_ParlerAPIScraper):
                 engagement['echo_count'] = engagement['echoCount']
                 engagement = {key: value for key, value in engagement.items() if key in EngagementData.__annotations__}
                 primary['engagement'] = EngagementData(**engagement)
+                primary['video'] = Video(**primary['video']) if primary['video'] else None
                 primary = {key: value for key, value in primary.items() if key in Post.__annotations__}
                 yield Post(**primary)
             if previous_page == current_page:
                 break
             previous_page = current_page
             page += 1
+
+    @classmethod
+    def _cli_setup_parser(cls, subparser):
+        def user(s):
+            if cls._is_username_invalid(s):
+                raise ValueError('Invalid username')
+            return s
+
+        subparser.add_argument('user', type = user, help = 'A Parler username (without @)')
+
+    @classmethod
+    def _cli_from_args(cls, args):
+        return cls._cli_construct(args, username = args.user)
