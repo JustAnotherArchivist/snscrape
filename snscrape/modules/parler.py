@@ -1,8 +1,9 @@
 import collections
 import dataclasses
+import json
+import logging
 import snscrape.base
 import typing
-import logging
 
 _logger = logging.getLogger(__name__)
 
@@ -13,6 +14,7 @@ class Post(snscrape.base.Item):
     Most fields can be None if not known.
     '''
 
+    ad: bool
     V2LINKLONG: str
     audio_data: str
     url: str
@@ -36,8 +38,8 @@ class Post(snscrape.base.Item):
     image: str
     image_data: str
     image_nsfw: bool
-    is_echo: bool #?
-    link: list # represented as a str, though, so we'll have to parse that
+    is_echo: bool
+    link: list[str]
     long_link: str
     name: str
     profilePhoto: str
@@ -49,8 +51,8 @@ class Post(snscrape.base.Item):
     userv4uuid: str
     uuid: str
     v4uuid: str
-    # FIXME: add video, video_data
-    # video and video_data might be the same as image and image_data
+    video: bool
+    video_data: str
     voteCount: int
 
 @dataclasses.dataclass
@@ -72,6 +74,35 @@ class Badge:
     title: str
     description: str
 
+@dataclasses.dataclass
+class User(snscrape.base.Entity):
+    '''A Parler user.'''
+
+    status: str
+    followerCount: int
+    readableFollowerCount: str
+    followingCount: 10
+    readableFollowingCount: str
+    coverPhoto: str
+    profilePhoto: str
+    badges: list[str]
+    allBadges: list['Badge']
+    isPrivateAccount: bool
+    isPublicAccount: bool
+    isPrivate: bool
+    username: str
+    dateCreated: str
+    name: str
+    uuid: str
+    bio: str
+    website: str
+    location: str
+    joinedAt: str
+    showCommentTab: bool
+
+    def __str__(self):
+        return f'https://parler.com/{self.username}'
+
 class _ParlerAPIScraper(snscrape.base.Scraper):
     '''Base class for all other Parler scraper classes.'''
 
@@ -84,7 +115,7 @@ class _ParlerAPIScraper(snscrape.base.Scraper):
 
     def _check_api_response(self, r):
         if r.status_code != 200:
-            return False, "non-200 status code"
+            return False, 'non-200 status code'
         return True, None
 
     def _get_api_data(self, endpoint, data):
@@ -110,15 +141,25 @@ class ParlerProfileScraper(_ParlerAPIScraper):
 
         usernameIsInvalid = self._is_username_invalid(username)
         if usernameIsInvalid:
-            raise ValueError(f"Bad username: {usernameIsInvalid}")
+            raise ValueError(f'Bad username: {usernameIsInvalid}')
 
         super().__init__(**kwargs)
         self._username = username.strip()
         self._apiHeaders['user'] = self._username
 
+    def _get_entity(self):
+        '''Get the entity behind the scraper, if any.
+
+        This is the method implemented by subclasses for doing the actual retrieval/entity object creation. For accessing the scraper's entity, use the entity property.
+        '''
+        data = self._get_api_data('https://parler.com/api/profile_view.php', {'user': self._username})['data']
+        data['allBadges'] = [Badge(**badge) for badge in data['allBadges']]
+        dataclass_friendly_data = {key: value for key, value in data.items() if key in User.__annotations__}
+        return User(**dataclass_friendly_data)
+
     def _is_username_invalid(self, username):
         if not username:
-            return "empty query"
+            return 'empty query'
         return False
         # FIXME: add more checks for invalid username
 
@@ -146,7 +187,8 @@ class ParlerProfileScraper(_ParlerAPIScraper):
             data['page'] = (page)
             if data['page'] == 1:
                 del data['page']
-            current_page = self._get_api_data("https://parler.com/open-api/ProfileFeedEndpoint.php", data)
+            current_page = self._get_api_data('https://parler.com/open-api/ProfileFeedEndpoint.php', data)
+            current_page['link'] = json.loads(current_page['link']) # why
             if previous_page == current_page:
                 break
             previous_page = current_page
