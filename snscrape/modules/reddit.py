@@ -20,6 +20,7 @@ _logger = logging.getLogger(__name__)
 @dataclasses.dataclass
 class Submission(snscrape.base.Item):
 	author: typing.Optional[str] # E.g. submission hf7k6
+	author_id: typing.Optional[str]
 	date: datetime.datetime
 	id: str
 	link: typing.Optional[str]
@@ -37,6 +38,7 @@ class Submission(snscrape.base.Item):
 @dataclasses.dataclass
 class Comment(snscrape.base.Item):
 	author: typing.Optional[str]
+	author_id: typing.Optional[str]
 	body: str
 	date: datetime.datetime
 	id: str
@@ -115,6 +117,7 @@ class _RedditPushshiftScraper(snscrape.base.Scraper):
 
 		kwargs = {
 			'author': d.get('author'),
+			'author_id': d.get('author_fullname'),
 			'date': datetime.datetime.fromtimestamp(d['created_utc'], datetime.timezone.utc),
 			'url': f'https://old.reddit.com{permalink}',
 			'subreddit': d.get('subreddit'),
