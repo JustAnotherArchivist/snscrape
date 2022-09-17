@@ -202,7 +202,7 @@ class ParlerProfileScraper(_ParlerAPIScraper):
 		if not username:
 			return 'empty query'
 		return False
-		# FIXME: add more checks for invalid username
+		# FIXME: add more checks for invalid username, such as whether it has spaces in it or not
 
 	def get_items(self) -> typing.Iterator[Post]:
 		'''Get posts according to the specifications given when instantiating this scraper.
@@ -230,17 +230,17 @@ class ParlerProfileScraper(_ParlerAPIScraper):
 				del data['page']
 			current_page = self._get_api_data('https://parler.com/open-api/ProfileFeedEndpoint.php', data)
 			for post in current_page['data']:
-				primary = post['primary']
+				primary = post['primary'] # This is where most of the post data is, so we'll move the other stuff we want here
 				post['user_context'] = {key: value for key, value in post['user_context'].items() if key in UserContext.__annotations__}
 				primary['user_context'] = UserContext(**post['user_context'])
 				primary['link'] = json.loads(primary['link']) if primary['link'] else [] # why
-				primary['V2LINKLONG'] = json.loads(primary['V2LINKLONG']) if primary['link'] else []
+				primary['V2LINKLONG'] = json.loads(primary['V2LINKLONG']) if primary['link'] else [] # both link and V2LINKLONG are stringified JSON for some reason
 				primary['ad'] = post['ad']
 				engagement = post['engagement']
 				engagement['comment_count'] = engagement['commentCount']
 				engagement['vote_count'] = engagement['voteCount']
 				engagement['echo_count'] = engagement['echoCount']
-				engagement = {key: value for key, value in engagement.items() if key in EngagementData.__annotations__}
+				engagement = {key: value for key, value in engagement.items() if key in EngagementData.__annotations__} # gets rid of any values we don't know about
 				primary['engagement'] = EngagementData(**engagement)
 				primary['video'] = Video(**primary['video']) if primary['video'] else None
 				primary = {key: value for key, value in primary.items() if key in Post.__annotations__}
