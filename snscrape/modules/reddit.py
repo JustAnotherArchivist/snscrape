@@ -26,6 +26,8 @@ class Submission(snscrape.base.Item):
 	link: typing.Optional[str]
 	selftext: typing.Optional[str]
 	subreddit: typing.Optional[str] # E.g. submission 617p51
+	subreddit_id: typing.Optional[str]
+	score: int
 	title: str
 	url: str
 
@@ -44,6 +46,8 @@ class Comment(snscrape.base.Item):
 	id: str
 	parentId: typing.Optional[str]
 	subreddit: typing.Optional[str]
+	subreddit_id: typing.Optional[str]
+	score: int
 	url: str
 
 	created = snscrape.base._DeprecatedProperty('created', lambda self: self.date, 'date')
@@ -121,6 +125,8 @@ class _RedditPushshiftScraper(snscrape.base.Scraper):
 			'date': datetime.datetime.fromtimestamp(d['created_utc'], datetime.timezone.utc),
 			'url': f'https://old.reddit.com{permalink}',
 			'subreddit': d.get('subreddit'),
+			'subreddit_id': d.get('subreddit_id'),
+			'score': int(d.get('score'))
 		}
 		if cls is Submission:
 			kwargs['selftext'] = d.get('selftext') or None
