@@ -32,7 +32,8 @@ import time
 import typing
 import urllib.parse
 import warnings
-
+import orjson
+json = orjson
 
 # DescriptionURL deprecation
 _DEPRECATED_NAMES = {'DescriptionURL': 'TextLink'}
