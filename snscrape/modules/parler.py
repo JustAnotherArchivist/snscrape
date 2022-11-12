@@ -62,7 +62,7 @@ class Post(snscrape.base.Item):
 	view_count: int
 
 	def __str__(self):
-		return f"https://parler.com/feed/{self.uuid}"
+		return f'https://parler.com/feed/{self.uuid}'
 
 @dataclasses.dataclass
 class EngagementData:
