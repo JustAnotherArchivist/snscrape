@@ -1539,7 +1539,7 @@ class TwitterUserScraper(TwitterSearchScraper):
 
 	@staticmethod
 	def is_valid_username(s):
-		return 1 <= len(s) <= 15 and s.strip(string.ascii_letters + string.digits + '_') == ''
+		return 1 <= len(s) <= 20 and s.strip(string.ascii_letters + string.digits + '_') == ''
 
 	@classmethod
 	def _cli_setup_parser(cls, subparser):
