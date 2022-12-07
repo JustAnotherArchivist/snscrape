@@ -244,7 +244,7 @@ def parse_args():
 	group.add_argument('-f', '--format', dest = 'format', type = parse_format, default = None, help = 'Output format')
 	group.add_argument('--jsonl', dest = 'jsonl', action = 'store_true', default = False, help = 'Output JSONL')
 	parser.add_argument('--with-entity', dest = 'withEntity', action = 'store_true', default = False, help = 'Include the entity (e.g. user, channel) as the first output item')
-	parser.add_argument('--since', type = parse_datetime_arg, metavar = 'DATETIME', help = 'Only return results newer than DATETIME')
+	parser.add_argument('--since', type = parse_datetime_arg, metavar = 'DATETIME', help = 'Only return results newer than DATETIME. Format: %Y-%m-%d %H:%M:%S %z, %Y-%m-%d %H:%M:%S, %Y-%m-%d %z, %Y-%m-%d')
 	parser.add_argument('--progress', action = 'store_true', default = False, help = 'Report progress on stderr')
 
 	subparsers = parser.add_subparsers(dest = 'scraper', metavar = 'SCRAPER', title = 'scrapers', required = True)
