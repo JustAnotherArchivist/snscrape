@@ -1,0 +1,79 @@
+name: Bug report
+description: Create a report to help us improve
+labels: 'bug'
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Self Check
+        - Try searching existing GitHub Issues (open or closed) for similar issues.
+  - type: textarea
+    validations:
+      required: true
+    attributes:
+      label: Describe the bug
+      description: A clear description of what the bug is.
+      placeholder: e.g. I see an AssertionError when trying to scrape a Twitter user!
+  - type: textarea
+    validations:
+      required: true
+    attributes:
+      label: How to reproduce
+      description: |
+        How to reproduce the problem.
+      placeholder: e.g. I can reproduce this issue by scraping the textfiles user with the twitter-user scraper.
+  - type: textarea
+    validations:
+      required: true
+    attributes:
+      label: Expected behavior
+      description: A brief description of what should happen.
+  - type: textarea
+    attributes:
+      label: Screenshots and recordings
+      description: |
+        If applicable, add screenshots or videos to help explain your problem. (Videos should be as short as possible! Avoid watermarks too.)
+  - type: input
+    validations:
+      required: true
+    attributes:
+      label: OS / Distro
+      description: Include the version too, please!
+      placeholder: e.g. Windows 10, Ubuntu 20.04, macOS 10.15...
+  - type: input
+    validations:
+      required: true
+    attributes:
+      label: Output from `snscrape --version`
+  - type: input
+    validations:
+      required: true
+    attributes:
+      label: Scraper
+      placeholder: e.g. twitter-user, reddit-search,...
+  - type: textarea
+    validations:
+      required: false
+    attributes:
+      label: Backtrace
+      description: What is the error snscrape gives you, if any?
+  - type: textarea
+    validations:
+      required: false
+    attributes:
+      label: Dump of locals
+      description: | 
+        Here attach the dump of your snscrape locals, if it's a crash. (snscrape should tell you the path).
+        Please note that it may contain identifying info such as IP address, if the website returns that.
+        You can also optionally request to exchange the file in private.
+        Finally, if snscrape didn't crash, leave this field blank.
+  - type: dropdown
+    validations:
+      required: true
+    attributes:
+      label: How are you using snscrape?
+      options: ['CLI', 'Module']
+  - type: textarea
+    attributes:
+      label: Additional context
+      description: Add any other context about the problem here.

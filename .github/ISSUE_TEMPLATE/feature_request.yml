@@ -1,0 +1,27 @@
+name: Feature Request
+description: Want a feature? Ask; we don't bite!
+labels: 'enhancement'
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Self Check
+        - Try searching existing GitHub Issues (open or closed) for similar issues.
+  - type: textarea
+    validations:
+      required: true
+    attributes:
+      label: Describe the feature
+      description: A clear description of what the feature is.
+  - type: textarea
+    validations:
+      required: false
+    attributes:
+      label: Would this fix a problem you're experiencing? If so, specify.
+  - type: textarea
+    attributes:
+      label: Did you consider other alternatives?
+      description: If so, specify
+  - type: input
+    attributes:
+      label: Additional context
