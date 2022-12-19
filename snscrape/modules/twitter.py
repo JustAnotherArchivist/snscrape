@@ -421,9 +421,9 @@ class UnifiedCardApp:
 	type: str
 	id: str
 	title: str
-	category: str
 	countryCode: str
 	url: str
+	category: typing.Optional[str] = None
 	description: typing.Optional[str] = None
 	iconMediumKey: typing.Optional[UnifiedCardMediumKey] = None
 	size: typing.Optional[int] = None
@@ -1237,7 +1237,8 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 						vKwargs['title'] = var['title']['content']
 						if 'description' in var:
 							vKwargs['description'] = var['description']['content']
-						vKwargs['category'] = var['category']['content']
+						if 'category' in var:
+							vKwargs['category'] = var['category']['content']
 						if (ratings := var['ratings']):
 							vKwargs['ratingAverage'] = var['ratings']['star']
 							vKwargs['ratingCount'] = var['ratings']['count']
