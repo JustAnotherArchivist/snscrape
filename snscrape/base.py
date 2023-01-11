@@ -164,6 +164,7 @@ class Scraper:
 
 	def _request(self, method, url, params = None, data = None, headers = None, timeout = 10, responseOkCallback = None, allowRedirects = True, proxies = None):
 		proxies = proxies or self._proxies or {}
+		errors = []
 		for attempt in range(self._retries + 1):
 			# The request is newly prepared on each retry because of potential cookie updates.
 			req = self._session.prepare_request(requests.Request(method, url, params = params, data = data, headers = headers))
@@ -184,6 +185,7 @@ class Scraper:
 					retrying = ''
 					level = logging.ERROR
 				logger.log(level, f'Error retrieving {req.url}: {exc!r}{retrying}')
+				errors.append(repr(exc))
 			else:
 				redirected = f' (redirected to {r.url})' if r.history else ''
 				logger.info(f'Retrieved {req.url}{redirected}: {r.status_code}')
@@ -192,6 +194,7 @@ class Scraper:
 						logger.debug(f'... request {i}: {redirect.request.url}: {r.status_code} (Location: {r.headers.get("Location")})')
 				if responseOkCallback is not None:
 					success, msg = responseOkCallback(r)
+					errors.append(msg)
 				else:
 					success, msg = (True, None)
 				msg = f': {msg}' if msg else ''
@@ -214,6 +217,7 @@ class Scraper:
 		else:
 			msg = f'{self._retries + 1} requests to {req.url} failed, giving up.'
 			logger.fatal(msg)
+			logger.fatal(f'Errors: {", ".join(errors)}')
 			raise ScraperException(msg)
 		raise RuntimeError('Reached unreachable code')
 
