@@ -1453,7 +1453,10 @@ class TwitterSearchScraper(_TwitterAPIScraper):
 			del paginationParams['tweet_search_mode']
 
 		for obj in self._iter_api_data('https://api.twitter.com/2/search/adaptive.json', _TwitterAPIType.V2, params, paginationParams, cursor = self._cursor):
-			yield from self._v2_timeline_instructions_to_tweets(obj)
+			if len(obj['globalObjects']['tweets']) != 0:
+				yield from self._v2_timeline_instructions_to_tweets(obj)
+			else:
+				break
 
 	@classmethod
 	def _cli_setup_parser(cls, subparser):
