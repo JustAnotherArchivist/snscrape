@@ -681,7 +681,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 		if r.headers.get('content-type', '').replace(' ', '') != 'application/json;charset=utf-8':
 			return False, 'content type is not JSON'
 		if r.status_code != 200:
-			return False, 'non-200 status code'
+			return False, f'non-200 status code ({r.status_code})'
 		return True, None
 
 	def _get_api_data(self, endpoint, apiType, params):
