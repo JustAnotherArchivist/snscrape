@@ -1023,6 +1023,9 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 		elif apiType is _TwitterAPIType.GRAPHQL:
 			for o in card['legacy'].get('user_refs_results', []):
 				o = o['result']
+				if o['__typename'] == 'UserUnavailable':
+					_logger.warning(f'Unavailable user in card on tweet {tweetId}')
+					continue
 				userId = int(o['rest_id'])
 				if 'legacy' in o:
 					user = self._user_to_user(o['legacy'], id_ = userId)
@@ -1056,7 +1059,10 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			elif value['type'] == 'BOOLEAN':
 				bindingValues[key] = value['boolean_value']
 			elif value['type'] == 'USER':
-				bindingValues[key] = userRefs[int(value['user_value']['id_str'])]
+				userId = int(value['user_value']['id_str'])
+				bindingValues[key] = userRefs.get(userId)
+				if bindingValues[key] is None:
+					_logger.warning(f'User {userId} not found in user refs in card on tweet {tweetId}')
 			else:
 				_logger.warning(f'Unsupported card value type on {key!r} on tweet {tweetId}: {value["type"]!r}')
 
