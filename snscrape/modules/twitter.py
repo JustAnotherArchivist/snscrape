@@ -84,6 +84,7 @@ class Tweet(snscrape.base.Item):
 	hashtags: typing.Optional[typing.List[str]] = None
 	cashtags: typing.Optional[typing.List[str]] = None
 	card: typing.Optional['Card'] = None
+	viewCount: typing.Optional[int] = None
 
 	username = snscrape.base._DeprecatedProperty('username', lambda self: self.user.username, 'user.username')
 	outlinks = snscrape.base._DeprecatedProperty('outlinks', lambda self: [x.url for x in self.links] if self.links else [], 'links (url attribute)')
@@ -860,9 +861,8 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 	def _get_tweet_id(self, tweet):
 		return tweet['id'] if 'id' in tweet else int(tweet['id_str'])
 
-	def _make_tweet(self, tweet, user, retweetedTweet = None, quotedTweet = None, card = None):
+	def _make_tweet(self, tweet, user, retweetedTweet = None, quotedTweet = None, card = None, **kwargs):
 		tweetId = self._get_tweet_id(tweet)
-		kwargs = {}
 		kwargs['id'] = tweetId
 		kwargs['rawContent'] = tweet['full_text']
 		kwargs['renderedContent'] = self._render_text_with_urls(tweet['full_text'], tweet['entities'].get('urls'))
@@ -1308,6 +1308,8 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			kwargs['quotedTweet'] = self._tweet_to_tweet(obj['globalObjects']['tweets'][tweet['quoted_status_id_str']], obj)
 		if 'card' in tweet:
 			kwargs['card'] = self._make_card(tweet['card'], _TwitterAPIType.V2, self._get_tweet_id(tweet))
+		if 'ext_views' in tweet and 'count' in tweet['ext_views']:
+			kwargs['viewCount'] = int(tweet['ext_views']['count'])
 		return self._make_tweet(tweet, user, **kwargs)
 
 	def _graphql_timeline_tweet_item_result_to_tweet(self, result):
@@ -1338,6 +1340,8 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			kwargs['quotedTweet'] = TweetRef(id = int(tweet['quoted_status_id_str']))
 		if 'card' in result:
 			kwargs['card'] = self._make_card(result['card'], _TwitterAPIType.GRAPHQL, self._get_tweet_id(tweet))
+		if 'views' in result and 'count' in result['views']:
+			kwargs['viewCount'] = int(result['views']['count'])
 		return self._make_tweet(tweet, user, **kwargs)
 
 	def _graphql_timeline_instructions_to_tweets(self, instructions, includeConversationThreads = False):
