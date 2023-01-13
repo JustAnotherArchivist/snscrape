@@ -324,11 +324,12 @@ class UnifiedCard(Card):
 	apps: typing.Optional[typing.Dict[UnifiedCardAppKey, typing.List['UnifiedCardApp']]] = None
 	components: typing.Optional[typing.List[UnifiedCardComponentKey]] = None
 	swipeableLayoutSlides: typing.Optional[typing.List['UnifiedCardSwipeableLayoutSlide']] = None
+	collectionLayoutSlides: typing.Optional[typing.List['UnifiedCardCollectionLayoutSlide']] = None
 	type: typing.Optional[str] = None
 
 	def __post_init__(self):
-		if (self.components is None) == (self.swipeableLayoutSlides is None):
-			raise ValueError('did not get exactly one of components or swipeableLayoutSlides')
+		if (self.components is not None) + (self.swipeableLayoutSlides is not None) + (self.collectionLayoutSlides is not None) != 1:
+			raise ValueError('did not get exactly one of components, swipeableLayoutSlides, and collectionLayoutSlides')
 		if self.components and not all(k in self.componentObjects for k in self.components):
 			raise ValueError('missing components')
 		if self.swipeableLayoutSlides and not all(s.mediumComponentKey in self.componentObjects and s.componentKey in self.componentObjects for s in self.swipeableLayoutSlides):
@@ -450,6 +451,12 @@ class UnifiedCardApp:
 class UnifiedCardSwipeableLayoutSlide:
 	mediumComponentKey: UnifiedCardComponentKey
 	componentKey: UnifiedCardComponentKey
+
+
+@dataclasses.dataclass
+class UnifiedCardCollectionLayoutSlide:
+	detailsComponentKey: UnifiedCardComponentKey
+	mediumComponentKey: UnifiedCardComponentKey
 
 
 @dataclasses.dataclass
@@ -1190,6 +1197,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 					'image_app',
 					'image_carousel_app',
 					'image_carousel_website',
+					'image_collection_website',
 					'image_multi_dest_carousel_website',
 					'image_website',
 					'mixed_media_multi_dest_carousel_website',
@@ -1300,10 +1308,13 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 				kwargs['components'] = o['components']
 
 			if 'layout' in o:
-				if o['layout']['type'] != 'swipeable':
+				if o['layout']['type'] == 'swipeable':
+					kwargs['swipeableLayoutSlides'] = [UnifiedCardSwipeableLayoutSlide(mediumComponentKey = v[0], componentKey = v[1]) for v in o['layout']['data']['slides']]
+				elif o['layout']['type'] == 'collection':
+					kwargs['collectionLayoutSlides'] = [UnifiedCardCollectionLayoutSlide(detailsComponentKey = v[0], mediumComponentKey = v[1]) for v in o['layout']['data']['slides']]
+				else:
 					_logger.warning(f'Unsupported unified_card layout type on tweet {tweetId}: {o["layout"]["type"]!r}')
 					return
-				kwargs['swipeableLayoutSlides'] = [UnifiedCardSwipeableLayoutSlide(mediumComponentKey = v[0], componentKey = v[1]) for v in o['layout']['data']['slides']]
 
 			return UnifiedCard(**kwargs)
 
