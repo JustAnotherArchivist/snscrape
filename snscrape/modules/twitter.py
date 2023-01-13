@@ -628,7 +628,7 @@ class _TwitterAPIType(enum.Enum):
 
 
 class _TwitterAPIScraper(snscrape.base.Scraper):
-	def __init__(self, baseUrl, *, guestTokenManager = None, **kwargs):
+	def __init__(self, baseUrl, *, guestTokenManager = None, maxEmptyPages = 0, **kwargs):
 		super().__init__(**kwargs)
 		self._baseUrl = baseUrl
 		if guestTokenManager is None:
@@ -637,6 +637,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 				_globalGuestTokenManager = GuestTokenManager()
 			guestTokenManager = _globalGuestTokenManager
 		self._guestTokenManager = guestTokenManager
+		self._maxEmptyPages = maxEmptyPages
 		self._apiHeaders = {
 			'User-Agent': None,
 			'Authorization': _API_AUTHORIZATION_HEADER,
@@ -729,6 +730,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			dir = 'bottom'
 		stopOnEmptyResponse = False
 		emptyResponsesOnCursor = 0
+		emptyPages = 0
 		while True:
 			_logger.info(f'Retrieving scroll page {cursor}')
 			obj = self._get_api_data(endpoint, apiType, reqParams)
@@ -784,6 +786,11 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 				# When this happens, retry the same cursor up to the retries setting.
 				emptyResponsesOnCursor += 1
 				if emptyResponsesOnCursor > self._retries:
+					break
+			if tweetCount == 0:
+				emptyPages += 1
+				if self._maxEmptyPages and emptyPages >= self._maxEmptyPages:
+					_logger.warning(f'Stopping after {emptyPages} empty pages')
 					break
 			if not newCursor or (stopOnEmptyResponse and tweetCount == 0):
 				# End of pagination
@@ -1403,9 +1410,10 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 class TwitterSearchScraper(_TwitterAPIScraper):
 	name = 'twitter-search'
 
-	def __init__(self, query, *, cursor = None, top = False, **kwargs):
+	def __init__(self, query, *, cursor = None, top = False, maxEmptyPages = 20, **kwargs):
 		if not query.strip():
 			raise ValueError('empty query')
+		kwargs['maxEmptyPages'] = maxEmptyPages
 		super().__init__(baseUrl = 'https://twitter.com/search?' + urllib.parse.urlencode({'f': 'live', 'lang': 'en', 'q': query, 'src': 'spelling_expansion_revert_click'}), **kwargs)
 		self._query = query  # Note: may get replaced by subclasses when using user ID resolution
 		self._cursor = cursor
@@ -1472,11 +1480,12 @@ class TwitterSearchScraper(_TwitterAPIScraper):
 	def _cli_setup_parser(cls, subparser):
 		subparser.add_argument('--cursor', metavar = 'CURSOR')
 		subparser.add_argument('--top', action = 'store_true', default = False, help = 'Enable fetching top tweets instead of live/chronological')
+		subparser.add_argument('--max-empty-pages', dest = 'maxEmptyPages', metavar = 'N', type = int, default = 20, help = 'Stop after N empty pages from Twitter; set to 0 to disable')
 		subparser.add_argument('query', type = snscrape.base.nonempty_string('query'), help = 'A Twitter search string')
 
 	@classmethod
 	def _cli_from_args(cls, args):
-		return cls._cli_construct(args, args.query, cursor = args.cursor, top = args.top)
+		return cls._cli_construct(args, args.query, cursor = args.cursor, top = args.top, maxEmptyPages = args.maxEmptyPages)
 
 
 class TwitterUserScraper(TwitterSearchScraper):
