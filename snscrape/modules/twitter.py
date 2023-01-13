@@ -119,8 +119,8 @@ class Photo(Medium):
 
 @dataclasses.dataclass
 class VideoVariant:
-	contentType: str
 	url: str
+	contentType: typing.Optional[str]
 	bitrate: typing.Optional[int]
 
 
@@ -1165,7 +1165,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 				id = bindingValues['amplify_content_id'],
 				video = Video(
 					thumbnailUrl = bindingValues['player_image'],
-					variants = [VideoVariant(contentType = bindingValues['player_stream_content_type'], url = bindingValues['amplify_url_vmap'], bitrate = None)],
+					variants = [VideoVariant(url = bindingValues['amplify_url_vmap'], contentType = bindingValues.get('player_stream_content_type'), bitrate = None)],
 				),
 			)
 		elif cardName == 'appplayer':
