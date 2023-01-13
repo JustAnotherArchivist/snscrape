@@ -85,6 +85,7 @@ class Tweet(snscrape.base.Item):
 	cashtags: typing.Optional[typing.List[str]] = None
 	card: typing.Optional['Card'] = None
 	viewCount: typing.Optional[int] = None
+	vibe: typing.Optional['Vibe'] = None
 
 	username = snscrape.base._DeprecatedProperty('username', lambda self: self.user.username, 'user.username')
 	outlinks = snscrape.base._DeprecatedProperty('outlinks', lambda self: [x.url for x in self.links] if self.links else [], 'links (url attribute)')
@@ -449,6 +450,13 @@ class UnifiedCardApp:
 class UnifiedCardSwipeableLayoutSlide:
 	mediumComponentKey: UnifiedCardComponentKey
 	componentKey: UnifiedCardComponentKey
+
+
+@dataclasses.dataclass
+class Vibe:
+	text: str
+	imageUrl: str
+	imageDescription: str
 
 
 @dataclasses.dataclass
@@ -1299,6 +1307,13 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 
 		_logger.warning(f'Unsupported card type on tweet {tweetId}: {cardName!r}')
 
+	def _make_vibe(self, vibe):
+		return Vibe(
+			text = vibe['text'],
+			imageUrl = vibe['imgUrl'],
+			imageDescription = vibe['imgDescription'],
+		)
+
 	def _tweet_to_tweet(self, tweet, obj):
 		user = self._user_to_user(obj['globalObjects']['users'][tweet['user_id_str']])
 		kwargs = {}
@@ -1310,6 +1325,8 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			kwargs['card'] = self._make_card(tweet['card'], _TwitterAPIType.V2, self._get_tweet_id(tweet))
 		if 'ext_views' in tweet and 'count' in tweet['ext_views']:
 			kwargs['viewCount'] = int(tweet['ext_views']['count'])
+		if 'vibe' in tweet.get('ext', {}):
+			kwargs['vibe'] = self._make_vibe(tweet['ext']['vibe']['r']['ok'])
 		return self._make_tweet(tweet, user, **kwargs)
 
 	def _graphql_timeline_tweet_item_result_to_tweet(self, result):
@@ -1342,6 +1359,8 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			kwargs['card'] = self._make_card(result['card'], _TwitterAPIType.GRAPHQL, self._get_tweet_id(tweet))
 		if 'views' in result and 'count' in result['views']:
 			kwargs['viewCount'] = int(result['views']['count'])
+		if 'vibe' in result:
+			kwargs['vibe'] = self._make_vibe(result['vibe'])
 		return self._make_tweet(tweet, user, **kwargs)
 
 	def _graphql_timeline_instructions_to_tweets(self, instructions, includeConversationThreads = False):
