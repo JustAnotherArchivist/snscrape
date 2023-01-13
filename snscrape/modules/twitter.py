@@ -111,6 +111,7 @@ class Medium:
 class Photo(Medium):
 	previewUrl: str
 	fullUrl: str
+	altText: typing.Optional[str] = None
 
 
 @dataclasses.dataclass
@@ -126,12 +127,14 @@ class Video(Medium):
 	variants: typing.List[VideoVariant]
 	duration: typing.Optional[float] = None
 	views: typing.Optional[int] = None
+	altText: typing.Optional[str] = None
 
 
 @dataclasses.dataclass
 class Gif(Medium):
 	thumbnailUrl: str
 	variants: typing.List[VideoVariant]
+	altText: typing.Optional[str] = None
 
 
 @dataclasses.dataclass
@@ -949,10 +952,13 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			if format not in ('jpg', 'png'):
 				_logger.warning(f'Skipping photo with unknown format on tweet {tweetId}: {format!r}')
 				return
-			return Photo(
-				previewUrl = f'{baseUrl}?format={format}&name=small',
-				fullUrl = f'{baseUrl}?format={format}&name=large',
-			)
+			mKwargs = {
+				'previewUrl': f'{baseUrl}?format={format}&name=small',
+				'fullUrl': f'{baseUrl}?format={format}&name=large',
+			}
+			if medium.get('ext_alt_text'):
+				mKwargs['altText'] = medium['ext_alt_text']
+			return Photo(**mKwargs)
 		elif medium['type'] == 'video' or medium['type'] == 'animated_gif':
 			variants = []
 			for variant in medium['video_info']['variants']:
@@ -970,6 +976,8 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 				cls = Video
 			elif medium['type'] == 'animated_gif':
 				cls = Gif
+			if medium.get('ext_alt_text'):
+				mKwargs['altText'] = medium['ext_alt_text']
 			return cls(**mKwargs)
 		else:
 			_logger.warning(f'Unsupported medium type on tweet {tweetId}: {medium["type"]!r}')
