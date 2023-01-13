@@ -1442,13 +1442,18 @@ class TwitterSearchScraper(_TwitterAPIScraper):
 			'include_can_dm': '1',
 			'include_can_media_tag': '1',
 			'include_ext_has_nft_avatar': '1',
+			'include_ext_is_blue_verified': '1',
+			'include_ext_verified_type': '1',
 			'skip_status': '1',
 			'cards_platform': 'Web-12',
 			'include_cards': '1',
 			'include_ext_alt_text': 'true',
+			'include_ext_limited_action_results': 'false',
 			'include_quote_count': 'true',
 			'include_reply_count': '1',
 			'tweet_mode': 'extended',
+			'include_ext_collab_control': 'true',
+			'include_ext_views': 'true',
 			'include_entities': 'true',
 			'include_user_entities': 'true',
 			'include_ext_media_color': 'true',
@@ -1464,7 +1469,8 @@ class TwitterSearchScraper(_TwitterAPIScraper):
 			'cursor': None,
 			'pc': '1',
 			'spelling_corrections': '1',
-			'ext': 'mediaStats,highlightedLabel,hasNftAvatar,voiceInfo,enrichments,superFollowMetadata,unmentionInfo',
+			'include_ext_edit_control': 'true',
+			'ext': 'mediaStats,highlightedLabel,hasNftAvatar,voiceInfo,enrichments,superFollowMetadata,unmentionInfo,editControl,collab_control,vibe',
 		}
 		params = paginationParams.copy()
 		del params['cursor']
