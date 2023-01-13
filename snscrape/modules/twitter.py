@@ -1020,7 +1020,8 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 				assert userId not in userRefs
 				userRefs[userId] = self._user_to_user(o)
 		elif apiType is _TwitterAPIType.GRAPHQL:
-			for o in card['legacy'].get('user_refs', {}):
+			for o in card['legacy'].get('user_refs_results', []):
+				o = o['result']
 				userId = int(o['rest_id'])
 				if userId in userRefs:
 					_logger.warning(f'Duplicate user {userId} in card on tweet {tweetId}')
