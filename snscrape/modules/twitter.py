@@ -1023,13 +1023,15 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			for o in card['legacy'].get('user_refs_results', []):
 				o = o['result']
 				userId = int(o['rest_id'])
-				if userId in userRefs:
-					_logger.warning(f'Duplicate user {userId} in card on tweet {tweetId}')
-					continue
 				if 'legacy' in o:
-					userRefs[userId] = self._user_to_user(o['legacy'], id_ = userId)
+					user = self._user_to_user(o['legacy'], id_ = userId)
 				else:
-					userRefs[userId] = UserRef(id = userId)
+					user = UserRef(id = userId)
+				if userId in userRefs:
+					if userRefs[userId] != user:
+						_logger.warning(f'Duplicate user {userId} with differing data in card on tweet {tweetId}')
+					continue
+				userRefs[userId] = user
 
 		if apiType is _TwitterAPIType.V2:
 			messyBindingValues = card['binding_values'].items()
