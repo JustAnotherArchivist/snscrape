@@ -15,6 +15,7 @@ __all__ = [
 
 
 import collections
+import copy
 import dataclasses
 import datetime
 import email.utils
@@ -704,7 +705,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 	def _get_api_data(self, endpoint, apiType, params):
 		self._ensure_guest_token()
 		if apiType is _TwitterAPIType.GRAPHQL:
-			params = urllib.parse.urlencode({'variables': json.dumps(params, separators = (',', ':'))}, quote_via = urllib.parse.quote)
+			params = urllib.parse.urlencode({k: json.dumps(v, separators = (',', ':')) for k, v in params.items()}, quote_via = urllib.parse.quote)
 		r = self._get(endpoint, params = params, headers = self._apiHeaders, responseOkCallback = self._check_api_response)
 		try:
 			obj = r.json()
@@ -724,8 +725,11 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 		if cursor is None:
 			reqParams = params
 		else:
-			reqParams = paginationParams.copy()
-			reqParams['cursor'] = cursor
+			reqParams = copy.deepcopy(paginationParams)
+			if apiType is _TwitterAPIType.V2:
+				reqParams['cursor'] = cursor
+			else:
+				reqParams['variables']['cursor'] = cursor
 		bottomCursorAndStop = None
 		if direction is _ScrollDirection.TOP or direction is _ScrollDirection.BOTH:
 			dir = 'top'
@@ -808,8 +812,11 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			if newCursor != cursor:
 				emptyResponsesOnCursor = 0
 			cursor = newCursor
-			reqParams = paginationParams.copy()
-			reqParams['cursor'] = cursor
+			reqParams = copy.deepcopy(paginationParams)
+			if apiType is _TwitterAPIType.V2:
+				reqParams['cursor'] = cursor
+			else:
+				reqParams['variables']['cursor'] = cursor
 
 	def _count_tweets(self, entries):
 		return sum(entry['entryId'].startswith('sq-I-t-') or entry['entryId'].startswith('tweet-') for entry in entries)
@@ -1522,7 +1529,7 @@ class TwitterUserScraper(TwitterSearchScraper):
 			fieldName = 'userId'
 			endpoint = 'https://twitter.com/i/api/graphql/I5nvpI91ljifos1Y3Lltyg/UserByRestId'
 		variables = {fieldName: str(self._user), 'withSafetyModeUserFields': True, 'withSuperFollowsUserFields': True}
-		obj = self._get_api_data(endpoint, _TwitterAPIType.GRAPHQL, params = variables)
+		obj = self._get_api_data(endpoint, _TwitterAPIType.GRAPHQL, params = {'variables': variables})
 		if not obj['data'] or obj['data']['user']['result']['__typename'] == 'UserUnavailable':
 			return None
 		user = obj['data']['user']['result']
@@ -1618,9 +1625,30 @@ class TwitterProfileScraper(TwitterUserScraper):
 		}
 		variables = paginationVariables.copy()
 		del variables['cursor']
+		features = {
+			'responsive_web_twitter_blue_verified_badge_is_enabled': True,
+			'verified_phone_label_enabled': False,
+			'responsive_web_graphql_timeline_navigation_enabled': True,
+			'view_counts_public_visibility_enabled': True,
+			'view_counts_everywhere_api_enabled': True,
+			'longform_notetweets_consumption_enabled': False,
+			'tweetypie_unmention_optimization_enabled': True,
+			'responsive_web_uc_gql_enabled': True,
+			'vibe_api_enabled': True,
+			'responsive_web_edit_tweet_api_enabled': True,
+			'graphql_is_translatable_rweb_tweet_is_translatable_enabled': True,
+			'standardized_nudges_misinfo': True,
+			'tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled': False,
+			'interactive_text_enabled': True,
+			'responsive_web_text_conversations_enabled': False,
+			'responsive_web_enhance_cards_enabled': False,
+		}
+
+		params = {'variables': variables, 'features': features}
+		paginationParams = {'variables': paginationVariables, 'features': features}
 
 		gotPinned = False
-		for obj in self._iter_api_data('https://twitter.com/i/api/graphql/BSKxQ9_IaCoVyIvQHQROIQ/UserTweetsAndReplies', _TwitterAPIType.GRAPHQL, variables, paginationVariables):
+		for obj in self._iter_api_data('https://twitter.com/i/api/graphql/W3HCLclD2VauuL6RcQm9MA/UserTweetsAndReplies', _TwitterAPIType.GRAPHQL, params, paginationParams):
 			instructions = obj['data']['user']['result']['timeline']['timeline']['instructions']
 			if not gotPinned:
 				for instruction in instructions:
@@ -1677,10 +1705,8 @@ class TwitterTweetScraper(_TwitterAPIScraper):
 			'includePromotedContent': True,
 			'withCommunity': True,
 			'withQuickPromoteEligibilityTweetFields': True,
-			'withTweetQuoteCount': True,
 			'withBirdwatchNotes': True,
 			'withSuperFollowsUserFields': True,
-			'withBirdwatchPivots': False,
 			'withDownvotePerspective': False,
 			'withReactionsMetadata': False,
 			'withReactionsPerspective': False,
@@ -1690,9 +1716,30 @@ class TwitterTweetScraper(_TwitterAPIScraper):
 		}
 		variables = paginationVariables.copy()
 		del variables['cursor'], variables['referrer']
-		url = 'https://twitter.com/i/api/graphql/8svRea_Lc0_mdhwP6dqe0Q/TweetDetail'
+		features = {
+			'responsive_web_twitter_blue_verified_badge_is_enabled': True,
+			'verified_phone_label_enabled': False,
+			'responsive_web_graphql_timeline_navigation_enabled': True,
+			'view_counts_public_visibility_enabled': True,
+			'view_counts_everywhere_api_enabled': True,
+			'longform_notetweets_consumption_enabled': False,
+			'tweetypie_unmention_optimization_enabled': True,
+			'responsive_web_uc_gql_enabled': True,
+			'vibe_api_enabled': True,
+			'responsive_web_edit_tweet_api_enabled': True,
+			'graphql_is_translatable_rweb_tweet_is_translatable_enabled': True,
+			'standardized_nudges_misinfo': True,
+			'tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled': False,
+			'interactive_text_enabled': True,
+			'responsive_web_text_conversations_enabled': False,
+			'responsive_web_enhance_cards_enabled': False,
+		}
+
+		params = {'variables': variables, 'features': features}
+		paginationParams = {'variables': paginationVariables, 'features': features}
+		url = 'https://twitter.com/i/api/graphql/HQ_gjq7zDNvSiJOCSkwUEw/TweetDetail'
 		if self._mode is TwitterTweetScraperMode.SINGLE:
-			obj = self._get_api_data(url, _TwitterAPIType.GRAPHQL, params = variables)
+			obj = self._get_api_data(url, _TwitterAPIType.GRAPHQL, params = params)
 			if not obj['data']:
 				return
 			for instruction in obj['data']['threaded_conversation_with_injections']['instructions']:
@@ -1703,7 +1750,7 @@ class TwitterTweetScraper(_TwitterAPIScraper):
 						yield self._graphql_timeline_tweet_item_result_to_tweet(entry['content']['itemContent']['tweet_results']['result'])
 						break
 		elif self._mode is TwitterTweetScraperMode.SCROLL:
-			for obj in self._iter_api_data(url, _TwitterAPIType.GRAPHQL, variables, paginationVariables, direction = _ScrollDirection.BOTH):
+			for obj in self._iter_api_data(url, _TwitterAPIType.GRAPHQL, params, paginationParams, direction = _ScrollDirection.BOTH):
 				if not obj['data']:
 					continue
 				yield from self._graphql_timeline_instructions_to_tweets(obj['data']['threaded_conversation_with_injections']['instructions'], includeConversationThreads = True)
@@ -1713,11 +1760,11 @@ class TwitterTweetScraper(_TwitterAPIScraper):
 			queue.append(self._tweetId)
 			while queue:
 				tweetId = queue.popleft()
-				thisPagVariables = paginationVariables.copy()
-				thisPagVariables['focalTweetId'] = str(tweetId)
-				thisVariables = thisPagVariables.copy()
-				del thisPagVariables['cursor'], thisPagVariables['referrer']
-				for obj in self._iter_api_data(url, _TwitterAPIType.GRAPHQL, thisVariables, thisPagVariables, direction = _ScrollDirection.BOTH):
+				thisPagParams = copy.deepcopy(paginationVariables)
+				thisPagParams['variables']['focalTweetId'] = str(tweetId)
+				thisParams = copy.deepcopy(thisPagParams)
+				del thisPagParams['variables']['cursor'], thisPagParams['variables']['referrer']
+				for obj in self._iter_api_data(url, _TwitterAPIType.GRAPHQL, thisParams, thisPagParams, direction = _ScrollDirection.BOTH):
 					if not obj['data']:
 						continue
 					for tweet in self._graphql_timeline_instructions_to_tweets(obj['data']['threaded_conversation_with_injections']['instructions'], includeConversationThreads = True):
