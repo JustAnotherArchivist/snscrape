@@ -26,11 +26,13 @@ import random
 import logging
 import os
 import re
+import requests.adapters
 import snscrape.base
 import string
 import time
 import typing
 import urllib.parse
+import urllib3.util.ssl_
 import warnings
 
 
@@ -49,6 +51,7 @@ _logger = logging.getLogger(__name__)
 _API_AUTHORIZATION_HEADER = 'Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs=1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA'
 _globalGuestTokenManager = None
 _GUEST_TOKEN_VALIDITY = 10800
+_CIPHERS_CHROME = 'TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-RSA-AES128-SHA:ECDHE-RSA-AES256-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA:AES256-SHA'
 
 
 @dataclasses.dataclass
@@ -612,6 +615,13 @@ class _CLIGuestTokenManager(GuestTokenManager):
 				pass
 
 
+class _TwitterTLSAdapter(requests.adapters.HTTPAdapter):
+	def init_poolmanager(self, *args, **kwargs):
+		#FIXME: When urllib3 2.0.0 is out and can be required, this should use urllib3.util.create_urllib3_context instead of the private, undocumented ssl_ module.
+		kwargs['ssl_context'] = urllib3.util.ssl_.create_urllib3_context(ciphers = _CIPHERS_CHROME)
+		return super().init_poolmanager(*args, **kwargs)
+
+
 class _TwitterAPIType(enum.Enum):
 	V2 = 0  # Introduced with the redesign
 	GRAPHQL = 1
@@ -633,6 +643,9 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			'Referer': self._baseUrl,
 			'Accept-Language': 'en-US,en;q=0.5',
 		}
+		adapter = _TwitterTLSAdapter()
+		self._session.mount('https://twitter.com', adapter)
+		self._session.mount('https://api.twitter.com', adapter)
 		self._set_random_user_agent()
 
 	def _set_random_user_agent(self):
