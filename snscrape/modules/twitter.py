@@ -808,6 +808,8 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 				if self._maxEmptyPages and emptyPages >= self._maxEmptyPages:
 					_logger.warning(f'Stopping after {emptyPages} empty pages')
 					break
+			else:
+				emptyPages = 0
 			if not newCursor or (stopOnEmptyResponse and tweetCount == 0):
 				# End of pagination
 				if promptCursor is not None:
