@@ -220,7 +220,7 @@ class PromoConvoAction:
 class BroadcastCard(Card):
 	id: str
 	url: str
-	title: str
+	title: typing.Optional[str] = None
 	state: typing.Optional[str] = None
 	broadcaster: typing.Optional['User'] = None
 	thumbnailUrl: typing.Optional[str] = None
