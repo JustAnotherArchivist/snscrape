@@ -1022,6 +1022,9 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 				userRefs[userId] = self._user_to_user(o)
 		elif apiType is _TwitterAPIType.GRAPHQL:
 			for o in card['legacy'].get('user_refs_results', []):
+				if 'result' not in o:
+					_logger.warning(f'Empty user ref object in card on tweet {tweetId}')
+					continue
 				o = o['result']
 				if o['__typename'] == 'UserUnavailable':
 					_logger.warning(f'Unavailable user in card on tweet {tweetId}')
@@ -1579,7 +1582,8 @@ class TwitterUserScraper(TwitterSearchScraper):
 			endpoint = 'https://twitter.com/i/api/graphql/I5nvpI91ljifos1Y3Lltyg/UserByRestId'
 		variables = {fieldName: str(self._user), 'withSafetyModeUserFields': True, 'withSuperFollowsUserFields': True}
 		obj = self._get_api_data(endpoint, _TwitterAPIType.GRAPHQL, params = {'variables': variables})
-		if not obj['data'] or obj['data']['user']['result']['__typename'] == 'UserUnavailable':
+		if not obj['data'] or 'result' not in obj['data']['user'] or obj['data']['user']['result']['__typename'] == 'UserUnavailable':
+			_logger.warning('Empty response or unavailable user')
 			return None
 		user = obj['data']['user']['result']
 		rawDescription = user['legacy']['description']
