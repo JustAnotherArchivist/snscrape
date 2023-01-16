@@ -635,11 +635,11 @@ class _CLIGuestTokenManager(GuestTokenManager):
 				pass
 
 
-class _TwitterTLSAdapter(requests.adapters.HTTPAdapter):
+class _TwitterTLSAdapter(snscrape.base._HTTPSAdapter):
 	def init_poolmanager(self, *args, **kwargs):
 		#FIXME: When urllib3 2.0.0 is out and can be required, this should use urllib3.util.create_urllib3_context instead of the private, undocumented ssl_ module.
 		kwargs['ssl_context'] = urllib3.util.ssl_.create_urllib3_context(ciphers = _CIPHERS_CHROME)
-		return super().init_poolmanager(*args, **kwargs)
+		super().init_poolmanager(*args, **kwargs)
 
 
 class _TwitterAPIType(enum.Enum):

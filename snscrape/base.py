@@ -6,6 +6,8 @@ import functools
 import json
 import logging
 import requests
+import requests.adapters
+import urllib3.connection
 import time
 import warnings
 
@@ -130,6 +132,33 @@ class URLItem(Item):
 		return self._url
 
 
+class _HTTPSAdapter(requests.adapters.HTTPAdapter):
+	def init_poolmanager(self, *args, **kwargs):
+		super().init_poolmanager(*args, **kwargs)
+		#FIXME: Uses private urllib3.PoolManager attribute pool_classes_by_scheme.
+		try:
+			self.poolmanager.pool_classes_by_scheme['https'].ConnectionCls = _HTTPSConnection
+		except (AttributeError, KeyError) as e:
+			logger.debug(f'Could not install TLS cipher logger: {type(e).__module__}.{type(e).__name__} {e!s}')
+
+
+class _HTTPSConnection(urllib3.connection.HTTPSConnection):
+	def connect(self, *args, **kwargs):
+		conn = super().connect(*args, **kwargs)
+		#FIXME: Uses undocumented attribute self.sock and beyond.
+		try:
+			logger.debug(f'Connected to: {self.sock.getpeername()}')
+		except AttributeError:
+			# self.sock might be a urllib3.util.ssltransport.SSLTransport, which lacks getpeername.
+			pass
+		try:
+			logger.debug(f'Connection cipher: {self.sock.cipher()}')
+		except AttributeError:
+			# Shouldn't be possible, but better safe than sorry.
+			pass
+		return conn
+
+
 class ScraperException(Exception):
 	pass
 
@@ -143,6 +172,7 @@ class Scraper:
 		self._retries = retries
 		self._proxies = proxies
 		self._session = requests.Session()
+		self._session.mount('https://', _HTTPSAdapter())
 
 	@abc.abstractmethod
 	def get_items(self):
