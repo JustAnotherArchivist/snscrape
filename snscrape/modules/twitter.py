@@ -1813,7 +1813,7 @@ class TwitterTweetScraper(_TwitterAPIScraper):
 			queue.append(self._tweetId)
 			while queue:
 				tweetId = queue.popleft()
-				thisPagParams = copy.deepcopy(paginationVariables)
+				thisPagParams = copy.deepcopy(paginationParams)
 				thisPagParams['variables']['focalTweetId'] = str(tweetId)
 				thisParams = copy.deepcopy(thisPagParams)
 				del thisPagParams['variables']['cursor'], thisPagParams['variables']['referrer']
