@@ -1389,23 +1389,32 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			kwargs['vibe'] = self._make_vibe(result['vibe'])
 		return self._make_tweet(tweet, user, **kwargs)
 
+	def _graphql_timeline_instruction_entry_to_tweet(self, entry, includeConversationThreads):
+		if entry['entryId'].startswith('tweet-'):
+			if entry['content']['entryType'] == 'TimelineTimelineItem' and entry['content']['itemContent']['itemType'] == 'TimelineTweet':
+				if 'result' not in entry['content']['itemContent']['tweet_results']:
+					_logger.warning(f'Skipping empty tweet entry {entry["entryId"]}')
+				else:
+					yield self._graphql_timeline_tweet_item_result_to_tweet(entry['content']['itemContent']['tweet_results']['result'])
+			else:
+				_logger.warning('Got unrecognised timeline tweet item(s)')
+		elif includeConversationThreads and entry['entryId'].startswith('conversationthread-'):  #TODO show more cursor?
+			for item in entry['content']['items']:
+				if item['entryId'].startswith(f'{entry["entryId"]}-tweet-'):
+					yield self._graphql_timeline_tweet_item_result_to_tweet(item['item']['itemContent']['tweet_results']['result'])
+
 	def _graphql_timeline_instructions_to_tweets(self, instructions, includeConversationThreads = False):
 		for instruction in instructions:
 			if instruction['type'] != 'TimelineAddEntries':
 				continue
 			for entry in instruction['entries']:
-				if entry['entryId'].startswith('tweet-'):
-					if entry['content']['entryType'] == 'TimelineTimelineItem' and entry['content']['itemContent']['itemType'] == 'TimelineTweet':
-						if 'result' not in entry['content']['itemContent']['tweet_results']:
-							_logger.warning(f'Skipping empty tweet entry {entry["entryId"]}')
-							continue
-						yield self._graphql_timeline_tweet_item_result_to_tweet(entry['content']['itemContent']['tweet_results']['result'])
-					else:
-						logger.warning('Got unrecognised timeline tweet item(s)')
-				elif includeConversationThreads and entry['entryId'].startswith('conversationthread-'):  #TODO show more cursor?
-					for item in entry['content']['items']:
-						if item['entryId'].startswith(f'{entry["entryId"]}-tweet-'):
-							yield self._graphql_timeline_tweet_item_result_to_tweet(item['item']['itemContent']['tweet_results']['result'])
+				try:
+					yield from self._graphql_timeline_instruction_entry_to_tweet(entry, includeConversationThreads)
+				except KeyError as e:
+					_logger.warning(f"KeyError {e} in {json.dumps(entry)}")
+				except snscrape.base.ScraperException as e:
+					if str(e) != "Unknown result type 'TweetTombstone'":
+						raise e
 
 	def _render_text_with_urls(self, text, urls):
 		if not urls:
@@ -1447,7 +1456,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 		if user.get('url'):
 			entity = user['entities'].get('url', {}).get('urls', [None])[0]
 			if not entity or entity['url'] != user['url']:
-				self.logger.warning(f'Link inconsistency on user {kwargs["id"]}')
+				_logger.warning(f'Link inconsistency on user {kwargs["id"]}')
 			if not entity:
 				entity = {'indices': (0, len(user['url']))}
 			kwargs['link'] = TextLink(text = entity.get('display_url'), url = entity.get('expanded_url', user['url']), tcourl = user['url'], indices = tuple(entity['indices']))
@@ -1592,7 +1601,7 @@ class TwitterUserScraper(TwitterSearchScraper):
 		if user['legacy'].get('url'):
 			entity = user['legacy']['entities'].get('url', {}).get('urls', [None])[0]
 			if not entity or entity['url'] != user['legacy']['url']:
-				self.logger.warning(f'Link inconsistency on user')
+				_logger.warning(f'Link inconsistency on user')
 			if not entity:
 				entity = {'indices': (0, len(user['legacy']['url']))}
 			link = TextLink(text = entity.get('display_url'), url = entity.get('expanded_url', user['legacy']['url']), tcourl = user['legacy']['url'], indices = tuple(entity['indices']))
