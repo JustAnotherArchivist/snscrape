@@ -1413,8 +1413,11 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 				except KeyError as e:
 					_logger.warning(f"KeyError {e} in {json.dumps(entry)}")
 				except snscrape.base.ScraperException as e:
-					if str(e) != "Unknown result type 'TweetTombstone'":
+					if str(e) == "Unknown result type 'TweetTombstone'":
+						_logger.warning(f"{e} in {json.dumps(entry)}")
+					else:
 						raise e
+						
 
 	def _render_text_with_urls(self, text, urls):
 		if not urls:
