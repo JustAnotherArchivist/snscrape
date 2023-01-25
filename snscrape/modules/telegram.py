@@ -79,6 +79,7 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 		return self._initialPage, self._initialPageSoup
 
 	def _soup_to_items(self, soup, pageUrl, onlyUsername = False):
+		# soup.get_text(separator="\n")
 		posts = soup.find_all('div', attrs = {'class': 'tgme_widget_message', 'data-post': True})
 		for post in reversed(posts):
 			if onlyUsername:
@@ -91,7 +92,7 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 			url = rawUrl.replace('//t.me/', '//t.me/s/')
 			date = datetime.datetime.strptime(dateDiv.find('time', datetime = True)['datetime'].replace('-', '', 2).replace(':', ''), '%Y%m%dT%H%M%S%z')
 			if (message := post.find('div', class_ = 'tgme_widget_message_text')):
-				content = message.text
+				content = self.get_post_text(message)
 				outlinks = []
 				for link in post.find_all('a'):
 					if any(x in link.parent.attrs.get('class', []) for x in ('tgme_widget_message_user', 'tgme_widget_message_author')):
@@ -194,10 +195,18 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 
 		return Channel(**kwargs)
 
+	@staticmethod
+	def get_post_text(post) -> str:
+		result = []
+		for s in post.stripped_strings:
+			result.append(s)
+		return '\n'.join(result)
+
+
 	@classmethod
-	def _cli_setup_parser(cls, subparser):
+	def cli_setup_parser(cls, subparser):
 		subparser.add_argument('channel', type = snscrape.base.nonempty_string('channel'), help = 'A channel name')
 
 	@classmethod
-	def _cli_from_args(cls, args):
-		return cls._cli_construct(args, args.channel)
+	def cli_from_args(cls, args):
+		return cls.cli_construct(args, args.channel)
