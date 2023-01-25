@@ -79,7 +79,6 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 		return self._initialPage, self._initialPageSoup
 
 	def _soup_to_items(self, soup, pageUrl, onlyUsername = False):
-		# soup.get_text(separator="\n")
 		posts = soup.find_all('div', attrs = {'class': 'tgme_widget_message', 'data-post': True})
 		for post in reversed(posts):
 			if onlyUsername:
