@@ -26,7 +26,7 @@ body:
     validations:
       required: true
     attributes:
-      label: Expected behavior
+      label: Expected behaviour
       description: A brief description of what should happen.
   - type: textarea
     attributes:
@@ -37,20 +37,25 @@ body:
     validations:
       required: true
     attributes:
-      label: OS / Distro
+      label: Operating system
       description: Include the version too, please!
       placeholder: e.g. Windows 10, Ubuntu 20.04, macOS 10.15...
   - type: input
     validations:
       required: true
     attributes:
-      label: Output from `snscrape --version`
+      label: Python version: output of `python3 --version`
+  - type: input
+    validations:
+      required: true
+    attributes:
+      label: snscrape version: output of `snscrape --version`
   - type: input
     validations:
       required: true
     attributes:
       label: Scraper
-      placeholder: e.g. twitter-user, reddit-search,...
+      placeholder: e.g. twitter-user, reddit-search, TwitterSearchScraper, ...
   - type: textarea
     validations:
       required: false
@@ -62,7 +67,7 @@ body:
       required: false
     attributes:
       label: Dump of locals
-      description: | 
+      description: |
         Here attach the dump of your snscrape locals, if it's a crash. (snscrape should tell you the path).
         Please note that it may contain identifying info such as IP address, if the website returns that.
         You can also optionally request to exchange the file in private.
@@ -72,7 +77,7 @@ body:
       required: true
     attributes:
       label: How are you using snscrape?
-      options: ['CLI', 'Module']
+      options: ['CLI (`snscrape ...` as a command, e.g. in a terminal)', 'Module (`import snscrape.modules.something` in Python code)']
   - type: textarea
     attributes:
       label: Additional context
