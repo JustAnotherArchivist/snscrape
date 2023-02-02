@@ -44,12 +44,14 @@ body:
     validations:
       required: true
     attributes:
-      label: Python version: output of `python3 --version`
+      label: |
+        Python version: output of `python3 --version`
   - type: input
     validations:
       required: true
     attributes:
-      label: snscrape version: output of `snscrape --version`
+      label: |
+        snscrape version: output of `snscrape --version`
   - type: input
     validations:
       required: true
