@@ -330,28 +330,6 @@ class UnifiedCard(Card):
 	def __post_init__(self):
 		if (self.components is not None) + (self.swipeableLayoutSlides is not None) + (self.collectionLayoutSlides is not None) != 1:
 			raise ValueError('did not get exactly one of components, swipeableLayoutSlides, and collectionLayoutSlides')
-		if self.components and not all(k in self.componentObjects for k in self.components):
-			raise ValueError('missing components')
-		if self.swipeableLayoutSlides and not all(s.mediumComponentKey in self.componentObjects and s.componentKey in self.componentObjects for s in self.swipeableLayoutSlides):
-			raise ValueError('missing components')
-		if any(c.destinationKey not in self.destinations for c in self.componentObjects.values() if hasattr(c, 'destinationKey')):
-			raise ValueError('missing destinations')
-		if any(b.destinationKey not in self.destinations for c in self.componentObjects.values() if isinstance(c, UnifiedCardButtonGroupComponentObject) for b in c.buttons):
-			raise ValueError('missing destinations')
-		mediaKeys = []
-		for c in self.componentObjects.values():
-			if isinstance(c, UnifiedCardMediumComponentObject):
-				mediaKeys.append(c.mediumKey)
-			elif isinstance(c, UnifiedCardSwipeableMediaComponentObject):
-				mediaKeys.extend(x.mediumKey for x in c.media)
-		mediaKeys.extend(d.mediumKey for d in self.destinations.values() if d.mediumKey is not None)
-		mediaKeys.extend(a.iconMediumKey for l in (self.apps.values() if self.apps is not None else []) for a in l if a.iconMediumKey is not None)
-		if any(k not in self.media for k in mediaKeys):
-			raise ValueError('missing media')
-		if any(c.appKey not in self.apps for c in self.componentObjects.values() if hasattr(c, 'appKey')):
-			raise ValueError('missing apps')
-		if any(d.appKey not in self.apps for d in self.destinations.values() if d.appKey is not None):
-			raise ValueError('missing apps')
 
 
 class UnifiedCardComponentObject:
@@ -1329,7 +1307,36 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 					_logger.warning(f'Unsupported unified_card layout type on tweet {tweetId}: {o["layout"]["type"]!r}')
 					return
 
-			return UnifiedCard(**kwargs)
+			card = UnifiedCard(**kwargs)
+
+			# Consistency checks
+			missingParts = set()
+			if card.components and not all(k in card.componentObjects for k in card.components):
+				missingParts.add('components')
+			if card.swipeableLayoutSlides and not all(s.mediumComponentKey in card.componentObjects and s.componentKey in card.componentObjects for s in card.swipeableLayoutSlides):
+				missingParts.add('components')
+			if any(c.destinationKey not in card.destinations for c in card.componentObjects.values() if hasattr(c, 'destinationKey')):
+				missingParts.add('destinations')
+			if any(b.destinationKey not in card.destinations for c in card.componentObjects.values() if isinstance(c, UnifiedCardButtonGroupComponentObject) for b in c.buttons):
+				missingParts.add('destinations')
+			mediaKeys = []
+			for c in card.componentObjects.values():
+				if isinstance(c, UnifiedCardMediumComponentObject):
+					mediaKeys.append(c.mediumKey)
+				elif isinstance(c, UnifiedCardSwipeableMediaComponentObject):
+					mediaKeys.extend(x.mediumKey for x in c.media)
+			mediaKeys.extend(d.mediumKey for d in card.destinations.values() if d.mediumKey is not None)
+			mediaKeys.extend(a.iconMediumKey for l in (card.apps.values() if card.apps is not None else []) for a in l if a.iconMediumKey is not None)
+			if any(k not in card.media for k in mediaKeys):
+				missingParts.add('media')
+			if any(c.appKey not in card.apps for c in card.componentObjects.values() if hasattr(c, 'appKey')):
+				missingParts.add('apps')
+			if any(d.appKey not in card.apps for d in card.destinations.values() if d.appKey is not None):
+				missingParts.add('apps')
+			if missingParts:
+				_logger.warning(f'Consistency errors in unified card on tweet {tweetId}: missing {", ".join(missingParts)}')
+
+			return card
 
 		_logger.warning(f'Unsupported card type on tweet {tweetId}: {cardName!r}')
 
