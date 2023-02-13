@@ -957,7 +957,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 				return
 			mKwargs = {
 				'previewUrl': f'{baseUrl}?format={format}&name=small',
-				'fullUrl': f'{baseUrl}?format={format}&name=large',
+				'fullUrl': f'{baseUrl}?format={format}&name=orig',
 			}
 			if medium.get('ext_alt_text'):
 				mKwargs['altText'] = medium['ext_alt_text']
