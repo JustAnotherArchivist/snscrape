@@ -776,7 +776,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 						newCursor = entryCursor
 						if entryCursorStop is not None:
 							stopOnEmptyResponse = entryCursorStop
-					elif entry['entryId'].startswith('cursor-showMoreThreadsPrompt-') or entry['entryId'].startswith('cursor-showmorethreads-'):
+					elif entry['entryId'].startswith('cursor-showmorethreadsprompt-') or entry['entryId'].startswith('cursor-showmorethreads-'):
 						# E.g. 'offensive' replies and 'Show more replies' button
 						promptCursor = entryCursor
 					elif direction is _ScrollDirection.BOTH and bottomCursorAndStop is None and (entry['entryId'] == 'sq-cursor-bottom' or entry['entryId'].startswith('cursor-bottom-')):
