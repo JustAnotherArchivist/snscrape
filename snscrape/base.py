@@ -15,6 +15,10 @@ import warnings
 logger = logging.getLogger(__name__)
 
 
+class DeprecatedPropertyAccessWarning(FutureWarning):
+	pass
+
+
 class _DeprecatedProperty:
 	def __init__(self, name, repl, replStr):
 		self.name = name
@@ -24,7 +28,7 @@ class _DeprecatedProperty:
 	def __get__(self, obj, objType):
 		if obj is None: # if the access is through the class using _DeprecatedProperty rather than an instance of the class:
 			return self
-		warnings.warn(f'{self.name} is deprecated, use {self.replStr} instead', FutureWarning, stacklevel = 2)
+		warnings.warn(f'{self.name} is deprecated, use {self.replStr} instead', DeprecatedPropertyAccessWarning, stacklevel = 2)
 		return self.repl(obj)
 
 
@@ -45,9 +49,9 @@ def _json_dataclass_to_dict(obj):
 			if field.name.startswith('_'):
 				continue
 			out[field.name] = _json_dataclass_to_dict(getattr(obj, field.name))
-		# Add in (non-deprecated) properties
+		# Add properties
 		for k in dir(obj):
-			if isinstance(getattr(type(obj), k, None), property):
+			if isinstance(getattr(type(obj), k, None), (property, _DeprecatedProperty)):
 				assert k != '_type'
 				if k.startswith('_'):
 					continue
@@ -70,7 +74,9 @@ class _JSONDataclass:
 	def json(self):
 		'''Convert the object to a JSON string'''
 
-		out = _json_dataclass_to_dict(self)
+		with warnings.catch_warnings():
+			warnings.filterwarnings(action = 'ignore', category = DeprecatedPropertyAccessWarning)
+			out = _json_dataclass_to_dict(self)
 		for key, value in list(out.items()): # Modifying the dict below, so make a copy first
 			if isinstance(value, IntWithGranularity):
 				out[key] = int(value)
