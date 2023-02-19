@@ -23,7 +23,7 @@ logger = logging # Replaced below after setting the logger class
 class Logger(logging.Logger):
 	def _log_with_stack(self, level, *args, **kwargs):
 		super().log(level, *args, **kwargs)
-		if dumpLocals:
+		if dumpLocals and not kwargs.get('extra', {}).get('_snscrapeSuppressDumpLocals', False):
 			stack = inspect.stack()
 			if len(stack) >= 3:
 				name = _dump_stack_and_locals(stack[2:][::-1])
@@ -118,7 +118,7 @@ def _dump_locals_on_exception():
 		trace = inspect.trace()
 		if len(trace) >= 2:
 			name = _dump_stack_and_locals(trace[1:], exc = e)
-			logger.fatal(f'Dumped stack and locals to {name}')
+			logger.fatal(f'Dumped stack and locals to {name}', extra = {'_snscrapeSuppressDumpLocals': True})
 		raise
 
 
