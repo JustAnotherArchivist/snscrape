@@ -151,7 +151,7 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 			raise snscrape.base.ScraperException(f'Got status code {r.status_code}')
 		soup = bs4.BeautifulSoup(r.text, 'lxml')
 		membersDiv = soup.find('div', class_ = 'tgme_page_extra')
-		if membersDiv.text.endswith(' members'):
+		if membersDiv.text.endswith(' subscribers'):
 			kwargs['members'] = int(membersDiv.text[:-8].replace(' ', ''))
 		kwargs['photo'] = soup.find('img', class_ = 'tgme_page_photo_image').attrs['src']
 
