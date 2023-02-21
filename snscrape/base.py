@@ -89,7 +89,7 @@ class _JSONDataclass:
 		'''Convert the object to a JSON string'''
 
 		with warnings.catch_warnings():
-			warnings.filterwarnings(action = 'ignore', category = DeprecatedPropertyAccessWarning)
+			warnings.filterwarnings(action = 'ignore', category = DeprecatedFeatureWarning)
 			out = _json_dataclass_to_dict(self)
 		for key, value in list(out.items()): # Modifying the dict below, so make a copy first
 			if isinstance(value, IntWithGranularity):
