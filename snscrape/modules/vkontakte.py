@@ -75,7 +75,7 @@ class Video:
 
 
 @dataclasses.dataclass
-class User(snscrape.base.Entity):
+class User(snscrape.base.Item):
 	username: str
 	name: str
 	verified: bool

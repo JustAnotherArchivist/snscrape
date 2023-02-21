@@ -32,7 +32,7 @@ class InstagramPost(snscrape.base.Item):
 
 
 @dataclasses.dataclass
-class User(snscrape.base.Entity):
+class User(snscrape.base.Item):
 	username: str
 	name: typing.Optional[str]
 	followers: snscrape.base.IntWithGranularity

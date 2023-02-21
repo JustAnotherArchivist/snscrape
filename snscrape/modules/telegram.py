@@ -39,7 +39,7 @@ class TelegramPost(snscrape.base.Item):
 
 
 @dataclasses.dataclass
-class Channel(snscrape.base.Entity):
+class Channel(snscrape.base.Item):
 	username: str
 	title: str
 	verified: bool

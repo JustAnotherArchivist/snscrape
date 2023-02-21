@@ -457,7 +457,7 @@ class Tombstone(snscrape.base.Item):
 
 
 @dataclasses.dataclass
-class User(snscrape.base.Entity):
+class User(snscrape.base.Item):
 	# Most fields can be None if they're not known.
 
 	username: str
@@ -513,7 +513,7 @@ class UserRef:
 
 
 @dataclasses.dataclass
-class Community(snscrape.base.Entity):
+class Community(snscrape.base.Item):
 	id: int
 	name: str
 	description: str

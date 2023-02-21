@@ -67,7 +67,7 @@ class PollOption:
 
 
 @dataclasses.dataclass
-class User(snscrape.base.Entity):
+class User(snscrape.base.Item):
 	account: str # @username@domain.invalid
 	displayName: typing.Optional[str] = None
 	displayNameWithCustomEmojis: typing.Optional[typing.List[typing.Union[str, 'CustomEmoji']]] = None

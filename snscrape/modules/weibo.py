@@ -34,7 +34,7 @@ class Post(snscrape.base.Item):
 
 
 @dataclasses.dataclass
-class User(snscrape.base.Entity):
+class User(snscrape.base.Item):
 	screenname: str
 	uid: int
 	verified: bool

@@ -1,3 +1,6 @@
+__all__ = ['DeprecatedFeatureWarning', 'IntWithGranularity', 'Item', 'Scraper', 'ScraperException']
+
+
 import abc
 import copy
 import dataclasses
@@ -97,21 +100,9 @@ class _JSONDataclass:
 
 @dataclasses.dataclass
 class Item(_JSONDataclass):
-	'''An abstract base class for an item returned by the scraper's get_items generator.
+	'''An abstract base class for an item returned by the scraper.
 
 	An item can really be anything. The string representation should be useful for the CLI output (e.g. a direct URL for the item).
-	'''
-
-	@abc.abstractmethod
-	def __str__(self):
-		pass
-
-
-@dataclasses.dataclass
-class Entity(_JSONDataclass):
-	'''An abstract base class for an entity returned by the scraper's entity property.
-
-	An entity is typically the account of a person or organisation. The string representation should be the preferred direct URL to the entity's page on the network.
 	'''
 
 	@abc.abstractmethod
@@ -296,3 +287,6 @@ def nonempty_string(name):
 		raise ValueError('must not be an empty string')
 	f.__name__ = name
 	return f
+
+
+__getattr__, __dir__ = _module_deprecation_helper(__all__, Entity = Item)
