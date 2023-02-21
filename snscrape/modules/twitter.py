@@ -1515,16 +1515,6 @@ class TwitterSearchScraper(_TwitterAPIScraper):
 		self._cursor = cursor
 		self._top = top
 
-	def _check_scroll_response(self, r):
-		if r.status_code == 429:
-			# Accept a 429 response as "valid" to prevent retries; handled explicitly in get_items
-			return True, None
-		if r.headers.get('content-type').replace(' ', '') != 'application/json;charset=utf-8':
-			return False, 'content type is not JSON'
-		if r.status_code != 200:
-			return False, 'non-200 status code'
-		return True, None
-
 	def get_items(self):
 		if not self._query.strip():
 			raise ValueError('empty query')
