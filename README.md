@@ -8,7 +8,7 @@ The following services are currently supported:
 * Mastodon: user profiles and toots (single or thread)
 * Reddit: users, subreddits, and searches (via Pushshift)
 * Telegram: channels
-* Twitter: users, user profiles, hashtags, searches, tweets (single or surrounding thread), list posts, and trends
+* Twitter: users, user profiles, hashtags, searches (live tweets, top tweets, and users), tweets (single or surrounding thread), list posts, communities, and trends
 * VKontakte: user profiles
 * Weibo (Sina Weibo): user profiles
 
