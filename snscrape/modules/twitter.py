@@ -38,17 +38,6 @@ import urllib3.util.ssl_
 import warnings
 
 
-# DescriptionURL deprecation
-_DEPRECATED_NAMES = {'DescriptionURL': 'TextLink'}
-def __getattr__(name):
-	if name in _DEPRECATED_NAMES:
-		warnings.warn(f'{name} is deprecated, use {_DEPRECATED_NAMES[name]} instead', FutureWarning, stacklevel = 2)
-		return globals()[_DEPRECATED_NAMES[name]]
-	raise AttributeError(f'module {__name__!r} has no attribute {name!r}')
-def __dir__():
-	return sorted(__all__ + list(_DEPRECATED_NAMES.keys()))
-
-
 _logger = logging.getLogger(__name__)
 _API_AUTHORIZATION_HEADER = 'Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs=1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA'
 _globalGuestTokenManager = None
@@ -2082,3 +2071,6 @@ class TwitterTrendsScraper(_TwitterAPIScraper):
 				for item in entry['content']['timelineModule']['items']:
 					trend = item['item']['content']['trend']
 					yield Trend(name = trend['name'], metaDescription = trend['trendMetadata'].get('metaDescription'), domainContext = trend['trendMetadata']['domainContext'])
+
+
+__getattr__, __dir__ = snscrape.base._module_deprecation_helper(__all__, DescriptionURL = TextLink)

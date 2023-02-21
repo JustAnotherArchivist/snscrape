@@ -14,8 +14,18 @@ import warnings
 
 logger = logging.getLogger(__name__)
 
+def _module_deprecation_helper(all, **names):
+	def __getattr__(name):
+		if name in names:
+			warnings.warn(f'{name} is deprecated, use {names[name].__name__} instead', DeprecatedFeatureWarning, stacklevel = 2)
+			return names[name]
+		raise AttributeError(f'module {__name__!r} has no attribute {name!r}')
+	def __dir__():
+		return sorted(all + list(names.keys()))
+	return __getattr__, __dir__
 
-class DeprecatedPropertyAccessWarning(FutureWarning):
+
+class DeprecatedFeatureWarning(FutureWarning):
 	pass
 
 
@@ -28,7 +38,7 @@ class _DeprecatedProperty:
 	def __get__(self, obj, objType):
 		if obj is None: # if the access is through the class using _DeprecatedProperty rather than an instance of the class:
 			return self
-		warnings.warn(f'{self.name} is deprecated, use {self.replStr} instead', DeprecatedPropertyAccessWarning, stacklevel = 2)
+		warnings.warn(f'{self.name} is deprecated, use {self.replStr} instead', DeprecatedFeatureWarning, stacklevel = 2)
 		return self.repl(obj)
 
 
