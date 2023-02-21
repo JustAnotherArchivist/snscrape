@@ -15,7 +15,8 @@ import time
 import warnings
 
 
-logger = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__)
+
 
 def _module_deprecation_helper(all, **names):
 	def __getattr__(name):
@@ -132,7 +133,7 @@ class _HTTPSAdapter(requests.adapters.HTTPAdapter):
 		try:
 			self.poolmanager.pool_classes_by_scheme['https'].ConnectionCls = _HTTPSConnection
 		except (AttributeError, KeyError) as e:
-			logger.debug(f'Could not install TLS cipher logger: {type(e).__module__}.{type(e).__name__} {e!s}')
+			_logger.debug(f'Could not install TLS cipher logger: {type(e).__module__}.{type(e).__name__} {e!s}')
 
 
 class _HTTPSConnection(urllib3.connection.HTTPSConnection):
@@ -140,12 +141,12 @@ class _HTTPSConnection(urllib3.connection.HTTPSConnection):
 		conn = super().connect(*args, **kwargs)
 		#FIXME: Uses undocumented attribute self.sock and beyond.
 		try:
-			logger.debug(f'Connected to: {self.sock.getpeername()}')
+			_logger.debug(f'Connected to: {self.sock.getpeername()}')
 		except AttributeError:
 			# self.sock might be a urllib3.util.ssltransport.SSLTransport, which lacks getpeername.
 			pass
 		try:
-			logger.debug(f'Connection cipher: {self.sock.cipher()}')
+			_logger.debug(f'Connection cipher: {self.sock.cipher()}')
 		except AttributeError:
 			# Shouldn't be possible, but better safe than sorry.
 			pass
@@ -192,12 +193,12 @@ class Scraper:
 			# The request is newly prepared on each retry because of potential cookie updates.
 			req = self._session.prepare_request(requests.Request(method, url, params = params, data = data, headers = headers))
 			environmentSettings = self._session.merge_environment_settings(req.url, proxies, None, None, None)
-			logger.info(f'Retrieving {req.url}')
-			logger.debug(f'... with headers: {headers!r}')
+			_logger.info(f'Retrieving {req.url}')
+			_logger.debug(f'... with headers: {headers!r}')
 			if data:
-				logger.debug(f'... with data: {data!r}')
+				_logger.debug(f'... with data: {data!r}')
 			if environmentSettings:
-				logger.debug(f'... with environmentSettings: {environmentSettings!r}')
+				_logger.debug(f'... with environmentSettings: {environmentSettings!r}')
 			try:
 				r = self._session.send(req, allow_redirects = allowRedirects, timeout = timeout, **environmentSettings)
 			except requests.exceptions.RequestException as exc:
@@ -207,16 +208,16 @@ class Scraper:
 				else:
 					retrying = ''
 					level = logging.ERROR
-				logger.log(level, f'Error retrieving {req.url}: {exc!r}{retrying}')
+				_logger.log(level, f'Error retrieving {req.url}: {exc!r}{retrying}')
 				errors.append(repr(exc))
 			else:
 				redirected = f' (redirected to {r.url})' if r.history else ''
-				logger.info(f'Retrieved {req.url}{redirected}: {r.status_code}')
-				logger.debug(f'... with response headers: {r.headers!r}')
+				_logger.info(f'Retrieved {req.url}{redirected}: {r.status_code}')
+				_logger.debug(f'... with response headers: {r.headers!r}')
 				if r.history:
 					for i, redirect in enumerate(r.history):
-						logger.debug(f'... request {i}: {redirect.request.url}: {redirect.status_code} (Location: {redirect.headers.get("Location")})')
-						logger.debug(f'... ... with response headers: {redirect.headers!r}')
+						_logger.debug(f'... request {i}: {redirect.request.url}: {redirect.status_code} (Location: {redirect.headers.get("Location")})')
+						_logger.debug(f'... ... with response headers: {redirect.headers!r}')
 				if responseOkCallback is not None:
 					success, msg = responseOkCallback(r)
 					errors.append(msg)
@@ -225,7 +226,7 @@ class Scraper:
 				msg = f': {msg}' if msg else ''
 
 				if success:
-					logger.debug(f'{req.url} retrieved successfully{msg}')
+					_logger.debug(f'{req.url} retrieved successfully{msg}')
 					return r
 				else:
 					if attempt < self._retries:
@@ -234,15 +235,15 @@ class Scraper:
 					else:
 						retrying = ''
 						level = logging.ERROR
-					logger.log(level, f'Error retrieving {req.url}{msg}{retrying}')
+					_logger.log(level, f'Error retrieving {req.url}{msg}{retrying}')
 			if attempt < self._retries:
 				sleepTime = 1.0 * 2**attempt # exponential backoff: sleep 1 second after first attempt, 2 after second, 4 after third, etc.
-				logger.info(f'Waiting {sleepTime:.0f} seconds')
+				_logger.info(f'Waiting {sleepTime:.0f} seconds')
 				time.sleep(sleepTime)
 		else:
 			msg = f'{self._retries + 1} requests to {req.url} failed, giving up.'
-			logger.fatal(msg)
-			logger.fatal(f'Errors: {", ".join(errors)}')
+			_logger.fatal(msg)
+			_logger.fatal(f'Errors: {", ".join(errors)}')
 			raise ScraperException(msg)
 		raise RuntimeError('Reached unreachable code')
 
