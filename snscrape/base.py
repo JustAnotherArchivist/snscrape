@@ -125,20 +125,6 @@ class IntWithGranularity(int):
 		return (IntWithGranularity, (int(self), self.granularity))
 
 
-class URLItem(Item):
-	'''A generic item which only holds a URL string.'''
-
-	def __init__(self, url):
-		self._url = url
-
-	@property
-	def url(self):
-		return self._url
-
-	def __str__(self):
-		return self._url
-
-
 class _HTTPSAdapter(requests.adapters.HTTPAdapter):
 	def init_poolmanager(self, *args, **kwargs):
 		super().init_poolmanager(*args, **kwargs)
