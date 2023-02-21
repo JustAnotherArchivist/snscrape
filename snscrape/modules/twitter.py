@@ -1406,6 +1406,10 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			result = result['tweet']
 		elif result['__typename'] == 'TweetTombstone':
 			return self._make_tombstone(tweetId, result.get('tombstone'))
+		elif result['__typename'] == 'TweetUnavailable':
+			if tweetId is None:
+				raise snscrape.base.ScraperException('Cannot handle unavailable tweet without tweet ID')
+			return TweetRef(id = tweetId)
 		else:
 			raise snscrape.base.ScraperException(f'Unknown result type {result["__typename"]!r}')
 		tweet = result['legacy']
