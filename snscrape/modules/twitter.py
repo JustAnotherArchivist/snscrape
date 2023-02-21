@@ -773,7 +773,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 				else:
 					# TweetDetail
 					instructions = obj['data'].get('threaded_conversation_with_injections_v2', {}).get('instructions', [])
-			tweetCount = 0
+			entryCount = 0
 			for instruction in instructions:
 				if 'addEntries' in instruction:
 					entries = instruction['addEntries']['entries']
@@ -783,7 +783,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 					entries = instruction['entries']
 				else:
 					continue
-				tweetCount += self._count_tweets(entries)
+				entryCount += self._count_tweets_and_users(entries)
 				for entry in entries:
 					if not (entry['entryId'].startswith('sq-cursor-') or entry['entryId'].startswith('cursor-')):
 						continue
@@ -806,20 +806,20 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 						newBottomCursorAndStop = (entryCursor, entryCursorStop or False)
 			if bottomCursorAndStop is None and newBottomCursorAndStop is not None:
 				bottomCursorAndStop = newBottomCursorAndStop
-			if newCursor == cursor and tweetCount == 0:
+			if newCursor == cursor and entryCount == 0:
 				# Twitter sometimes returns the same cursor as requested and no results even though there are more results.
 				# When this happens, retry the same cursor up to the retries setting.
 				emptyResponsesOnCursor += 1
 				if emptyResponsesOnCursor > self._retries:
 					break
-			if tweetCount == 0:
+			if entryCount == 0:
 				emptyPages += 1
 				if self._maxEmptyPages and emptyPages >= self._maxEmptyPages:
 					_logger.warning(f'Stopping after {emptyPages} empty pages')
 					break
 			else:
 				emptyPages = 0
-			if not newCursor or (stopOnEmptyResponse and tweetCount == 0):
+			if not newCursor or (stopOnEmptyResponse and entryCount == 0):
 				# End of pagination
 				if promptCursor is not None:
 					newCursor = promptCursor
@@ -838,10 +838,10 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			else:
 				reqParams['variables']['cursor'] = cursor
 
-	def _count_tweets(self, entries):
-		return sum(entry['entryId'].startswith('sq-I-t-') or entry['entryId'].startswith('tweet-') for entry in entries)
+	def _count_tweets_and_users(self, entries):
+		return sum(entry['entryId'].startswith('sq-I-t-') or entry['entryId'].startswith('tweet-') or entry['entryId'].startswith('user-') for entry in entries)
 
-	def _v2_timeline_instructions_to_tweets(self, obj):
+	def _v2_timeline_instructions_to_tweets_or_users(self, obj):
 		# No data format test, just a hard and loud crash if anything's wrong :-)
 		for instruction in obj['timeline']['instructions']:
 			if 'addEntries' in instruction:
@@ -853,6 +853,8 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			for entry in entries:
 				if entry['entryId'].startswith('sq-I-t-') or entry['entryId'].startswith('tweet-'):
 					yield from self._v2_instruction_tweet_entry_to_tweet(entry['entryId'], entry['content'], obj)
+				elif entry['entryId'].startswith('user-'):
+					yield self._user_to_user(obj['globalObjects']['users'][entry['content']['item']['content']['user']['id']])
 
 	def _v2_instruction_tweet_entry_to_tweet(self, entryId, entry, obj):
 		if 'tweet' in entry['item']['content']:
@@ -1550,17 +1552,35 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 		return super()._cli_construct(argparseArgs, *args, **kwargs)
 
 
+class TwitterSearchScraperMode(enum.Enum):
+	LIVE = 'live'
+	TOP = 'top'
+	USER = 'user'
+
+	@classmethod
+	def _cli_from_args(cls, args):
+		if args.top:
+			return cls.TOP
+		if args.user:
+			return cls.USER
+		return cls.LIVE
+
+
 class TwitterSearchScraper(_TwitterAPIScraper):
 	name = 'twitter-search'
 
-	def __init__(self, query, *, cursor = None, top = False, maxEmptyPages = 20, **kwargs):
+	def __init__(self, query, *, cursor = None, mode = TwitterSearchScraperMode.LIVE, top = None, maxEmptyPages = 20, **kwargs):
 		if not query.strip():
 			raise ValueError('empty query')
 		kwargs['maxEmptyPages'] = maxEmptyPages
 		super().__init__(baseUrl = 'https://twitter.com/search?' + urllib.parse.urlencode({'f': 'live', 'lang': 'en', 'q': query, 'src': 'spelling_expansion_revert_click'}), **kwargs)
 		self._query = query  # Note: may get replaced by subclasses when using user ID resolution
 		self._cursor = cursor
-		self._top = top
+		if top is not None:
+			replacement = f'{__name__}.TwitterSearchScraperMode.' + ('TOP' if top else 'LIVE')
+			warnings.warn(f'`top` argument is deprecated, use `mode = {replacement}` instead of `top = {bool(top)}`', snscrape.base.DeprecatedFeatureWarning, stacklevel = 2)
+			mode = TwitterSearchScraperMode.TOP if top else TwitterSearchScraperMode.LIVE
+		self._mode = mode
 
 	def get_items(self):
 		if not self._query.strip():
@@ -1596,7 +1616,22 @@ class TwitterSearchScraper(_TwitterAPIScraper):
 			'send_error_codes': 'true',
 			'simple_quoted_tweet': 'true',
 			'q': self._query,
-			'tweet_search_mode': 'live',
+		}
+		if self._mode is TwitterSearchScraperMode.LIVE:
+			paginationParams = {
+				**paginationParams,
+				'tweet_search_mode': 'live',
+			}
+		elif self._mode is TwitterSearchScraperMode.TOP:
+			pass
+		elif self._mode is TwitterSearchScraperMode.USER:
+			paginationParams = {
+				**paginationParams,
+				'result_filter': 'user',
+				'query_source': '',
+			}
+		paginationParams = {
+			**paginationParams,
 			'count': '20',
 			'query_source': 'spelling_expansion_revert_click',
 			'cursor': None,
@@ -1608,23 +1643,21 @@ class TwitterSearchScraper(_TwitterAPIScraper):
 		params = paginationParams.copy()
 		del params['cursor']
 
-		if self._top:
-			del params['tweet_search_mode']
-			del paginationParams['tweet_search_mode']
-
 		for obj in self._iter_api_data('https://api.twitter.com/2/search/adaptive.json', _TwitterAPIType.V2, params, paginationParams, cursor = self._cursor):
-			yield from self._v2_timeline_instructions_to_tweets(obj)
+			yield from self._v2_timeline_instructions_to_tweets_or_users(obj)
 
 	@classmethod
 	def _cli_setup_parser(cls, subparser):
 		subparser.add_argument('--cursor', metavar = 'CURSOR')
-		subparser.add_argument('--top', action = 'store_true', default = False, help = 'Enable fetching top tweets instead of live/chronological')
+		group = subparser.add_mutually_exclusive_group(required = False)
+		group.add_argument('--top', action = 'store_true', default = False, help = 'Search top tweets instead of live/chronological')
+		group.add_argument('--user', action = 'store_true', default = False, help = 'Search users instead of tweets')
 		subparser.add_argument('--max-empty-pages', dest = 'maxEmptyPages', metavar = 'N', type = int, default = 20, help = 'Stop after N empty pages from Twitter; set to 0 to disable')
 		subparser.add_argument('query', type = snscrape.base.nonempty_string('query'), help = 'A Twitter search string')
 
 	@classmethod
 	def _cli_from_args(cls, args):
-		return cls._cli_construct(args, args.query, cursor = args.cursor, top = args.top, maxEmptyPages = args.maxEmptyPages)
+		return cls._cli_construct(args, args.query, cursor = args.cursor, mode = TwitterSearchScraperMode._cli_from_args(args), maxEmptyPages = args.maxEmptyPages)
 
 
 class TwitterUserScraper(TwitterSearchScraper):
