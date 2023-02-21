@@ -1444,7 +1444,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 		if user.get('url'):
 			entity = user['entities'].get('url', {}).get('urls', [None])[0]
 			if not entity or entity['url'] != user['url']:
-				self.logger.warning(f'Link inconsistency on user {kwargs["id"]}')
+				_logger.warning(f'Link inconsistency on user {kwargs["id"]}')
 			if not entity:
 				entity = {'indices': (0, len(user['url']))}
 			kwargs['link'] = TextLink(text = entity.get('display_url'), url = entity.get('expanded_url', user['url']), tcourl = user['url'], indices = tuple(entity['indices']))
@@ -1589,7 +1589,7 @@ class TwitterUserScraper(TwitterSearchScraper):
 		if user['legacy'].get('url'):
 			entity = user['legacy']['entities'].get('url', {}).get('urls', [None])[0]
 			if not entity or entity['url'] != user['legacy']['url']:
-				self.logger.warning(f'Link inconsistency on user')
+				_logger.warning(f'Link inconsistency on user')
 			if not entity:
 				entity = {'indices': (0, len(user['legacy']['url']))}
 			link = TextLink(text = entity.get('display_url'), url = entity.get('expanded_url', user['legacy']['url']), tcourl = user['legacy']['url'], indices = tuple(entity['indices']))
