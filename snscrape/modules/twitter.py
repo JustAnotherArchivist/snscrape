@@ -818,7 +818,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 	def _count_tweets(self, entries):
 		return sum(entry['entryId'].startswith('sq-I-t-') or entry['entryId'].startswith('tweet-') for entry in entries)
 
-	def _v2_timeline_instructions_to_tweets(self, obj, includeConversationThreads = False):
+	def _v2_timeline_instructions_to_tweets(self, obj):
 		# No data format test, just a hard and loud crash if anything's wrong :-)
 		for instruction in obj['timeline']['instructions']:
 			if 'addEntries' in instruction:
@@ -830,10 +830,6 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			for entry in entries:
 				if entry['entryId'].startswith('sq-I-t-') or entry['entryId'].startswith('tweet-'):
 					yield from self._v2_instruction_tweet_entry_to_tweet(entry['entryId'], entry['content'], obj)
-				elif includeConversationThreads and entry['entryId'].startswith('conversationThread-') and not entry['entryId'].endswith('-show_more_cursor'):
-					for item in entry['content']['timelineModule']['items']:
-						if item['entryId'].startswith('tweet-'):
-							yield from self._v2_instruction_tweet_entry_to_tweet(item['entryId'], item, obj)
 
 	def _v2_instruction_tweet_entry_to_tweet(self, entryId, entry, obj):
 		if 'tweet' in entry['item']['content']:
@@ -843,13 +839,6 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 				_logger.warning(f'Skipping tweet {entry["item"]["content"]["tweet"]["id"]} which is not in globalObjects')
 				return
 			tweet = obj['globalObjects']['tweets'][entry['item']['content']['tweet']['id']]
-		elif 'tombstone' in entry['item']['content']:
-			if 'tweet' not in entry['item']['content']['tombstone']: # E.g. deleted reply
-				return
-			if entry['item']['content']['tombstone']['tweet']['id'] not in obj['globalObjects']['tweets']:
-				_logger.warning(f'Skipping tweet {entry["item"]["content"]["tombstone"]["tweet"]["id"]} which is not in globalObjects')
-				return
-			tweet = obj['globalObjects']['tweets'][entry['item']['content']['tombstone']['tweet']['id']]
 		else:
 			raise snscrape.base.ScraperException(f'Unable to handle entry {entryId!r}')
 		yield self._tweet_to_tweet(tweet, obj)
