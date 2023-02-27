@@ -11,6 +11,7 @@ __all__ = [
 	'TwitterTweetScraper',
 	'TwitterListPostsScraper',
 	'TwitterTrendsScraper',
+	'TwitterCashtagScraper',
 ]
 
 
