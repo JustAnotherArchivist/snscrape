@@ -1411,7 +1411,11 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			#TODO Tombstones will cause a crash here.
 			kwargs['retweetedTweet'] = self._graphql_timeline_tweet_item_result_to_tweet(tweet['retweeted_status_result']['result'])
 		if 'quoted_status_result' in result:
-			kwargs['quotedTweet'] = self._graphql_timeline_tweet_item_result_to_tweet(result['quoted_status_result']['result'], tweetId = int(tweet['quoted_status_id_str']))
+			if 'result' not in result['quoted_status_result']:
+				_logger.warning(f'quoted_status_result for {tweet["quoted_status_id_str"]} without an actual result on tweet {self._get_tweet_id(tweet)}, using TweetRef')
+				kwargs['quotedTweet'] = TweetRef(int(tweet['quoted_status_id_str']))
+			else:
+				kwargs['quotedTweet'] = self._graphql_timeline_tweet_item_result_to_tweet(result['quoted_status_result']['result'], tweetId = int(tweet['quoted_status_id_str']))
 		elif result.get('quotedRefResult'):
 			if result['quotedRefResult']['result']['__typename'] == 'TweetTombstone':
 				kwargs['quotedTweet'] = self._graphql_timeline_tweet_item_result_to_tweet(result['quotedRefResult']['result'], tweetId = int(tweet['quoted_status_id_str']))
