@@ -1416,9 +1416,12 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			if result['quotedRefResult']['result']['__typename'] == 'TweetTombstone':
 				kwargs['quotedTweet'] = self._graphql_timeline_tweet_item_result_to_tweet(result['quotedRefResult']['result'], tweetId = int(tweet['quoted_status_id_str']))
 			else:
-				if result['quotedRefResult']['result']['__typename'] != 'Tweet':
+				qTweet = result['quotedRefResult']['result']
+				if result['quotedRefResult']['result']['__typename'] not in ('Tweet', 'TweetWithVisibilityResults'):
 					_logger.warning(f'Unknown quotedRefResult type {result["quotedRefResult"]["result"]["__typename"]!r} on tweet {self._get_tweet_id(tweet)}, using TweetRef')
-				kwargs['quotedTweet'] = TweetRef(id = int(result['quotedRefResult']['result']['rest_id']))
+				elif result['quotedRefResult']['result']['__typename'] == 'TweetWithVisibilityResults':
+					qTweet = qTweet['tweet']
+				kwargs['quotedTweet'] = TweetRef(id = int(qTweet['rest_id']))
 		elif 'quoted_status_id_str' in tweet:
 			# Omit the TweetRef if this is a retweet and the quoted tweet ID matches the tweet quoted in the retweeted tweet.
 			if tweet['quoted_status_id_str'] != tweet.get('retweeted_status_result', {}).get('result', {}).get('quoted_status_result', {}).get('result', {}).get('rest_id'):
