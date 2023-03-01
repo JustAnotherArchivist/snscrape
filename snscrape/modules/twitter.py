@@ -7,11 +7,11 @@ __all__ = [
 	'TwitterUserScraper',
 	'TwitterProfileScraper',
 	'TwitterHashtagScraper',
+	'TwitterCashtagScraper',
 	'TwitterTweetScraperMode',
 	'TwitterTweetScraper',
 	'TwitterListPostsScraper',
 	'TwitterTrendsScraper',
-	'TwitterCashtagScraper',
 ]
 
 
@@ -1832,20 +1832,20 @@ class TwitterHashtagScraper(TwitterSearchScraper):
 
 
 class TwitterCashtagScraper(TwitterSearchScraper):
-    name = 'twitter-cashtag'
+	name = 'twitter-cashtag'
 
-    def __init__(self, cashtag, **kwargs):
-        super().__init__(f'${cashtag}', **kwargs)
-        self._cashtag = cashtag
+	def __init__(self, cashtag, **kwargs):
+		super().__init__(f'${cashtag}', **kwargs)
+		self._cashtag = cashtag
 
-    @classmethod
-    def _cli_setup_parser(cls, subparser):
-        subparser.add_argument('cashtag', type=snscrape.base.nonempty_string(
-            'cashtag'), help='A Twitter cashtag (without $)')
 
-    @classmethod
-    def _cli_from_args(cls, args):
-        return cls._cli_construct(args, args.cashtag)
+	@classmethod
+	def _cli_setup_parser(cls, subparser):
+        	subparser.add_argument('cashtag', type = snscrape.base.nonempty_string('cashtag'), help = 'A Twitter cashtag (without $)')
+
+	@classmethod
+	def _cli_from_args(cls, args):
+        	return cls._cli_construct(args, args.cashtag)
 
 
 class TwitterTweetScraperMode(enum.Enum):
