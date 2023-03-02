@@ -1845,7 +1845,6 @@ class TwitterCashtagScraper(TwitterSearchScraper):
 		super().__init__(f'${cashtag}', **kwargs)
 		self._cashtag = cashtag
 
-
 	@classmethod
 	def _cli_setup_parser(cls, subparser):
         	subparser.add_argument('cashtag', type = snscrape.base.nonempty_string('cashtag'), help = 'A Twitter cashtag (without $)')
