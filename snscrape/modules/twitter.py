@@ -1847,11 +1847,11 @@ class TwitterCashtagScraper(TwitterSearchScraper):
 
 	@classmethod
 	def _cli_setup_parser(cls, subparser):
-        	subparser.add_argument('cashtag', type = snscrape.base.nonempty_string('cashtag'), help = 'A Twitter cashtag (without $)')
+		subparser.add_argument('cashtag', type = snscrape.base.nonempty_string('cashtag'), help = 'A Twitter cashtag (without $)')
 
 	@classmethod
 	def _cli_from_args(cls, args):
-        	return cls._cli_construct(args, args.cashtag)
+		return cls._cli_construct(args, args.cashtag)
 
 
 class TwitterTweetScraperMode(enum.Enum):
