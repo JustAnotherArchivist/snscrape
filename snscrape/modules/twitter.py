@@ -1460,7 +1460,10 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 								raise snscrape.base.ScraperException(f'Unexpected home conversation entry ID: {item["entryId"]!r}')
 							tweetId = int(item['entryId'].split('-tweet-', 1)[1])
 							if item['item']['itemContent']['itemType'] == 'TimelineTweet':
-								yield self._graphql_timeline_tweet_item_result_to_tweet(item['item']['itemContent']['tweet_results']['result'], tweetId = tweetId)
+								if 'result' in item['item']['itemContent']['tweet_results']:
+									yield self._graphql_timeline_tweet_item_result_to_tweet(item['item']['itemContent']['tweet_results']['result'], tweetId = tweetId)
+								else:
+									yield TweetRef(id = tweetId)
 				elif includeConversationThreads and entry['entryId'].startswith('conversationthread-'):  #TODO show more cursor?
 					for item in entry['content']['items']:
 						if item['entryId'].startswith(f'{entry["entryId"]}-tweet-'):
