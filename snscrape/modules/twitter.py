@@ -1818,6 +1818,9 @@ class TwitterProfileScraper(TwitterUserScraper):
 
 		gotPinned = False
 		for obj in self._iter_api_data('https://twitter.com/i/api/graphql/nrdle2catTyGnTyj1Qa7wA/UserTweetsAndReplies', _TwitterAPIType.GRAPHQL, params, paginationParams):
+			if obj['data']['user']['result']['__typename'] == 'UserUnavailable':
+				_logger.warning('User unavailable')
+				break
 			instructions = obj['data']['user']['result']['timeline_v2']['timeline']['instructions']
 			if not gotPinned:
 				for instruction in instructions:
