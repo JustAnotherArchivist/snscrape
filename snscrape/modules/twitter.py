@@ -1743,6 +1743,8 @@ class TwitterUserScraper(TwitterSearchScraper):
 	def get_items(self):
 		if self._isUserId:
 			# Resolve user ID to username
+			if self.entity is None:
+				raise snscrape.base.ScraperException(f'Could not resolve user ID {self._user!r} to username')
 			self._user = self.entity.username
 			self._isUserId = False
 			self._query = f'from:{self._user}'
@@ -1772,6 +1774,8 @@ class TwitterProfileScraper(TwitterUserScraper):
 
 	def get_items(self):
 		if not self._isUserId:
+			if self.entity is None:
+				raise snscrape.base.ScraperException(f'Could not resolve username {self._user!r} to ID')
 			userId = self.entity.id
 		else:
 			userId = self._user
