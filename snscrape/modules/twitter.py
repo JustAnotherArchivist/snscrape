@@ -1692,8 +1692,11 @@ class TwitterUserScraper(TwitterSearchScraper):
 			endpoint = 'https://twitter.com/i/api/graphql/I5nvpI91ljifos1Y3Lltyg/UserByRestId'
 		variables = {fieldName: str(self._user), 'withSafetyModeUserFields': True, 'withSuperFollowsUserFields': True}
 		obj = self._get_api_data(endpoint, _TwitterAPIType.GRAPHQL, params = {'variables': variables})
-		if not obj['data'] or 'result' not in obj['data']['user'] or obj['data']['user']['result']['__typename'] == 'UserUnavailable':
-			_logger.warning('Empty response or unavailable user')
+		if not obj['data'] or 'result' not in obj['data']['user']:
+			_logger.warning('Empty response')
+			return None
+		if obj['data']['user']['result']['__typename'] == 'UserUnavailable':
+			_logger.warning('User unavailable')
 			return None
 		user = obj['data']['user']['result']
 		rawDescription = user['legacy']['description']
@@ -2012,8 +2015,11 @@ class TwitterCommunityScraper(_TwitterAPIScraper):
 			},
 		}
 		obj = self._get_api_data('https://api.twitter.com/graphql/MO8cE7aTvaenXJX_teUGcA/CommunitiesFetchOneQuery', _TwitterAPIType.GRAPHQL, params = params)
-		if not obj['data'] or 'result' not in obj['data']['communityResults'] or obj['data']['communityResults']['result']['__typename'] == 'CommunityUnavailable':
-			_logger.warning('Empty response or unavailable community')
+		if not obj['data'] or 'result' not in obj['data']['communityResults']:
+			_logger.warning('Empty response')
+			return None
+		if obj['data']['communityResults']['result']['__typename'] == 'CommunityUnavailable':
+			_logger.warning('Community unavailable')
 			return None
 		community = obj['data']['communityResults']['result']
 		optKwargs = {}
