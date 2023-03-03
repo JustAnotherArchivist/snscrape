@@ -517,7 +517,6 @@ class UserRef:
 class Community(snscrape.base.Item):
 	id: int
 	name: str
-	description: str
 	created: datetime.datetime
 	admin: typing.Union[User, UserRef]
 	creator: typing.Union[User, UserRef]
@@ -527,6 +526,7 @@ class Community(snscrape.base.Item):
 	rules: typing.List[str]
 	theme: str
 	bannerUrl: str
+	description: typing.Optional[str] = None
 
 
 @dataclasses.dataclass
@@ -2016,10 +2016,12 @@ class TwitterCommunityScraper(_TwitterAPIScraper):
 			_logger.warning('Empty response or unavailable community')
 			return None
 		community = obj['data']['communityResults']['result']
+		optKwargs = {}
+		if 'description' in community:
+			optKwargs['description'] = community['description']
 		return Community(
 			id = int(community['id_str']),
 			name = community['name'],
-			description = community['description'],
 			created = datetime.datetime.fromtimestamp(community['created_at'] / 1000, tz = datetime.timezone.utc),
 			admin = self._graphql_user_results_to_user(community['admin_results']),
 			creator = self._graphql_user_results_to_user(community['creator_results']),
@@ -2029,6 +2031,7 @@ class TwitterCommunityScraper(_TwitterAPIScraper):
 			rules = [r['name'] for r in community['rules']],
 			theme = community.get('custom_theme', community['default_theme']),
 			bannerUrl = community.get('custom_banner_media', community['default_banner_media'])['media_info']['original_img_url'],
+			**optKwargs,
 		)
 
 	def get_items(self):
