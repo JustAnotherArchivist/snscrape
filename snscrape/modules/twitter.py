@@ -672,7 +672,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 		self._set_random_user_agent()
 
 	def _set_random_user_agent(self):
-		self._userAgent = f'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.{random.randint(0, 9999)} Safari/537.{random.randint(0, 99)}'
+		self._userAgent = f'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.5563.{random.randint(0, 9999)} Safari/537.{random.randint(0, 99)}'
 		self._apiHeaders['User-Agent'] = self._userAgent
 
 	def _check_guest_token_response(self, r):
