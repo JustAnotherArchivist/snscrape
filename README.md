@@ -59,9 +59,8 @@ for tweet in scraper.get_items():
 
 column_names = [ 'ID','Date','Content', 'Username', 'LikeCount','RetweetCount']
 
+# converting to a dataframe using pandas
 frame = pd.DataFrame(data = tweets_list, columns = column_names)
-
-
 frame.to_csv('./python_hashtag_tweets.csv', index = False)
 
 ```
