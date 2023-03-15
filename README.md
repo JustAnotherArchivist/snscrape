@@ -25,6 +25,49 @@ If you want to use the development version:
     pip3 install git+https://github.com/JustAnotherArchivist/snscrape.git
 
 ## Usage
+
+### Python
+
+#### Using the Twitter API
+A simple way to get around using scraping tweets using the twitter module
+
+```python
+
+import  snscrape.modules.twitter as sntwitter
+import pandas as pd
+
+query = '#python' # a query string , for specific user tweets, you could use 'from:<username>'
+scraper = sntwitter.TwitterSearchScraper(query)
+tweets_list = []
+
+
+
+for tweet in scraper.get_items():
+    data = [
+        
+        tweet.id,
+        tweet.date,
+        tweet.content,
+        tweet.user.username,
+        tweet.likeCount,
+        tweet.retweetCount,
+        
+        ]
+    
+    tweets_list.append(data)
+    
+
+column_names = [ 'ID','Date','Content', 'Username', 'LikeCount','RetweetCount']
+
+frame = pd.DataFrame(data = tweets_list, columns = column_names)
+
+
+frame.to_csv('./python_hashtag_tweets.csv', index = False)
+
+```
+
+
+
 ### CLI
 The generic syntax of snscrape's CLI is:
 
