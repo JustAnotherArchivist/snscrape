@@ -21,6 +21,7 @@ body:
       label: How to reproduce
       description: |
         How to reproduce the problem.
+        This should be a minimal reproducible example, i.e. the shortest possible code or the smallest number of steps that still causes the error.
       placeholder: e.g. I can reproduce this issue by scraping the textfiles user with the twitter-user scraper.
   - type: textarea
     validations:
@@ -58,6 +59,12 @@ body:
     attributes:
       label: Scraper
       placeholder: e.g. twitter-user, reddit-search, TwitterSearchScraper, ...
+  - type: dropdown
+    validations:
+      required: true
+    attributes:
+      label: How are you using snscrape?
+      options: ['CLI (`snscrape ...` as a command, e.g. in a terminal)', 'Module (`import snscrape.modules.something` in Python code)']
   - type: textarea
     validations:
       required: false
@@ -68,18 +75,22 @@ body:
     validations:
       required: false
     attributes:
+      label: Log output
+      description: |
+        Insert here the debug log of snscrape.
+        If you use the CLI, add the global options `-vv` to the command, e.g. `snscrape -vv twitter-search ...`.
+        If you use the module, set the debug level in your Python code before any use of snscrape: `import logging; logging.basicConfig(level = logging.DEBUG)`.
+        If you already use `logging` in your own code, you may need to adjust the level there instead.
+  - type: textarea
+    validations:
+      required: false
+    attributes:
       label: Dump of locals
       description: |
         Here attach the dump of your snscrape locals, if it's a crash. (snscrape should tell you the path).
         Please note that it may contain identifying info such as IP address, if the website returns that.
         You can also optionally request to exchange the file in private.
         Finally, if snscrape didn't crash, leave this field blank.
-  - type: dropdown
-    validations:
-      required: true
-    attributes:
-      label: How are you using snscrape?
-      options: ['CLI (`snscrape ...` as a command, e.g. in a terminal)', 'Module (`import snscrape.modules.something` in Python code)']
   - type: textarea
     attributes:
       label: Additional context
