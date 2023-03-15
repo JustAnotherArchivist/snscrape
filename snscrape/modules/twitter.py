@@ -1583,6 +1583,8 @@ class TwitterSearchScraper(_TwitterAPIScraper):
 	def __init__(self, query, *, cursor = None, mode = TwitterSearchScraperMode.LIVE, top = None, maxEmptyPages = 20, **kwargs):
 		if not query.strip():
 			raise ValueError('empty query')
+		if mode not in tuple(TwitterSearchScraperMode):
+			raise ValueError('invalid mode, must be a TwitterSearchScraperMode')
 		kwargs['maxEmptyPages'] = maxEmptyPages
 		super().__init__(baseUrl = 'https://twitter.com/search?' + urllib.parse.urlencode({'f': 'live', 'lang': 'en', 'q': query, 'src': 'spelling_expansion_revert_click'}), **kwargs)
 		self._query = query  # Note: may get replaced by subclasses when using user ID resolution
