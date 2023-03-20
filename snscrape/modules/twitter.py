@@ -1588,6 +1588,8 @@ class TwitterSearchScraper(_TwitterAPIScraper):
 		kwargs['maxEmptyPages'] = maxEmptyPages
 		super().__init__(baseUrl = 'https://twitter.com/search?' + urllib.parse.urlencode({'f': 'live', 'lang': 'en', 'q': query, 'src': 'spelling_expansion_revert_click'}), **kwargs)
 		self._query = query  # Note: may get replaced by subclasses when using user ID resolution
+		if cursor is not None:
+			warnings.warn('the `cursor` argument is deprecated', snscrape.base.DeprecatedFeatureWarning, stacklevel = 2)
 		self._cursor = cursor
 		if top is not None:
 			replacement = f'{__name__}.TwitterSearchScraperMode.' + ('TOP' if top else 'LIVE')
@@ -1661,7 +1663,7 @@ class TwitterSearchScraper(_TwitterAPIScraper):
 
 	@classmethod
 	def _cli_setup_parser(cls, subparser):
-		subparser.add_argument('--cursor', metavar = 'CURSOR')
+		subparser.add_argument('--cursor', metavar = 'CURSOR', help = '(deprecated)')
 		group = subparser.add_mutually_exclusive_group(required = False)
 		group.add_argument('--top', action = 'store_true', default = False, help = 'Search top tweets instead of live/chronological')
 		group.add_argument('--user', action = 'store_true', default = False, help = 'Search users instead of tweets')
