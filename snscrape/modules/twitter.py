@@ -678,7 +678,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 	def _check_guest_token_response(self, r):
 		if r.status_code != 200:
 			self._set_random_user_agent()
-			return False, f'non-200 response ({r.status_code})'
+			return False, ('non-200 response' if r.status_code != 404 else 'blocked') + f' ({r.status_code})'
 		return True, None
 
 	def _ensure_guest_token(self, url = None):
@@ -710,7 +710,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 		del self._apiHeaders['x-guest-token']
 
 	def _check_api_response(self, r):
-		if r.status_code in (403, 429):
+		if r.status_code in (403, 404, 429):
 			self._unset_guest_token()
 			self._ensure_guest_token()
 			return False, f'blocked ({r.status_code})'
