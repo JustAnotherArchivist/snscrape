@@ -2044,7 +2044,7 @@ class TwitterCommunityScraper(_TwitterAPIScraper):
 			optKwargs['description'] = community['description']
 		return Community(
 			id = int(community['id_str']),
-			id_str=community['id_str'],
+			id_str = community['id_str'],
 			name = community['name'],
 			created = datetime.datetime.fromtimestamp(community['created_at'] / 1000, tz = datetime.timezone.utc),
 			admin = self._graphql_user_results_to_user(community['admin_results']),
