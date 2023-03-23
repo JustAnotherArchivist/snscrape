@@ -53,6 +53,7 @@ class Tweet(snscrape.base.Item):
 	rawContent: str
 	renderedContent: str
 	id: int
+	id_str: str
 	user: 'User'
 	replyCount: int
 	retweetCount: int
@@ -68,6 +69,7 @@ class Tweet(snscrape.base.Item):
 	retweetedTweet: typing.Optional['Tweet'] = None
 	quotedTweet: typing.Optional['Tweet'] = None
 	inReplyToTweetId: typing.Optional[int] = None
+	inReplyToTweetIdStr: typing.Optional[str] = None
 	inReplyToUser: typing.Optional['User'] = None
 	mentionedUsers: typing.Optional[typing.List['User']] = None
 	coordinates: typing.Optional['Coordinates'] = None
@@ -463,6 +465,7 @@ class User(snscrape.base.Item):
 
 	username: str
 	id: int
+	id_str: str
 	displayname: typing.Optional[str] = None
 	rawDescription: typing.Optional[str] = None # Raw description with the URL(s) intact
 	renderedDescription: typing.Optional[str] = None # Description as it's displayed on the web interface with URLs replaced
@@ -516,6 +519,7 @@ class UserRef:
 @dataclasses.dataclass
 class Community(snscrape.base.Item):
 	id: int
+	id_str: str
 	name: str
 	created: datetime.datetime
 	admin: typing.Union[User, UserRef]
@@ -875,6 +879,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 	def _make_tweet(self, tweet, user, retweetedTweet = None, quotedTweet = None, card = None, **kwargs):
 		tweetId = self._get_tweet_id(tweet)
 		kwargs['id'] = tweetId
+		kwargs['id_str'] = tweet['id_str'] if 'id_str' in tweet else str(tweetId)
 		kwargs['rawContent'] = tweet['full_text']
 		kwargs['renderedContent'] = self._render_text_with_urls(tweet['full_text'], tweet['entities'].get('urls'))
 		kwargs['user'] = user
@@ -912,17 +917,18 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			kwargs['quotedTweet'] = quotedTweet
 		if (inReplyToTweetId := tweet.get('in_reply_to_status_id_str')):
 			kwargs['inReplyToTweetId'] = int(inReplyToTweetId)
+			kwargs['inReplyToTweetIdStr'] = inReplyToTweetId
 			inReplyToUserId = int(tweet['in_reply_to_user_id_str'])
 			if inReplyToUserId == kwargs['user'].id:
 				kwargs['inReplyToUser'] = kwargs['user']
 			elif tweet['entities'].get('user_mentions'):
 				for u in tweet['entities']['user_mentions']:
 					if u['id_str'] == tweet['in_reply_to_user_id_str']:
-						kwargs['inReplyToUser'] = User(username = u['screen_name'], id = u['id'] if 'id' in u else int(u['id_str']), displayname = u['name'])
+						kwargs['inReplyToUser'] = User(username = u['screen_name'], id = u['id'] if 'id' in u else int(u['id_str']), id_str = u['id_str'], displayname = u['name'])
 			if 'inReplyToUser' not in kwargs:
 				kwargs['inReplyToUser'] = User(username = tweet['in_reply_to_screen_name'], id = inReplyToUserId)
 		if tweet['entities'].get('user_mentions'):
-			kwargs['mentionedUsers'] = [User(username = u['screen_name'], id = u['id'] if 'id' in u else int(u['id_str']), displayname = u['name']) for u in tweet['entities']['user_mentions']]
+			kwargs['mentionedUsers'] = [User(username = u['screen_name'], id = u['id'] if 'id' in u else int(u['id_str']), id_str = u['id_str'], displayname = u['name']) for u in tweet['entities']['user_mentions']]
 
 		# https://developer.twitter.com/en/docs/tutorials/filtering-tweets-by-location
 		if tweet.get('coordinates'):
@@ -1489,6 +1495,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 		kwargs = {}
 		kwargs['username'] = user['screen_name']
 		kwargs['id'] = id_ if id_ else user['id'] if 'id' in user else int(user['id_str'])
+		kwargs['id_str'] = user['id_str'] if user['id_str'] else str(id_) if id_ else str(user['id'])
 		kwargs['displayname'] = user['name']
 		kwargs['rawDescription'] = user['description']
 		kwargs['renderedDescription'] = self._render_text_with_urls(user['description'], user['entities']['description'].get('urls'))
@@ -2038,6 +2045,7 @@ class TwitterCommunityScraper(_TwitterAPIScraper):
 			optKwargs['description'] = community['description']
 		return Community(
 			id = int(community['id_str']),
+			id_str=community['id_str'],
 			name = community['name'],
 			created = datetime.datetime.fromtimestamp(community['created_at'] / 1000, tz = datetime.timezone.utc),
 			admin = self._graphql_user_results_to_user(community['admin_results']),
