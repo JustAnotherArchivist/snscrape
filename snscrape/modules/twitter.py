@@ -1135,7 +1135,10 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 				keyKwargMap = {**keyKwargMap, 'id': 'id', 'url': 'url', 'title': 'title', 'description': 'description', 'total_participants': 'totalParticipants', 'full_size_thumbnail_url': 'thumbnailUrl'}
 			kwargs = _kwargs_from_map(keyKwargMap)
 			if 'broadcaster_twitter_id' in bindingValues:
-				kwargs['broadcaster'] = User(id = int(bindingValues['broadcaster_twitter_id']), username = bindingValues['broadcaster_username'], displayname = bindingValues['broadcaster_display_name'])
+				if int(bindingValues['broadcaster_twitter_id']) in userRefs:
+					kwargs['broadcaster'] = userRefs[int(bindingValues['broadcaster_twitter_id'])]
+				else:
+					kwargs['broadcaster'] = User(id = int(bindingValues['broadcaster_twitter_id']), username = bindingValues['broadcaster_username'], displayname = bindingValues['broadcaster_display_name'])
 			if 'siteUser' not in kwargs:
 				kwargs['siteUser'] = None
 			if cardName == '745291183405076480:broadcast':
