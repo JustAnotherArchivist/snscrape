@@ -31,6 +31,7 @@ import os
 import re
 import requests.adapters
 import snscrape.base
+import snscrape.utils
 import string
 import time
 import typing
@@ -1004,10 +1005,6 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 	def _make_card(self, card, apiType, tweetId):
 		bindingValues = {}
 
-		def _kwargs_from_map(keyKwargMap):
-			nonlocal bindingValues
-			return {kwarg: bindingValues[key] for key, kwarg in keyKwargMap.items() if key in bindingValues}
-
 		userRefs = {}
 		if apiType is _TwitterAPIType.V2:
 			for o in card.get('users', {}).values():
@@ -1069,7 +1066,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			cardName = card['legacy']['name']
 
 		if cardName in ('summary', 'summary_large_image', 'app', 'direct_store_link_app'):
-			keyKwargMap = {
+			keyMap = {
 				'title': 'title',
 				'description': 'description',
 				'card_url': 'url',
@@ -1077,13 +1074,13 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 				'creator': 'creatorUser',
 			}
 			if cardName in ('app', 'direct_store_link_app'):
-				keyKwargMap['thumbnail_original'] = 'thumbnailUrl'
-				return AppCard(**_kwargs_from_map(keyKwargMap))
+				keyMap['thumbnail_original'] = 'thumbnailUrl'
+				return AppCard(**snscrape.utils.dict_map(bindingValues, keyMap))
 			else:
-				keyKwargMap['thumbnail_image_original'] = 'thumbnailUrl'
-				return SummaryCard(**_kwargs_from_map(keyKwargMap))
+				keyMap['thumbnail_image_original'] = 'thumbnailUrl'
+				return SummaryCard(**snscrape.utils.dict_map(bindingValues, keyMap))
 		elif any(cardName.startswith(x) for x in ('poll2choice_', 'poll3choice_', 'poll4choice_')) and cardName.split('_', 1)[1] in ('text_only', 'image', 'video'):
-			kwargs = _kwargs_from_map({'end_datetime_utc': 'endDate', 'last_updated_datetime_utc': 'lastUpdateDate', 'duration_minutes': 'duration', 'counts_are_final': 'finalResults'})
+			kwargs = snscrape.utils.dict_map(bindingValues, {'end_datetime_utc': 'endDate', 'last_updated_datetime_utc': 'lastUpdateDate', 'duration_minutes': 'duration', 'counts_are_final': 'finalResults'})
 
 			options = []
 			for key in sorted(bindingValues):
@@ -1107,9 +1104,9 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 
 			return PollCard(**kwargs)
 		elif cardName == 'player':
-			return PlayerCard(**_kwargs_from_map({'title': 'title', 'description': 'description', 'card_url': 'url', 'player_image_original': 'imageUrl', 'site': 'siteUser'}))
+			return PlayerCard(**snscrape.utils.dict_map(bindingValues, {'title': 'title', 'description': 'description', 'card_url': 'url', 'player_image_original': 'imageUrl', 'site': 'siteUser'}))
 		elif cardName in ('promo_image_convo', 'promo_video_convo'):
-			kwargs = _kwargs_from_map({'thank_you_text': 'thankYouText', 'thank_you_url': 'thankYouUrl', 'thank_you_shortened_url': 'thankYouTcoUrl'})
+			kwargs = snscrape.utils.dict_map(bindingValues, {'thank_you_text': 'thankYouText', 'thank_you_url': 'thankYouUrl', 'thank_you_shortened_url': 'thankYouTcoUrl'})
 			kwargs['actions'] = []
 			for l in ('one', 'two', 'three', 'four'):
 				if f'cta_{l}' in bindingValues:
@@ -1128,12 +1125,12 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 				kwargs['medium'] = Video(thumbnailUrl = bindingValues['player_image_original'], variants = variants, duration = int(bindingValues['content_duration_seconds']))
 			return PromoConvoCard(**kwargs)
 		elif cardName in ('745291183405076480:broadcast', '3691233323:periscope_broadcast'):
-			keyKwargMap = {'broadcast_state': 'state', 'broadcast_source': 'source', 'site': 'siteUser'}
+			keyMap = {'broadcast_state': 'state', 'broadcast_source': 'source', 'site': 'siteUser'}
 			if cardName == '745291183405076480:broadcast':
-				keyKwargMap = {**keyKwargMap, 'broadcast_id': 'id', 'broadcast_url': 'url', 'broadcast_title': 'title', 'broadcast_thumbnail_original': 'thumbnailUrl'}
+				keyMap = {**keyMap, 'broadcast_id': 'id', 'broadcast_url': 'url', 'broadcast_title': 'title', 'broadcast_thumbnail_original': 'thumbnailUrl'}
 			else:
-				keyKwargMap = {**keyKwargMap, 'id': 'id', 'url': 'url', 'title': 'title', 'description': 'description', 'total_participants': 'totalParticipants', 'full_size_thumbnail_url': 'thumbnailUrl'}
-			kwargs = _kwargs_from_map(keyKwargMap)
+				keyMap = {**keyMap, 'id': 'id', 'url': 'url', 'title': 'title', 'description': 'description', 'total_participants': 'totalParticipants', 'full_size_thumbnail_url': 'thumbnailUrl'}
+			kwargs = snscrape.utils.dict_map(bindingValues, keyMap)
 			if 'broadcaster_twitter_id' in bindingValues:
 				if int(bindingValues['broadcaster_twitter_id']) in userRefs:
 					kwargs['broadcaster'] = userRefs[int(bindingValues['broadcaster_twitter_id'])]
@@ -1147,17 +1144,17 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 				kwargs['totalParticipants'] = int(kwargs['totalParticipants'])
 				return PeriscopeBroadcastCard(**kwargs)
 		elif cardName == '745291183405076480:live_event':
-			kwargs = _kwargs_from_map({'event_id': 'id', 'event_title': 'title', 'event_category': 'category', 'event_subtitle': 'description'})
+			kwargs = snscrape.utils.dict_map(bindingValues, {'event_id': 'id', 'event_title': 'title', 'event_category': 'category', 'event_subtitle': 'description'})
 			kwargs['id'] = int(kwargs['id'])
 			kwargs['photo'] = Photo(previewUrl = bindingValues['event_thumbnail_small'], fullUrl = bindingValues.get('event_thumbnail_original') or bindingValues['event_thumbnail'])
 			return EventCard(event = Event(**kwargs))
 		elif cardName == '3337203208:newsletter_publication':
-			kwargs = _kwargs_from_map({'newsletter_title': 'title', 'newsletter_description': 'description', 'newsletter_image_original': 'imageUrl', 'card_url': 'url', 'revue_account_id': 'revueAccountId', 'issue_count': 'issueCount'})
+			kwargs = snscrape.utils.dict_map(bindingValues, {'newsletter_title': 'title', 'newsletter_description': 'description', 'newsletter_image_original': 'imageUrl', 'card_url': 'url', 'revue_account_id': 'revueAccountId', 'issue_count': 'issueCount'})
 			kwargs['revueAccountId'] = int(kwargs['revueAccountId'])
 			kwargs['issueCount'] = int(kwargs['issueCount'])
 			return NewsletterCard(**kwargs)
 		elif cardName == '3337203208:newsletter_issue':
-			kwargs = _kwargs_from_map({
+			kwargs = snscrape.utils.dict_map(bindingValues, {
 				'newsletter_title': 'newsletterTitle',
 				'newsletter_description': 'newsletterDescription',
 				'issue_title': 'issueTitle',
@@ -1179,7 +1176,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 				),
 			)
 		elif cardName == 'appplayer':
-			kwargs = _kwargs_from_map({'title': 'title', 'app_category': 'appCategory', 'player_owner_id': 'playerOwnerId', 'site': 'siteUser'})
+			kwargs = snscrape.utils.dict_map(bindingValues, {'title': 'title', 'app_category': 'appCategory', 'player_owner_id': 'playerOwnerId', 'site': 'siteUser'})
 			kwargs['playerOwnerId'] = int(kwargs['playerOwnerId'])
 			variants = []
 			variants.append(VideoVariant(contentType = 'application/x-mpegurl', url = bindingValues['player_hls_url'], bitrate = None))
@@ -1189,7 +1186,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			kwargs['video'] = Video(thumbnailUrl = bindingValues['player_image_original'], variants = variants, duration = int(bindingValues['content_duration_seconds']))
 			return AppPlayerCard(**kwargs)
 		elif cardName == '3691233323:audiospace':
-			return SpacesCard(**_kwargs_from_map({'card_url': 'url', 'id': 'id'}))
+			return SpacesCard(**snscrape.utils.dict_map(bindingValues, {'card_url': 'url', 'id': 'id'}))
 		elif cardName == '2586390716:message_me':
 			# Note that the strings in Twitter's JS appear to have an incorrect mapping that then gets changed somewhere in the 1.8 MiB of JS!
 			# cta_1, 3, and 4 should mean 'Message us', 'Send a private message', and 'Send me a private message', but the correct mapping is currently unknown.
@@ -1197,7 +1194,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			if bindingValues['cta'] not in ctas:
 				_logger.warning(f'Unsupported message_me card cta on tweet {tweetId}: {bindingValues["cta"]!r}')
 				return
-			return MessageMeCard(**_kwargs_from_map({'recipient': 'recipient', 'card_url': 'url'}), buttonText = ctas[bindingValues['cta']])
+			return MessageMeCard(**snscrape.utils.dict_map(bindingValues, {'recipient': 'recipient', 'card_url': 'url'}), buttonText = ctas[bindingValues['cta']])
 		elif cardName == 'unified_card':
 			o = json.loads(bindingValues['unified_card'])
 			kwargs = {}
