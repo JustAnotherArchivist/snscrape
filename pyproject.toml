@@ -1,0 +1,37 @@
+[build-system]
+requires = ['setuptools>=61', 'setuptools_scm>=6.2']
+build-backend = 'setuptools.build_meta'
+
+[tool.setuptools]
+packages = ['snscrape', 'snscrape.modules']
+
+[tool.setuptools_scm]
+
+[project]
+name = 'snscrape'
+description = 'A social networking service scraper'
+readme = 'README.md'
+authors = [{name = 'JustAnotherArchivist'}]
+classifiers = [
+	'Development Status :: 4 - Beta',
+	'License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)',
+	'Programming Language :: Python :: 3.8',
+	'Programming Language :: Python :: 3.9',
+	'Programming Language :: Python :: 3.10',
+	'Programming Language :: Python :: 3.11',
+]
+dependencies = [
+	'requests[socks]',
+	'lxml',
+	'beautifulsoup4',
+	'pytz; python_version < "3.9.0"',
+	'filelock',
+]
+requires-python = '~=3.8'
+dynamic = ['version']
+
+[project.urls]
+repository = "https://github.com/JustAnotherArchivist/snscrape"
+
+[project.scripts]
+snscrape = 'snscrape._cli:main'

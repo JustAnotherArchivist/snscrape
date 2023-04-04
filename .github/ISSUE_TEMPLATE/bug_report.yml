@@ -1,0 +1,97 @@
+name: Bug report
+description: Are you experiencing a problem? Create a report to help us improve!
+labels: 'bug'
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Self Check
+        - Try searching existing GitHub Issues (open or closed) for similar issues.
+  - type: textarea
+    validations:
+      required: true
+    attributes:
+      label: Describe the bug
+      description: A clear description of what the bug is.
+      placeholder: e.g. I see an AssertionError when trying to scrape a Twitter user!
+  - type: textarea
+    validations:
+      required: true
+    attributes:
+      label: How to reproduce
+      description: |
+        How to reproduce the problem.
+        This should be a minimal reproducible example, i.e. the shortest possible code or the smallest number of steps that still causes the error.
+      placeholder: e.g. I can reproduce this issue by scraping the textfiles user with the twitter-user scraper.
+  - type: textarea
+    validations:
+      required: true
+    attributes:
+      label: Expected behaviour
+      description: A brief description of what should happen.
+  - type: textarea
+    attributes:
+      label: Screenshots and recordings
+      description: |
+        If applicable, add screenshots or videos to help explain your problem. (Videos should be as short as possible! Avoid watermarks too.)
+  - type: input
+    validations:
+      required: true
+    attributes:
+      label: Operating system
+      description: Include the version too, please!
+      placeholder: e.g. Windows 10, Ubuntu 20.04, macOS 10.15...
+  - type: input
+    validations:
+      required: true
+    attributes:
+      label: |
+        Python version: output of `python3 --version`
+  - type: input
+    validations:
+      required: true
+    attributes:
+      label: |
+        snscrape version: output of `snscrape --version`
+  - type: input
+    validations:
+      required: true
+    attributes:
+      label: Scraper
+      placeholder: e.g. twitter-user, reddit-search, TwitterSearchScraper, ...
+  - type: dropdown
+    validations:
+      required: true
+    attributes:
+      label: How are you using snscrape?
+      options: ['CLI (`snscrape ...` as a command, e.g. in a terminal)', 'Module (`import snscrape.modules.something` in Python code)']
+  - type: textarea
+    validations:
+      required: false
+    attributes:
+      label: Backtrace
+      description: What is the error snscrape gives you, if any?
+  - type: textarea
+    validations:
+      required: false
+    attributes:
+      label: Log output
+      description: |
+        Insert here the debug log of snscrape.
+        If you use the CLI, add the global options `-vv` to the command, e.g. `snscrape -vv twitter-search ...`.
+        If you use the module, set the debug level in your Python code before any use of snscrape: `import logging; logging.basicConfig(level = logging.DEBUG)`.
+        If you already use `logging` in your own code, you may need to adjust the level there instead.
+  - type: textarea
+    validations:
+      required: false
+    attributes:
+      label: Dump of locals
+      description: |
+        Here attach the dump of your snscrape locals, if it's a crash. (snscrape should tell you the path).
+        Please note that it may contain identifying info such as IP address, if the website returns that.
+        You can also optionally request to exchange the file in private.
+        Finally, if snscrape didn't crash, leave this field blank.
+  - type: textarea
+    attributes:
+      label: Additional context
+      description: Add any other context about the problem here.

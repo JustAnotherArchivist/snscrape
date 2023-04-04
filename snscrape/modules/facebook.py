@@ -30,7 +30,7 @@ class FacebookPost(snscrape.base.Item):
 
 
 @dataclasses.dataclass
-class User(snscrape.base.Entity):
+class User(snscrape.base.Item):
 	username: str
 	pageId: int
 	name: str

@@ -133,6 +133,21 @@ class _RedditPushshiftScraper(snscrape.base.Scraper):
 
 		return cls(**kwargs)
 
+	def _iter_api(self, url, params = None):
+		'''Iterate through the Pushshift API using the 'until' parameter and yield the items.'''
+		lowestIdSeen = None
+		if params is None:
+			params = {}
+		while True:
+			obj = self._get_api(url, params = params)
+			if not obj['data'] or (lowestIdSeen is not None and all(_cmp_id(d['id'], lowestIdSeen) >= 0 for d in obj['data'])): # end of pagination
+				break
+			for d in obj['data']:
+				if lowestIdSeen is None or _cmp_id(d['id'], lowestIdSeen) == -1:
+					yield self._api_obj_to_item(d)
+					lowestIdSeen = d['id']
+			params['until'] = obj["data"][-1]["created_utc"] + 1
+
 
 class _RedditPushshiftSearchScraper(_RedditPushshiftScraper):
 	def __init__(self, name, *, submissions = True, comments = True, before = None, after = None, **kwargs):
@@ -148,35 +163,20 @@ class _RedditPushshiftSearchScraper(_RedditPushshiftScraper):
 		if not self._submissions and not self._comments:
 			raise ValueError('At least one of submissions and comments must be True')
 
-	def _iter_api(self, url, params = None):
-		'''Iterate through the Pushshift API using the 'before' parameter and yield the items.'''
-		lowestIdSeen = None
-		if params is None:
-			params = {}
-		if self._before is not None:
-			params['before'] = self._before
-		if self._after is not None:
-			params['after'] = self._after
-		params['sort'] = 'desc'
-		while True:
-			obj = self._get_api(url, params = params)
-			if not obj['data'] or (lowestIdSeen is not None and all(_cmp_id(d['id'], lowestIdSeen) >= 0 for d in obj['data'])): # end of pagination
-				break
-			for d in obj['data']:
-				if lowestIdSeen is None or _cmp_id(d['id'], lowestIdSeen) == -1:
-					yield self._api_obj_to_item(d)
-					lowestIdSeen = d['id']
-			params['before'] = obj["data"][-1]["created_utc"] + 1
-
 	def _iter_api_submissions_and_comments(self, params: dict):
 		# Retrieve both submissions and comments, interleave the results to get a reverse-chronological order
-		params['size'] = '1000'
+		params['limit'] = '1000'
+		if self._before is not None:
+			params['until'] = self._before
+		if self._after is not None:
+			params['since'] = self._after
+
 		if self._submissions:
-			submissionsIter = self._iter_api('https://api.pushshift.io/reddit/search/submission/', params.copy()) # Pass copies to prevent the two iterators from messing each other up by using the same dict
+			submissionsIter = self._iter_api('https://api.pushshift.io/reddit/search/submission', params.copy()) # Pass copies to prevent the two iterators from messing each other up by using the same dict
 		else:
 			submissionsIter = iter(())
 		if self._comments:
-			commentsIter = self._iter_api('https://api.pushshift.io/reddit/search/comment/', params.copy())
+			commentsIter = self._iter_api('https://api.pushshift.io/reddit/search/comment', params.copy())
 		else:
 			commentsIter = iter(())
 
@@ -260,21 +260,15 @@ class RedditSubmissionScraper(_RedditPushshiftScraper):
 		self._submissionId = submissionId
 
 	def get_items(self):
-		obj = self._get_api(f'https://api.pushshift.io/reddit/search/submission/?ids={self._submissionId}')
+		obj = self._get_api(f'https://api.pushshift.io/reddit/search/submission?ids={self._submissionId}')
 		if not obj['data']:
 			return
 		if len(obj['data']) != 1:
 			raise snscrape.base.ScraperException(f'Got {len(obj["data"])} results instead of 1')
 		yield self._api_obj_to_item(obj['data'][0])
 
-		obj = self._get_api(f'https://api.pushshift.io/reddit/submission/comment_ids/{self._submissionId}')
-		if not obj['data']:
-			return
-		commentIds = obj['data']
-		for i in range(0, len(commentIds), 500):
-			ids = commentIds[i : i + 500]
-			obj = self._get_api(f'https://api.pushshift.io/reddit/comment/search?ids={",".join(ids)}')
-			yield from map(self._api_obj_to_item, obj['data'])
+		# Upstream bug: link_id must be provided in decimal https://old.reddit.com/r/pushshift/comments/zkggt0/update_on_colo_switchover_bug_fixes_reindexing/
+		yield from self._iter_api('https://api.pushshift.io/reddit/search/comment', {'link_id': int(self._submissionId, 36), 'limit': 1000})
 
 	@classmethod
 	def _cli_setup_parser(cls, subparser):

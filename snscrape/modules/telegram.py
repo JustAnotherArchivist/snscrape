@@ -24,7 +24,7 @@ class LinkPreview:
 
 
 @dataclasses.dataclass
-class Channel(snscrape.base.Entity):
+class Channel(snscrape.base.Item):
 	username: str
 	title: typing.Optional[str] = None
 	verified: typing.Optional[bool] = None
@@ -269,14 +269,10 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 		if r.status_code != 200:
 			raise snscrape.base.ScraperException(f'Got status code {r.status_code}')
 		soup = bs4.BeautifulSoup(r.text, 'lxml')
-		membersDiv = soup.find('div', class_ = 'tgme_page_extra')
-		if membersDiv is not None:
+		if (membersDiv := soup.find('div', class_ = 'tgme_page_extra')):
 			if membersDiv.text.split(',')[0].endswith((' members', ' subscribers')):
 				membersStr = ''.join(membersDiv.text.split(',')[0].split(' ')[:-1])
-				if membersStr == 'no':
-					kwargs['members'] = 0
-				else:
-					kwargs['members'] = int(membersStr)
+				kwargs['members'] = 0 if membersStr == 'no' else int(membersStr)
 		photoImg = soup.find('img', class_ = 'tgme_page_photo_image')
 		if photoImg is not None:
 			kwargs['photo'] = photoImg.attrs['src']

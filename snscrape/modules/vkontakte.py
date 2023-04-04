@@ -32,7 +32,7 @@ _logger = logging.getLogger(__name__)
 _months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 _datePattern = re.compile(r'^(?P<date>today'
                                   r'|yesterday'
-                                  r'|(?P<day1>\d+)\s+(?P<month1>' + '|'.join(_months) + ')(\s+(?P<year1>\d{4}))?'
+                                  r'|(?P<day1>\d+)\s+(?P<month1>' + '|'.join(_months) + r')(\s+(?P<year1>\d{4}))?'
                                   r'|(?P<month2>' + '|'.join(_months) + r')\s+(?P<day2>\d+),\s+(?P<year2>\d{4})'
                            ')'
                           r'\s+at\s+(?P<hour>\d+):(?P<minute>\d+)\s+(?P<ampm>[ap]m)$')
@@ -75,7 +75,7 @@ class Video:
 
 
 @dataclasses.dataclass
-class User(snscrape.base.Entity):
+class User(snscrape.base.Item):
 	username: str
 	name: str
 	verified: bool
@@ -116,6 +116,9 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 				end = None
 			return urllib.parse.unquote(a['href'][13 : end])
 		return None
+
+	def is_photo(self, a):
+		return 'aria-label' in a.attrs and a.attrs['aria-label'].startswith('photo')
 
 	def _date_span_to_date(self, dateSpan):
 		if not dateSpan:
@@ -172,7 +175,7 @@ class VKontakteUserScraper(snscrape.base.Scraper):
 		   not (not isCopy and thumbsDiv.parent.name == 'div' and 'class' in thumbsDiv.parent.attrs and 'copy_quote' in thumbsDiv.parent.attrs['class']): # Skip post quotes
 			photos = []
 			for a in thumbsDiv.find_all('a', class_ = 'page_post_thumb_wrap'):
-				if 'data-photo-id' not in a.attrs and 'data-video' not in a.attrs:
+				if not self.is_photo(a) and 'data-video' not in a.attrs:
 					_logger.warning(f'Skipping non-photo and non-video thumb wrap on {url}')
 					continue
 				if 'data-video' in a.attrs:

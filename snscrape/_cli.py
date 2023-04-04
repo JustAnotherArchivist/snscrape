@@ -6,6 +6,7 @@ import datetime
 import importlib.metadata
 import inspect
 import logging
+import os
 import requests
 # Imported in parse_args() after setting up the logger:
 #import snscrape.base
@@ -23,7 +24,7 @@ logger = logging # Replaced below after setting the logger class
 class Logger(logging.Logger):
 	def _log_with_stack(self, level, *args, **kwargs):
 		super().log(level, *args, **kwargs)
-		if dumpLocals:
+		if dumpLocals and not kwargs.get('extra', {}).get('_snscrapeSuppressDumpLocals', False):
 			stack = inspect.stack()
 			if len(stack) >= 3:
 				name = _dump_stack_and_locals(stack[2:][::-1])
@@ -118,7 +119,7 @@ def _dump_locals_on_exception():
 		trace = inspect.trace()
 		if len(trace) >= 2:
 			name = _dump_stack_and_locals(trace[1:], exc = e)
-			logger.fatal(f'Dumped stack and locals to {name}')
+			logger.fatal(f'Dumped stack and locals to {name}', extra = {'_snscrapeSuppressDumpLocals': True})
 		raise
 
 
@@ -307,32 +308,36 @@ def main():
 
 	i = 0
 	with _dump_locals_on_exception():
-		if args.withEntity and (entity := scraper.entity):
-			if args.jsonl:
-				print(entity.json())
+		try:
+			if args.withEntity and (entity := scraper.entity):
+				if args.jsonl:
+					print(entity.json())
+				else:
+					print(entity)
+			if args.maxResults == 0:
+				logger.info('Exiting after 0 results')
+				return
+			for i, item in enumerate(scraper.get_items(), start = 1):
+				if args.since is not None and item.date < args.since:
+					logger.info(f'Exiting due to reaching older results than {args.since}')
+					break
+				if args.jsonl:
+					print(item.json())
+				elif args.format is not None:
+					print(args.format.format(item))
+				else:
+					print(item)
+				if args.progress and i % 100 == 0:
+					print(f'Scraping, {i} results so far', file = sys.stderr)
+				if args.maxResults and i >= args.maxResults:
+					logger.info(f'Exiting after {i} results')
+					if args.progress:
+						print(f'Stopped scraping after {i} results due to --max-results', file = sys.stderr)
+					break
 			else:
-				print(entity)
-		if args.maxResults == 0:
-			logger.info('Exiting after 0 results')
-			return
-		for i, item in enumerate(scraper.get_items(), start = 1):
-			if args.since is not None and item.date < args.since:
-				logger.info(f'Exiting due to reaching older results than {args.since}')
-				break
-			if args.jsonl:
-				print(item.json())
-			elif args.format is not None:
-				print(args.format.format(item))
-			else:
-				print(item)
-			if args.progress and i % 100 == 0:
-				print(f'Scraping, {i} results so far', file = sys.stderr)
-			if args.maxResults and i >= args.maxResults:
-				logger.info(f'Exiting after {i} results')
+				logger.info(f'Done, found {i} results')
 				if args.progress:
-					print(f'Stopped scraping after {i} results due to --max-results', file = sys.stderr)
-				break
-		else:
-			logger.info(f'Done, found {i} results')
-			if args.progress:
-				print(f'Finished, {i} results', file = sys.stderr)
+					print(f'Finished, {i} results', file = sys.stderr)
+		except BrokenPipeError:
+			os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
+			sys.exit(1)
