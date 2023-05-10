@@ -1722,12 +1722,21 @@ class TwitterUserScraper(TwitterSearchScraper):
 		self._ensure_guest_token()
 		if not self._isUserId:
 			fieldName = 'screen_name'
-			endpoint = 'https://twitter.com/i/api/graphql/7mjxD3-C6BxitPMVQ6w0-Q/UserByScreenName'
+			endpoint = 'https://twitter.com/i/api/graphql/pVrmNaXcxPjisIvKtLDMEA/UserByScreenName'
 		else:
 			fieldName = 'userId'
-			endpoint = 'https://twitter.com/i/api/graphql/I5nvpI91ljifos1Y3Lltyg/UserByRestId'
-		variables = {fieldName: str(self._user), 'withSafetyModeUserFields': True, 'withSuperFollowsUserFields': True}
-		obj = self._get_api_data(endpoint, _TwitterAPIType.GRAPHQL, params = {'variables': variables}, instructionsPath = ['data', 'user'])
+			endpoint = 'https://twitter.com/i/api/graphql/1YAM811Q8Ry4XyPpJclURQ/UserByRestId'
+		variables = {fieldName: str(self._user), 'withSafetyModeUserFields': True}
+		features = {
+			'blue_business_profile_image_shape_enabled': True,
+			'responsive_web_graphql_exclude_directive_enabled': True,
+			'verified_phone_label_enabled': False,
+			'highlights_tweets_tab_ui_enabled': False,
+			'creator_subscriptions_tweet_preview_api_enabled': False,
+			'responsive_web_graphql_skip_user_profile_image_extensions_enabled': False,
+			'responsive_web_graphql_timeline_navigation_enabled': True,
+		}
+		obj = self._get_api_data(endpoint, _TwitterAPIType.GRAPHQL, params = {'variables': variables, 'features': features}, instructionsPath = ['data', 'user'])
 		if not obj['data'] or 'result' not in obj['data']['user']:
 			_logger.warning('Empty response')
 			return None
@@ -1769,7 +1778,7 @@ class TwitterUserScraper(TwitterSearchScraper):
 			listedCount = user['legacy']['listed_count'],
 			mediaCount = user['legacy']['media_count'],
 			location = user['legacy']['location'],
-			protected = user['legacy']['protected'],
+			protected = user['legacy'].get('protected'),
 			link = link,
 			profileImageUrl = user['legacy']['profile_image_url_https'],
 			profileBannerUrl = user['legacy'].get('profile_banner_url'),
@@ -1815,28 +1824,25 @@ class TwitterProfileScraper(TwitterUserScraper):
 			userId = self.entity.id
 		else:
 			userId = self._user
+
 		paginationVariables = {
 			'userId': userId,
 			'count': 100,
 			'cursor': None,
 			'includePromotedContent': True,
 			'withCommunity': True,
-			'withSuperFollowsUserFields': True,
-			'withDownvotePerspective': False,
-			'withReactionsMetadata': False,
-			'withReactionsPerspective': False,
-			'withSuperFollowsTweetFields': True,
 			'withVoice': True,
 			'withV2Timeline': True,
 		}
 		variables = paginationVariables.copy()
 		del variables['cursor']
 		features = {
-			'responsive_web_twitter_blue_verified_badge_is_enabled': True,
-			'responsive_web_graphql_exclude_directive_enabled': False,
+			'rweb_lists_timeline_redesign_enabled': False,
+			'blue_business_profile_image_shape_enabled': True,
+			'responsive_web_graphql_exclude_directive_enabled': True,
 			'verified_phone_label_enabled': False,
+			'creator_subscriptions_tweet_preview_api_enabled': False,
 			'responsive_web_graphql_timeline_navigation_enabled': True,
-			'responsive_web_graphql_skip_user_profile_image_extensions_enabled': False,
 			'responsive_web_graphql_skip_user_profile_image_extensions_enabled': False,
 			'tweetypie_unmention_optimization_enabled': True,
 			'vibe_api_enabled': True,
@@ -1845,11 +1851,13 @@ class TwitterProfileScraper(TwitterUserScraper):
 			'view_counts_everywhere_api_enabled': True,
 			'longform_notetweets_consumption_enabled': True,
 			'tweet_awards_web_tipping_enabled': False,
-			'freedom_of_speech_not_reach_fetch_enabled': False,
+			'freedom_of_speech_not_reach_fetch_enabled': True,
 			'standardized_nudges_misinfo': True,
 			'tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled': False,
 			'interactive_text_enabled': True,
 			'responsive_web_text_conversations_enabled': False,
+			'longform_notetweets_rich_text_read_enabled': True,
+			'longform_notetweets_inline_media_enabled': False,
 			'responsive_web_enhance_cards_enabled': False,
 		}
 
@@ -1857,7 +1865,7 @@ class TwitterProfileScraper(TwitterUserScraper):
 		paginationParams = {'variables': paginationVariables, 'features': features}
 
 		gotPinned = False
-		for obj in self._iter_api_data('https://twitter.com/i/api/graphql/nrdle2catTyGnTyj1Qa7wA/UserTweetsAndReplies', _TwitterAPIType.GRAPHQL, params, paginationParams, instructionsPath = ['data', 'user', 'result', 'timeline_v2', 'timeline', 'instructions']):
+		for obj in self._iter_api_data('https://twitter.com/i/api/graphql/fn9oRltM1N4thkh5CVusPg/UserTweetsAndReplies', _TwitterAPIType.GRAPHQL, params, paginationParams, instructionsPath = ['data', 'user', 'result', 'timeline_v2', 'timeline', 'instructions']):
 			if obj['data']['user']['result']['__typename'] == 'UserUnavailable':
 				_logger.warning('User unavailable')
 				break
@@ -1935,20 +1943,17 @@ class TwitterTweetScraper(_TwitterAPIScraper):
 			'withCommunity': True,
 			'withQuickPromoteEligibilityTweetFields': True,
 			'withBirdwatchNotes': False,
-			'withSuperFollowsUserFields': True,
-			'withDownvotePerspective': False,
-			'withReactionsMetadata': False,
-			'withReactionsPerspective': False,
-			'withSuperFollowsTweetFields': True,
 			'withVoice': True,
 			'withV2Timeline': True,
 		}
 		variables = paginationVariables.copy()
 		del variables['cursor'], variables['referrer']
 		features = {
-			'responsive_web_twitter_blue_verified_badge_is_enabled': True,
-			'responsive_web_graphql_exclude_directive_enabled': False,
+			'rweb_lists_timeline_redesign_enabled': False,
+			'blue_business_profile_image_shape_enabled': True,
+			'responsive_web_graphql_exclude_directive_enabled': True,
 			'verified_phone_label_enabled': False,
+			'creator_subscriptions_tweet_preview_api_enabled': False,
 			'responsive_web_graphql_timeline_navigation_enabled': True,
 			'responsive_web_graphql_skip_user_profile_image_extensions_enabled': False,
 			'tweetypie_unmention_optimization_enabled': True,
@@ -1958,17 +1963,19 @@ class TwitterTweetScraper(_TwitterAPIScraper):
 			'view_counts_everywhere_api_enabled': True,
 			'longform_notetweets_consumption_enabled': True,
 			'tweet_awards_web_tipping_enabled': False,
-			'freedom_of_speech_not_reach_fetch_enabled': False,
+			'freedom_of_speech_not_reach_fetch_enabled': True,
 			'standardized_nudges_misinfo': True,
 			'tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled': False,
 			'interactive_text_enabled': True,
 			'responsive_web_text_conversations_enabled': False,
+			'longform_notetweets_rich_text_read_enabled': True,
+			'longform_notetweets_inline_media_enabled': False,
 			'responsive_web_enhance_cards_enabled': False,
 		}
 
 		params = {'variables': variables, 'features': features}
 		paginationParams = {'variables': paginationVariables, 'features': features}
-		url = 'https://twitter.com/i/api/graphql/NNiD2K-nEYUfXlMwGCocMQ/TweetDetail'
+		url = 'https://twitter.com/i/api/graphql/miKSMGb2R1SewIJv2-ablQ/TweetDetail'
 		instructionsPath = ['data', 'threaded_conversation_with_injections_v2', 'instructions']
 		if self._mode is TwitterTweetScraperMode.SINGLE:
 			obj = self._get_api_data(url, _TwitterAPIType.GRAPHQL, params = params, instructionsPath = instructionsPath)
@@ -2048,17 +2055,16 @@ class TwitterCommunityScraper(_TwitterAPIScraper):
 				'communityId': str(self._communityId),
 				'withDmMuting': False,
 				'withSafetyModeUserFields': False,
-				'withSuperFollowsUserFields': True,
 			},
 			'features': {
-				'responsive_web_graphql_exclude_directive_enabled': False,
+				'blue_business_profile_image_shape_enabled': True,
+				'responsive_web_graphql_exclude_directive_enabled': True,
 				'responsive_web_graphql_skip_user_profile_image_extensions_enabled': False,
 				'responsive_web_graphql_timeline_navigation_enabled': True,
-				'responsive_web_twitter_blue_verified_badge_is_enabled': True,
 				'verified_phone_label_enabled': False,
 			},
 		}
-		obj = self._get_api_data('https://api.twitter.com/graphql/MO8cE7aTvaenXJX_teUGcA/CommunitiesFetchOneQuery', _TwitterAPIType.GRAPHQL, params = params, instructionsPath = ['data', 'communityResults'])
+		obj = self._get_api_data('https://twitter.com/i/api/graphql/bC3Saf4niY6YuzJWV2oUGg/CommunitiesFetchOneQuery', _TwitterAPIType.GRAPHQL, params = params, instructionsPath = ['data', 'communityResults'])
 		if not obj['data'] or 'result' not in obj['data']['communityResults']:
 			_logger.warning('Empty response')
 			return None
@@ -2090,18 +2096,15 @@ class TwitterCommunityScraper(_TwitterAPIScraper):
 			'cursor': None,
 			'communityId': str(self._communityId),
 			'withCommunity': True,
-			'withSuperFollowsUserFields': True,
-			'withDownvotePerspective': False,
-			'withReactionsMetadata': False,
-			'withReactionsPerspective': False,
-			'withSuperFollowsTweetFields': True,
 		}
 		variables = paginationVariables.copy()
 		del variables['count'], variables['cursor']
 		features = {
-			'responsive_web_twitter_blue_verified_badge_is_enabled': True,
-			'responsive_web_graphql_exclude_directive_enabled': False,
+			'rweb_lists_timeline_redesign_enabled': False,
+			'blue_business_profile_image_shape_enabled': True,
+			'responsive_web_graphql_exclude_directive_enabled': True,
 			'verified_phone_label_enabled': False,
+			'creator_subscriptions_tweet_preview_api_enabled': False,
 			'responsive_web_graphql_timeline_navigation_enabled': True,
 			'responsive_web_graphql_skip_user_profile_image_extensions_enabled': False,
 			'tweetypie_unmention_optimization_enabled': True,
@@ -2111,17 +2114,19 @@ class TwitterCommunityScraper(_TwitterAPIScraper):
 			'view_counts_everywhere_api_enabled': True,
 			'longform_notetweets_consumption_enabled': True,
 			'tweet_awards_web_tipping_enabled': False,
-			'freedom_of_speech_not_reach_fetch_enabled': False,
+			'freedom_of_speech_not_reach_fetch_enabled': True,
 			'standardized_nudges_misinfo': True,
 			'tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled': False,
 			'interactive_text_enabled': True,
 			'responsive_web_text_conversations_enabled': False,
+			'longform_notetweets_rich_text_read_enabled': True,
+			'longform_notetweets_inline_media_enabled': False,
 			'responsive_web_enhance_cards_enabled': False,
 		}
 		params = {'variables': variables, 'features': features}
 		paginationParams = {'variables': paginationVariables, 'features': features}
 
-		for obj in self._iter_api_data('https://api.twitter.com/graphql/Qvst9FkHq45wuqicCvMpVw/CommunityTweetsTimeline', _TwitterAPIType.GRAPHQL, params, paginationParams, instructionsPath = ['data', 'communityResults', 'result', 'community_timeline', 'timeline', 'instructions']):
+		for obj in self._iter_api_data('https://twitter.com/i/api/graphql/9nnDM-yum8Te--T2REfgkg/CommunityTweetsTimeline', _TwitterAPIType.GRAPHQL, params, paginationParams, instructionsPath = ['data', 'communityResults', 'result', 'community_timeline', 'timeline', 'instructions']):
 			if obj['data']['communityResults']['result']['__typename'] == 'CommunityUnavailable':
 				_logger.warning('Community unavailable')
 				break
