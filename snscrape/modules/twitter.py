@@ -564,7 +564,7 @@ class GuestTokenManager:
 	def setTime(self):
 		return self._setTime
 
-	def reset(self):
+	def reset(self, *, blockUntil = None):
 		self._token = None
 		self._setTime = 0.0
 
@@ -572,6 +572,7 @@ class GuestTokenManager:
 class _CLIGuestTokenManager(GuestTokenManager):
 	def __init__(self):
 		super().__init__()
+		self._blockedUntil = 0
 		cacheHome = os.environ.get('XDG_CACHE_HOME')
 		if not cacheHome or not os.path.isabs(cacheHome):
 			# This should be ${HOME}/.cache, but the HOME environment variable may not exist on non-POSIX-compliant systems.
@@ -587,29 +588,74 @@ class _CLIGuestTokenManager(GuestTokenManager):
 		self._lockFile = f'{self._file}.lock'
 		self._lock = filelock.FileLock(self._lockFile)
 
+	def _locked_load(self):
+		if not os.path.exists(self._file):
+			return None
+		_logger.info(f'Reading guest token file {self._file}')
+		with open(self._file, 'r') as fp:
+			try:
+				o = json.load(fp)
+			except json.JSONDecodeError as e:
+				_logger.warning(f'Malformed guest token file {self._file}: {e!s}')
+				self._locked_delete()
+				return None
+		if o.get('version') != 1:
+			_logger.warning(f'Outdated version of guest token file {self._file}')
+			self._locked_delete()
+			return None
+		return o
+
 	def _read(self):
 		with self._lock:
-			if not os.path.exists(self._file):
-				return None
-			_logger.info(f'Reading guest token from {self._file}')
-			with open(self._file, 'r') as fp:
-				try:
-					o = json.load(fp)
-				except json.JSONDecodeError as e:
-					_logger.warning(f'Malformed guest token file {self._file}: {e!s}')
-					self.reset()
-					return None
-		self._token = o['token']
-		self._setTime = o['setTime']
-		if self._setTime < time.time() - _GUEST_TOKEN_VALIDITY:
-			_logger.info('Guest token expired')
+			o = self._locked_load()
+		if not o:
 			self.reset()
+			return None
+		# Select a random non-blocked valid token if there is one
+		currentTime = time.time()
+		setTimeThreshold = currentTime - _GUEST_TOKEN_VALIDITY
+		validTokens = [token for token, t in o['tokens'].items() if t['setTime'] >= setTimeThreshold and t.get('blockedUntil', 0) < currentTime]
+		if not validTokens:
+			return None
+		token = random.choice(validTokens)
+		self._token = token
+		self._setTime = o['tokens'][token]['setTime']
+		self._blockedUntil = 0
 
 	def _write(self):
 		with self._lock:
-			_logger.info(f'Writing guest token to {self._file}')
-			with open(self._file, 'w') as fp:
-				json.dump({'token': self.token, 'setTime': self.setTime}, fp)
+			# Read existing file
+			o = self._locked_load()
+			if not o:
+				o = {'version': 1, 'tokens': {}}
+
+			# Remove expired tokens
+			setTimeThreshold = time.time() - _GUEST_TOKEN_VALIDITY
+			o['tokens'] = {token: details for token, details in o['tokens'].items() if details['setTime'] >= setTimeThreshold}
+
+			# Insert or update current token
+			if self._token:
+				if self._token not in o['tokens']:
+					o['tokens'][self._token] = {}
+				o['tokens'][self._token]['setTime'] = self._setTime
+				if self._blockedUntil:
+					o['tokens'][self._token]['blockedUntil'] = self._blockedUntil
+
+			# Write back out if there are any tokens, else delete
+			if o['tokens']:
+				_logger.info(f'Writing guest token file {self._file}')
+				with open(self._file, 'w') as fp:
+					json.dump(o, fp)
+			else:
+				self._locked_delete()
+
+	def _locked_delete(self):
+		_logger.info(f'Deleting guest token file {self._file}')
+		try:
+			os.remove(self._file)
+		except FileNotFoundError:
+			# Another process likely already removed the file
+			pass
 
 	@property
 	def token(self):
@@ -627,15 +673,11 @@ class _CLIGuestTokenManager(GuestTokenManager):
 		self.token  # Implicitly reads from the file if necessary
 		return self._setTime
 
-	def reset(self):
+	def reset(self, *, blockUntil = None):
+		self._blockedUntil = blockUntil
+		self._write()
 		super().reset()
-		with self._lock:
-			_logger.info(f'Deleting guest token file {self._file}')
-			try:
-				os.remove(self._file)
-			except FileNotFoundError:
-				# Another process likely already removed the file
-				pass
+		self._blockedUntil = 0
 
 
 class _TwitterTLSAdapter(snscrape.base._HTTPSAdapter):
@@ -705,14 +747,18 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 		self._session.cookies.set('gt', self._guestTokenManager.token, domain = '.twitter.com', path = '/', secure = True, expires = self._guestTokenManager.setTime + _GUEST_TOKEN_VALIDITY)
 		self._apiHeaders['x-guest-token'] = self._guestTokenManager.token
 
-	def _unset_guest_token(self):
-		self._guestTokenManager.reset()
+	def _unset_guest_token(self, blockUntil):
+		self._guestTokenManager.reset(blockUntil)
 		del self._session.cookies['gt']
 		del self._apiHeaders['x-guest-token']
 
 	def _check_api_response(self, r):
 		if r.status_code in (403, 404, 429):
-			self._unset_guest_token()
+			if r.status_code == 429 and r.headers.get('x-rate-limit-remaining', '') == '0' and 'x-rate-limit-reset' in r.headers:
+				blockUntil = min(int(r.headers['x-rate-limit-reset']), int(time.time()) + 900)
+			else:
+				blockUntil = None
+			self._unset_guest_token(blockUntil)
 			self._ensure_guest_token()
 			return False, f'blocked ({r.status_code})'
 		if r.headers.get('content-type', '').replace(' ', '') != 'application/json;charset=utf-8':
