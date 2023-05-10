@@ -54,7 +54,7 @@ class Tweet(snscrape.base.Item):
 	rawContent: str
 	renderedContent: str
 	id: int
-	user: 'User'
+	user: typing.Union['User', 'UserRef']
 	replyCount: int
 	retweetCount: int
 	likeCount: int
@@ -79,7 +79,7 @@ class Tweet(snscrape.base.Item):
 	viewCount: typing.Optional[int] = None
 	vibe: typing.Optional['Vibe'] = None
 
-	username = snscrape.base._DeprecatedProperty('username', lambda self: self.user.username, 'user.username')
+	username = snscrape.base._DeprecatedProperty('username', lambda self: getattr(self.user, 'username', None), 'user.username')
 	outlinks = snscrape.base._DeprecatedProperty('outlinks', lambda self: [x.url for x in self.links] if self.links else [], 'links (url attribute)')
 	outlinksss = snscrape.base._DeprecatedProperty('outlinksss', lambda self: ' '.join(x.url for x in self.links) if self.links else '', 'links (url attribute)')
 	tcooutlinks = snscrape.base._DeprecatedProperty('tcooutlinks', lambda self: [x.tcourl for x in self.links] if self.links else [], 'links (tcourl attribute)')
@@ -894,7 +894,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			                     tcourl = u['url'],
 			                     indices = tuple(u['indices']),
 			                   ) for u in tweet['entities']['urls']]
-		kwargs['url'] = f'https://twitter.com/{user.username}/status/{tweetId}'
+		kwargs['url'] = f'https://twitter.com/{getattr(user, "username", "i/web")}/status/{tweetId}'
 		kwargs['replyCount'] = tweet['reply_count']
 		kwargs['retweetCount'] = tweet['retweet_count']
 		kwargs['likeCount'] = tweet['favorite_count']
@@ -1412,8 +1412,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 		else:
 			raise snscrape.base.ScraperException(f'Unknown result type {result["__typename"]!r}')
 		tweet = result['legacy']
-		userId = int(result['core']['user_results']['result']['rest_id'])
-		user = self._user_to_user(result['core']['user_results']['result']['legacy'], id_ = userId)
+		user = self._graphql_user_results_to_user(result['core']['user_results'], userId = int(result['legacy']['user_id_str']))
 		kwargs = {}
 		if 'retweeted_status_result' in tweet:
 			#TODO Tombstones will cause a crash here.
@@ -1540,29 +1539,30 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			labelKwargs['longDescription'] = label['longDescription']['text']
 		return UserLabel(**labelKwargs)
 
-	def _graphql_user_results_to_user_ref(self, obj):
-		if 'id' not in obj:
-			return None
-		if isinstance(obj['id'], int):
-			userId = obj['id']
-		elif obj['id'].startswith('VXNlclJlc3VsdHM6'):
-			# UserResults:<userid> in base64
-			try:
-				userId = base64.b64decode(obj['id'])
-			except ValueError:
+	def _graphql_user_results_to_user_ref(self, obj, userId = None):
+		if userId is None:
+			if 'id' not in obj:
 				return None
-			assert userId.startswith(b'UserResults:')
-			userId = int(userId.split(b':', 1)[1])
+			if isinstance(obj['id'], int):
+				userId = obj['id']
+			elif obj['id'].startswith('VXNlclJlc3VsdHM6'):
+				# UserResults:<userid> in base64
+				try:
+					userId = base64.b64decode(obj['id'])
+				except ValueError:
+					return None
+				assert userId.startswith(b'UserResults:')
+				userId = int(userId.split(b':', 1)[1])
 		kwargs = {}
 		if 'result' in obj and obj['result']['__typename'] == 'UserUnavailable' and 'unavailable_message' in obj['result']:
 			kwargs['text'] = obj['result']['unavailable_message']['text']
 			kwargs['textLinks'] = [TextLink(text = kwargs['text'][x['fromIndex']:x['toIndex']], url = x['ref']['url'], tcourl = None, indices = (x['fromIndex'], x['toIndex'])) for x in obj['result']['unavailable_message']['entities']]
 		return UserRef(id = userId, **kwargs)
 
-	def _graphql_user_results_to_user(self, results):
+	def _graphql_user_results_to_user(self, results, userId = None):
 		if 'result' not in results or results['result']['__typename'] == 'UserUnavailable':
-			return self._graphql_user_results_to_user_ref(results)
-		return self._user_to_user(results['result']['legacy'], id_ = int(results['result']['rest_id']))
+			return self._graphql_user_results_to_user_ref(results, userId)
+		return self._user_to_user(results['result']['legacy'], id_ = userId if userId is not None else int(results['result']['rest_id']))
 
 	@classmethod
 	def _cli_construct(cls, argparseArgs, *args, **kwargs):
