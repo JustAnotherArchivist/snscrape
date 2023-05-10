@@ -78,6 +78,7 @@ class Tweet(snscrape.base.Item):
 	card: typing.Optional['Card'] = None
 	viewCount: typing.Optional[int] = None
 	vibe: typing.Optional['Vibe'] = None
+	bookmarkCount: typing.Optional[int] = None
 
 	username = snscrape.base._DeprecatedProperty('username', lambda self: getattr(self.user, 'username', None), 'user.username')
 	outlinks = snscrape.base._DeprecatedProperty('outlinks', lambda self: [x.url for x in self.links] if self.links else [], 'links (url attribute)')
@@ -1007,6 +1008,8 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 						break
 				else:
 					_logger.warning(f'Could not translate t.co card URL on tweet {tweetId}')
+		if 'bookmark_count' in tweet:
+			kwargs['bookmarkCount'] = tweet['bookmark_count']
 		return Tweet(**kwargs)
 
 	def _make_medium(self, medium, tweetId):
