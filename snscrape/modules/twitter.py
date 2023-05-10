@@ -704,7 +704,6 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 		self._guestTokenManager = guestTokenManager
 		self._maxEmptyPages = maxEmptyPages
 		self._apiHeaders = {
-			'User-Agent': None,
 			'Authorization': _API_AUTHORIZATION_HEADER,
 			'Referer': self._baseUrl,
 			'Accept-Language': 'en-US,en;q=0.5',
@@ -712,22 +711,16 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 		adapter = _TwitterTLSAdapter()
 		self._session.mount('https://twitter.com', adapter)
 		self._session.mount('https://api.twitter.com', adapter)
-		self._set_random_user_agent()
-
-	def _set_random_user_agent(self):
-		self._userAgent = f'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.5563.{random.randint(0, 9999)} Safari/537.{random.randint(0, 99)}'
-		self._apiHeaders['User-Agent'] = self._userAgent
 
 	def _check_guest_token_response(self, r):
 		if r.status_code != 200:
-			self._set_random_user_agent()
 			return False, ('non-200 response' if r.status_code != 404 else 'blocked') + f' ({r.status_code})'
 		return True, None
 
 	def _ensure_guest_token(self, url = None):
 		if self._guestTokenManager.token is None:
 			_logger.info('Retrieving guest token')
-			r = self._get(self._baseUrl if url is None else url, headers = {'User-Agent': self._userAgent}, responseOkCallback = self._check_guest_token_response)
+			r = self._get(self._baseUrl if url is None else url, responseOkCallback = self._check_guest_token_response)
 			if (match := re.search(r'document\.cookie = decodeURIComponent\("gt=(\d+); Max-Age=10800; Domain=\.twitter\.com; Path=/; Secure"\);', r.text)):
 				_logger.debug('Found guest token in HTML')
 				self._guestTokenManager.token = match.group(1)

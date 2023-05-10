@@ -8,6 +8,7 @@ import datetime
 import functools
 import json
 import logging
+import random
 import requests
 import requests.adapters
 import urllib3.connection
@@ -126,6 +127,16 @@ class IntWithGranularity(int):
 		return (IntWithGranularity, (int(self), self.granularity))
 
 
+def _random_user_agent():
+	def lerp(a1, b1, a2, b2, n):
+		return (n - a1) / (b1 - a1) * (b2 - a2) + a2
+	version = int(lerp(datetime.date(2023, 3, 7).toordinal(), datetime.date(2030, 9, 24).toordinal(), 111, 200, datetime.date.today().toordinal()))
+	version += random.randint(-5, 1)
+	version = max(version, 101)
+	return f'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{version}.0.0.0 Safari/537.36'
+_DEFAULT_USER_AGENT = _random_user_agent()
+
+
 class _HTTPSAdapter(requests.adapters.HTTPAdapter):
 	def init_poolmanager(self, *args, **kwargs):
 		super().init_poolmanager(*args, **kwargs)
@@ -187,6 +198,10 @@ class Scraper:
 		return self._get_entity()
 
 	def _request(self, method, url, params = None, data = None, headers = None, timeout = 10, responseOkCallback = None, allowRedirects = True, proxies = None):
+		if not headers:
+			headers = {}
+		if 'User-Agent' not in headers:
+			headers['User-Agent'] = _DEFAULT_USER_AGENT
 		proxies = proxies or self._proxies or {}
 		errors = []
 		for attempt in range(self._retries + 1):
