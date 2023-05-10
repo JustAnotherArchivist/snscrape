@@ -760,7 +760,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			return False, f'non-200 status code ({r.status_code})'
 		return True, None
 
-	def _get_api_data(self, endpoint, apiType, params):
+	def _get_api_data(self, endpoint, apiType, params, instructionsPath = None):
 		self._ensure_guest_token()
 		if apiType is _TwitterAPIType.GRAPHQL:
 			params = urllib.parse.urlencode({k: json.dumps(v, separators = (',', ':')) for k, v in params.items()}, quote_via = urllib.parse.quote)
@@ -770,14 +770,22 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 		except json.JSONDecodeError as e:
 			raise snscrape.base.ScraperException('Received invalid JSON from Twitter') from e
 		if apiType is _TwitterAPIType.GRAPHQL and 'errors' in obj:
-			raise snscrape.base.ScraperException('Twitter responded with an error: ' + ', '.join(f'{e["name"]}: {e["message"]}' for e in obj['errors']))
+			msg = 'Twitter responded with an error: ' + ', '.join(f'{e["name"]}: {e["message"]}' for e in obj['errors'])
+			instructions = obj
+			for k in instructionsPath:
+				instructions = instructions.get(k, {})
+			if instructions:
+				_logger.warning(msg)
+			else:
+				raise snscrape.base.ScraperException(msg)
 		return obj
 
-	def _iter_api_data(self, endpoint, apiType, params, paginationParams = None, cursor = None, direction = _ScrollDirection.BOTTOM):
+	def _iter_api_data(self, endpoint, apiType, params, paginationParams = None, cursor = None, direction = _ScrollDirection.BOTTOM, instructionsPath = None):
 		# Iterate over endpoint with params/paginationParams, optionally starting from a cursor
 		# Handles guest token extraction using the baseUrl passed to __init__ etc.
 		# Order from params and paginationParams is preserved. To insert the cursor at a particular location, insert a 'cursor' key into paginationParams there (value is overwritten).
 		# direction controls in which direction it should scroll from the initial response. BOTH equals TOP followed by BOTTOM.
+		# instructionsPath must be present if apiType is GRAPHQL.
 
 		# Logic for dual scrolling: direction is set to top, but if the bottom cursor is found, bottomCursorAndStop is set accordingly.
 		# Once the top pagination is exhausted, the bottomCursorAndStop is used and reset to None; it isn't set anymore after because the first entry condition will always be true for the bottom cursor.
@@ -800,7 +808,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 		emptyPages = 0
 		while True:
 			_logger.info(f'Retrieving scroll page {cursor}')
-			obj = self._get_api_data(endpoint, apiType, reqParams)
+			obj = self._get_api_data(endpoint, apiType, reqParams, instructionsPath = instructionsPath)
 			yield obj
 
 			# No data format test, just a hard and loud crash if anything's wrong :-)
@@ -810,15 +818,9 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			if apiType is _TwitterAPIType.V2:
 				instructions = obj['timeline']['instructions']
 			elif apiType is _TwitterAPIType.GRAPHQL:
-				if 'user' in obj['data']:
-					# UserTweets, UserTweetsAndReplies
-					instructions = obj['data']['user']['result']['timeline_v2']['timeline']['instructions']
-				elif 'search_by_raw_query' in obj['data']:
-					# SearchTimeline
-					instructions = obj['data']['search_by_raw_query']['search_timeline']['timeline']['instructions']
-				else:
-					# TweetDetail
-					instructions = obj['data'].get('threaded_conversation_with_injections_v2', {}).get('instructions', [])
+				instructions = obj
+				for k in instructionsPath:
+					instructions = instructions[k]
 			entryCount = 0
 			for instruction in instructions:
 				if 'addEntries' in instruction:
@@ -1688,7 +1690,7 @@ class TwitterSearchScraper(_TwitterAPIScraper):
 		params = {'variables': variables, 'features': features}
 		paginationParams = {'variables': paginationVariables, 'features': features}
 
-		for obj in self._iter_api_data('https://twitter.com/i/api/graphql/7jT5GT59P8IFjgxwqnEdQw/SearchTimeline', _TwitterAPIType.GRAPHQL, params, paginationParams, cursor = self._cursor):
+		for obj in self._iter_api_data('https://twitter.com/i/api/graphql/7jT5GT59P8IFjgxwqnEdQw/SearchTimeline', _TwitterAPIType.GRAPHQL, params, paginationParams, cursor = self._cursor, instructionsPath = ['data', 'search_by_raw_query', 'search_timeline', 'timeline', 'instructions']):
 			yield from self._graphql_timeline_instructions_to_tweets(obj['data']['search_by_raw_query']['search_timeline']['timeline']['instructions'])
 
 	@classmethod
@@ -1725,7 +1727,7 @@ class TwitterUserScraper(TwitterSearchScraper):
 			fieldName = 'userId'
 			endpoint = 'https://twitter.com/i/api/graphql/I5nvpI91ljifos1Y3Lltyg/UserByRestId'
 		variables = {fieldName: str(self._user), 'withSafetyModeUserFields': True, 'withSuperFollowsUserFields': True}
-		obj = self._get_api_data(endpoint, _TwitterAPIType.GRAPHQL, params = {'variables': variables})
+		obj = self._get_api_data(endpoint, _TwitterAPIType.GRAPHQL, params = {'variables': variables}, instructionsPath = ['data', 'user'])
 		if not obj['data'] or 'result' not in obj['data']['user']:
 			_logger.warning('Empty response')
 			return None
@@ -1855,7 +1857,7 @@ class TwitterProfileScraper(TwitterUserScraper):
 		paginationParams = {'variables': paginationVariables, 'features': features}
 
 		gotPinned = False
-		for obj in self._iter_api_data('https://twitter.com/i/api/graphql/nrdle2catTyGnTyj1Qa7wA/UserTweetsAndReplies', _TwitterAPIType.GRAPHQL, params, paginationParams):
+		for obj in self._iter_api_data('https://twitter.com/i/api/graphql/nrdle2catTyGnTyj1Qa7wA/UserTweetsAndReplies', _TwitterAPIType.GRAPHQL, params, paginationParams, instructionsPath = ['data', 'user', 'result', 'timeline_v2', 'timeline', 'instructions']):
 			if obj['data']['user']['result']['__typename'] == 'UserUnavailable':
 				_logger.warning('User unavailable')
 				break
@@ -1967,8 +1969,9 @@ class TwitterTweetScraper(_TwitterAPIScraper):
 		params = {'variables': variables, 'features': features}
 		paginationParams = {'variables': paginationVariables, 'features': features}
 		url = 'https://twitter.com/i/api/graphql/NNiD2K-nEYUfXlMwGCocMQ/TweetDetail'
+		instructionsPath = ['data', 'threaded_conversation_with_injections_v2', 'instructions']
 		if self._mode is TwitterTweetScraperMode.SINGLE:
-			obj = self._get_api_data(url, _TwitterAPIType.GRAPHQL, params = params)
+			obj = self._get_api_data(url, _TwitterAPIType.GRAPHQL, params = params, instructionsPath = instructionsPath)
 			if not obj['data']:
 				return
 			for instruction in obj['data']['threaded_conversation_with_injections_v2']['instructions']:
@@ -1979,7 +1982,7 @@ class TwitterTweetScraper(_TwitterAPIScraper):
 						yield self._graphql_timeline_tweet_item_result_to_tweet(entry['content']['itemContent']['tweet_results']['result'], tweetId = self._tweetId)
 						break
 		elif self._mode is TwitterTweetScraperMode.SCROLL:
-			for obj in self._iter_api_data(url, _TwitterAPIType.GRAPHQL, params, paginationParams, direction = _ScrollDirection.BOTH):
+			for obj in self._iter_api_data(url, _TwitterAPIType.GRAPHQL, params, paginationParams, direction = _ScrollDirection.BOTH, instructionsPath = instructionsPath):
 				if not obj['data']:
 					continue
 				yield from self._graphql_timeline_instructions_to_tweets(obj['data']['threaded_conversation_with_injections_v2']['instructions'], includeConversationThreads = True)
@@ -1993,7 +1996,7 @@ class TwitterTweetScraper(_TwitterAPIScraper):
 				thisPagParams['variables']['focalTweetId'] = str(tweetId)
 				thisParams = copy.deepcopy(thisPagParams)
 				del thisPagParams['variables']['cursor'], thisPagParams['variables']['referrer']
-				for obj in self._iter_api_data(url, _TwitterAPIType.GRAPHQL, thisParams, thisPagParams, direction = _ScrollDirection.BOTH):
+				for obj in self._iter_api_data(url, _TwitterAPIType.GRAPHQL, thisParams, thisPagParams, direction = _ScrollDirection.BOTH, instructionsPath = instructionsPath):
 					if not obj['data']:
 						continue
 					for tweet in self._graphql_timeline_instructions_to_tweets(obj['data']['threaded_conversation_with_injections_v2']['instructions'], includeConversationThreads = True):
@@ -2055,7 +2058,7 @@ class TwitterCommunityScraper(_TwitterAPIScraper):
 				'verified_phone_label_enabled': False,
 			},
 		}
-		obj = self._get_api_data('https://api.twitter.com/graphql/MO8cE7aTvaenXJX_teUGcA/CommunitiesFetchOneQuery', _TwitterAPIType.GRAPHQL, params = params)
+		obj = self._get_api_data('https://api.twitter.com/graphql/MO8cE7aTvaenXJX_teUGcA/CommunitiesFetchOneQuery', _TwitterAPIType.GRAPHQL, params = params, instructionsPath = ['data', 'communityResults'])
 		if not obj['data'] or 'result' not in obj['data']['communityResults']:
 			_logger.warning('Empty response')
 			return None
@@ -2118,7 +2121,7 @@ class TwitterCommunityScraper(_TwitterAPIScraper):
 		params = {'variables': variables, 'features': features}
 		paginationParams = {'variables': paginationVariables, 'features': features}
 
-		for obj in self._iter_api_data('https://api.twitter.com/graphql/Qvst9FkHq45wuqicCvMpVw/CommunityTweetsTimeline', _TwitterAPIType.GRAPHQL, params, paginationParams):
+		for obj in self._iter_api_data('https://api.twitter.com/graphql/Qvst9FkHq45wuqicCvMpVw/CommunityTweetsTimeline', _TwitterAPIType.GRAPHQL, params, paginationParams, instructionsPath = ['data', 'communityResults', 'result', 'community_timeline', 'timeline', 'instructions']):
 			if obj['data']['communityResults']['result']['__typename'] == 'CommunityUnavailable':
 				_logger.warning('Community unavailable')
 				break
