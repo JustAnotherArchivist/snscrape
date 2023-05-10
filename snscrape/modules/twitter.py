@@ -922,20 +922,26 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 	def _get_tweet_id(self, tweet):
 		return tweet['id'] if 'id' in tweet else int(tweet['id_str'])
 
-	def _make_tweet(self, tweet, user, retweetedTweet = None, quotedTweet = None, card = None, **kwargs):
+	def _make_tweet(self, tweet, user, retweetedTweet = None, quotedTweet = None, card = None, noteTweet = None, **kwargs):
 		tweetId = self._get_tweet_id(tweet)
 		kwargs['id'] = tweetId
-		kwargs['rawContent'] = tweet['full_text']
-		kwargs['renderedContent'] = self._render_text_with_urls(tweet['full_text'], tweet['entities'].get('urls'))
+		if noteTweet:
+			kwargs['rawContent'] = noteTweet['text']
+			entities = noteTweet['entity_set']
+		else:
+			kwargs['rawContent'] = tweet['full_text']
+			entities = tweet['entities']
+		links = entities.get('urls')
+		kwargs['renderedContent'] = self._render_text_with_urls(kwargs['rawContent'], links)
 		kwargs['user'] = user
 		kwargs['date'] = email.utils.parsedate_to_datetime(tweet['created_at'])
-		if tweet['entities'].get('urls'):
+		if links:
 			kwargs['links'] = [TextLink(
 			                     text = u.get('display_url'),
 			                     url = u['expanded_url'],
 			                     tcourl = u['url'],
 			                     indices = tuple(u['indices']),
-			                   ) for u in tweet['entities']['urls']]
+			                   ) for u in links]
 		kwargs['url'] = f'https://twitter.com/{getattr(user, "username", "i/web")}/status/{tweetId}'
 		kwargs['replyCount'] = tweet['reply_count']
 		kwargs['retweetCount'] = tweet['retweet_count']
@@ -965,14 +971,14 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			inReplyToUserId = int(tweet['in_reply_to_user_id_str'])
 			if inReplyToUserId == kwargs['user'].id:
 				kwargs['inReplyToUser'] = kwargs['user']
-			elif tweet['entities'].get('user_mentions'):
-				for u in tweet['entities']['user_mentions']:
+			elif entities.get('user_mentions'):
+				for u in entities['user_mentions']:
 					if u['id_str'] == tweet['in_reply_to_user_id_str']:
 						kwargs['inReplyToUser'] = User(username = u['screen_name'], id = u['id'] if 'id' in u else int(u['id_str']), displayname = u['name'])
 			if 'inReplyToUser' not in kwargs:
 				kwargs['inReplyToUser'] = User(username = tweet['in_reply_to_screen_name'], id = inReplyToUserId)
-		if tweet['entities'].get('user_mentions'):
-			kwargs['mentionedUsers'] = [User(username = u['screen_name'], id = u['id'] if 'id' in u else int(u['id_str']), displayname = u['name']) for u in tweet['entities']['user_mentions']]
+		if entities.get('user_mentions'):
+			kwargs['mentionedUsers'] = [User(username = u['screen_name'], id = u['id'] if 'id' in u else int(u['id_str']), displayname = u['name']) for u in entities['user_mentions']]
 
 		# https://developer.twitter.com/en/docs/tutorials/filtering-tweets-by-location
 		if tweet.get('coordinates'):
@@ -988,10 +994,10 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			if 'coordinates' not in kwargs and tweet['place'].get('bounding_box') and (coords := tweet['place']['bounding_box']['coordinates']) and coords[0] and len(coords[0][0]) == 2:
 				# Take the first (longitude, latitude) couple of the "place square"
 				kwargs['coordinates'] = Coordinates(coords[0][0][0], coords[0][0][1])
-		if tweet['entities'].get('hashtags'):
-			kwargs['hashtags'] = [o['text'] for o in tweet['entities']['hashtags']]
-		if tweet['entities'].get('symbols'):
-			kwargs['cashtags'] = [o['text'] for o in tweet['entities']['symbols']]
+		if entities.get('hashtags'):
+			kwargs['hashtags'] = [o['text'] for o in entities['hashtags']]
+		if entities.get('symbols'):
+			kwargs['cashtags'] = [o['text'] for o in entities['symbols']]
 		if card:
 			kwargs['card'] = card
 			if hasattr(card, 'url') and '//t.co/' in card.url:
@@ -1483,6 +1489,8 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 				kwargs['quotedTweet'] = TweetRef(id = int(tweet['quoted_status_id_str']))
 		if 'card' in result:
 			kwargs['card'] = self._make_card(result['card'], _TwitterAPIType.GRAPHQL, self._get_tweet_id(tweet))
+		if 'note_tweet' in result:
+			kwargs['noteTweet'] = result['note_tweet']['note_tweet_results']['result']
 		if 'views' in result and 'count' in result['views']:
 			kwargs['viewCount'] = int(result['views']['count'])
 		if 'vibe' in result:
