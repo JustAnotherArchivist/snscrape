@@ -772,6 +772,9 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 				if 'user' in obj['data']:
 					# UserTweets, UserTweetsAndReplies
 					instructions = obj['data']['user']['result']['timeline_v2']['timeline']['instructions']
+				elif 'search_by_raw_query' in obj['data']:
+					# SearchTimeline
+					instructions = obj['data']['search_by_raw_query']['search_timeline']['timeline']['instructions']
 				else:
 					# TweetDetail
 					instructions = obj['data'].get('threaded_conversation_with_injections_v2', {}).get('instructions', [])
@@ -783,6 +786,8 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 					entries = [instruction['replaceEntry']['entry']]
 				elif instruction.get('type') == 'TimelineAddEntries':
 					entries = instruction['entries']
+				elif instruction.get('type') == 'TimelineReplaceEntry':
+					entries = [instruction['entry']]
 				else:
 					continue
 				entryCount += self._count_tweets_and_users(entries)
@@ -1600,66 +1605,50 @@ class TwitterSearchScraper(_TwitterAPIScraper):
 	def get_items(self):
 		if not self._query.strip():
 			raise ValueError('empty query')
-		paginationParams = {
-			'include_profile_interstitial_type': '1',
-			'include_blocking': '1',
-			'include_blocked_by': '1',
-			'include_followed_by': '1',
-			'include_want_retweets': '1',
-			'include_mute_edge': '1',
-			'include_can_dm': '1',
-			'include_can_media_tag': '1',
-			'include_ext_has_nft_avatar': '1',
-			'include_ext_is_blue_verified': '1',
-			'include_ext_verified_type': '1',
-			'skip_status': '1',
-			'cards_platform': 'Web-12',
-			'include_cards': '1',
-			'include_ext_alt_text': 'true',
-			'include_ext_limited_action_results': 'false',
-			'include_quote_count': 'true',
-			'include_reply_count': '1',
-			'tweet_mode': 'extended',
-			'include_ext_collab_control': 'true',
-			'include_ext_views': 'true',
-			'include_entities': 'true',
-			'include_user_entities': 'true',
-			'include_ext_media_color': 'true',
-			'include_ext_media_availability': 'true',
-			'include_ext_sensitive_media_warning': 'true',
-			'include_ext_trusted_friends_metadata': 'true',
-			'send_error_codes': 'true',
-			'simple_quoted_tweet': 'true',
-			'q': self._query,
-		}
-		if self._mode is TwitterSearchScraperMode.LIVE:
-			paginationParams = {
-				**paginationParams,
-				'tweet_search_mode': 'live',
-			}
-		elif self._mode is TwitterSearchScraperMode.TOP:
-			pass
-		elif self._mode is TwitterSearchScraperMode.USER:
-			paginationParams = {
-				**paginationParams,
-				'result_filter': 'user',
-				'query_source': '',
-			}
-		paginationParams = {
-			**paginationParams,
-			'count': '20',
-			'query_source': 'spelling_expansion_revert_click',
-			'cursor': None,
-			'pc': '1',
-			'spelling_corrections': '1',
-			'include_ext_edit_control': 'true',
-			'ext': 'mediaStats,highlightedLabel,hasNftAvatar,voiceInfo,enrichments,superFollowMetadata,unmentionInfo,editControl,collab_control,vibe',
-		}
-		params = paginationParams.copy()
-		del params['cursor']
+		if self._mode is TwitterSearchScraperMode.USER:
+			raise snscrape.base.ScraperException('User searches currently unsupported')
 
-		for obj in self._iter_api_data('https://api.twitter.com/2/search/adaptive.json', _TwitterAPIType.V2, params, paginationParams, cursor = self._cursor):
-			yield from self._v2_timeline_instructions_to_tweets_or_users(obj)
+		paginationVariables = {
+			'rawQuery': self._query,
+			'count': 20,
+			'cursor': None,
+			'product': 'Latest' if self._mode is TwitterSearchScraperMode.LIVE else 'Top',
+			'withDownvotePerspective': False,
+			'withReactionsMetadata': False,
+			'withReactionsPerspective': False,
+		}
+		variables = paginationVariables.copy()
+		del variables['cursor']
+		features = {
+			'rweb_lists_timeline_redesign_enabled': False,
+			'blue_business_profile_image_shape_enabled': False,
+			'responsive_web_graphql_exclude_directive_enabled': True,
+			'verified_phone_label_enabled': False,
+			'creator_subscriptions_tweet_preview_api_enabled': False,
+			'responsive_web_graphql_timeline_navigation_enabled': True,
+			'responsive_web_graphql_skip_user_profile_image_extensions_enabled': False,
+			'tweetypie_unmention_optimization_enabled': True,
+			'vibe_api_enabled': True,
+			'responsive_web_edit_tweet_api_enabled': True,
+			'graphql_is_translatable_rweb_tweet_is_translatable_enabled': True,
+			'view_counts_everywhere_api_enabled': True,
+			'longform_notetweets_consumption_enabled': True,
+			'tweet_awards_web_tipping_enabled': False,
+			'freedom_of_speech_not_reach_fetch_enabled': False,
+			'standardized_nudges_misinfo': True,
+			'tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled': False,
+			'interactive_text_enabled': True,
+			'responsive_web_text_conversations_enabled': False,
+			'longform_notetweets_rich_text_read_enabled': False,
+			'longform_notetweets_inline_media_enabled': False,
+			'responsive_web_enhance_cards_enabled': False,
+			'responsive_web_twitter_blue_verified_badge_is_enabled': True,
+		}
+		params = {'variables': variables, 'features': features}
+		paginationParams = {'variables': paginationVariables, 'features': features}
+
+		for obj in self._iter_api_data('https://twitter.com/i/api/graphql/7jT5GT59P8IFjgxwqnEdQw/SearchTimeline', _TwitterAPIType.GRAPHQL, params, paginationParams, cursor = self._cursor):
+			yield from self._graphql_timeline_instructions_to_tweets(obj['data']['search_by_raw_query']['search_timeline']['timeline']['instructions'])
 
 	@classmethod
 	def _cli_setup_parser(cls, subparser):
