@@ -730,6 +730,8 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			obj = r.json()
 		except json.JSONDecodeError as e:
 			raise snscrape.base.ScraperException('Received invalid JSON from Twitter') from e
+		if apiType is _TwitterAPIType.GRAPHQL and 'errors' in obj:
+			raise snscrape.base.ScraperException('Twitter responded with an error: ' + ', '.join(f'{e["name"]}: {e["message"]}' for e in obj['errors']))
 		return obj
 
 	def _iter_api_data(self, endpoint, apiType, params, paginationParams = None, cursor = None, direction = _ScrollDirection.BOTTOM):
