@@ -751,7 +751,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			if r.status_code == 429 and r.headers.get('x-rate-limit-remaining', '') == '0' and 'x-rate-limit-reset' in r.headers:
 				blockUntil = min(int(r.headers['x-rate-limit-reset']), int(time.time()) + 900)
 			else:
-				blockUntil = None
+				blockUntil = int(time.time()) + 300
 			self._unset_guest_token(blockUntil)
 			self._ensure_guest_token()
 			return False, f'blocked ({r.status_code})'
