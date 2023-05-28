@@ -1527,7 +1527,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 						if item['entryId'].startswith(f'{entry["entryId"]}-tweet-'):
 							tweetId = int(item['entryId'][len(entry['entryId']) + 7:])
 							yield self._graphql_timeline_tweet_item_result_to_tweet(item['item']['itemContent']['tweet_results']['result'], tweetId = tweetId, **kwargs)
-				elif not entry['entryId'].startswith('cursor-'):
+				elif not entry['entryId'].startswith(('cursor-', 'toptabsrpusermodule-')):
 					_logger.warning(f'Skipping unrecognised entry ID: {entry["entryId"]!r}')
 
 	def _render_text_with_urls(self, text, urls):
