@@ -79,6 +79,7 @@ class Tweet(snscrape.base.Item):
 	viewCount: typing.Optional[int] = None
 	vibe: typing.Optional['Vibe'] = None
 	bookmarkCount: typing.Optional[int] = None
+	pinned: typing.Optional[bool] = None
 
 	username = snscrape.base._DeprecatedProperty('username', lambda self: getattr(self.user, 'username', None), 'user.username')
 	outlinks = snscrape.base._DeprecatedProperty('outlinks', lambda self: [x.url for x in self.links] if self.links else [], 'links (url attribute)')
@@ -1447,7 +1448,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 		else:
 			return Tombstone(id = tweetId)
 
-	def _graphql_timeline_tweet_item_result_to_tweet(self, result, tweetId = None):
+	def _graphql_timeline_tweet_item_result_to_tweet(self, result, tweetId = None, **kwargs):
 		if result['__typename'] == 'Tweet':
 			pass
 		elif result['__typename'] == 'TweetWithVisibilityResults':
@@ -1463,7 +1464,6 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			raise snscrape.base.ScraperException(f'Unknown result type {result["__typename"]!r}')
 		tweet = result['legacy']
 		user = self._graphql_user_results_to_user(result['core']['user_results'], userId = int(result['legacy']['user_id_str']))
-		kwargs = {}
 		if 'retweeted_status_result' in tweet:
 			#TODO Tombstones will cause a crash here.
 			kwargs['retweetedTweet'] = self._graphql_timeline_tweet_item_result_to_tweet(tweet['retweeted_status_result']['result'])
@@ -1497,7 +1497,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			kwargs['vibe'] = self._make_vibe(result['vibe'])
 		return self._make_tweet(tweet, user, **kwargs)
 
-	def _graphql_timeline_instructions_to_tweets(self, instructions, includeConversationThreads = False):
+	def _graphql_timeline_instructions_to_tweets(self, instructions, includeConversationThreads = False, **kwargs):
 		for instruction in instructions:
 			if instruction['type'] != 'TimelineAddEntries':
 				continue
@@ -1508,7 +1508,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 						if 'result' not in entry['content']['itemContent']['tweet_results']:
 							_logger.warning(f'Skipping empty tweet entry {entry["entryId"]}')
 							continue
-						yield self._graphql_timeline_tweet_item_result_to_tweet(entry['content']['itemContent']['tweet_results']['result'], tweetId = tweetId)
+						yield self._graphql_timeline_tweet_item_result_to_tweet(entry['content']['itemContent']['tweet_results']['result'], tweetId = tweetId, **kwargs)
 					else:
 						_logger.warning('Got unrecognised timeline tweet item(s)')
 				elif entry['entryId'].startswith('homeConversation-'):
@@ -1519,14 +1519,14 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 							tweetId = int(item['entryId'].split('-tweet-', 1)[1])
 							if item['item']['itemContent']['itemType'] == 'TimelineTweet':
 								if 'result' in item['item']['itemContent']['tweet_results']:
-									yield self._graphql_timeline_tweet_item_result_to_tweet(item['item']['itemContent']['tweet_results']['result'], tweetId = tweetId)
+									yield self._graphql_timeline_tweet_item_result_to_tweet(item['item']['itemContent']['tweet_results']['result'], tweetId = tweetId, **kwargs)
 								else:
 									yield TweetRef(id = tweetId)
 				elif includeConversationThreads and entry['entryId'].startswith('conversationthread-'):  #TODO show more cursor?
 					for item in entry['content']['items']:
 						if item['entryId'].startswith(f'{entry["entryId"]}-tweet-'):
 							tweetId = int(item['entryId'][len(entry['entryId']) + 7:])
-							yield self._graphql_timeline_tweet_item_result_to_tweet(item['item']['itemContent']['tweet_results']['result'], tweetId = tweetId)
+							yield self._graphql_timeline_tweet_item_result_to_tweet(item['item']['itemContent']['tweet_results']['result'], tweetId = tweetId, **kwargs)
 				elif not entry['entryId'].startswith('cursor-'):
 					_logger.warning(f'Skipping unrecognised entry ID: {entry["entryId"]!r}')
 
@@ -1886,8 +1886,8 @@ class TwitterProfileScraper(TwitterUserScraper):
 					if instruction['type'] == 'TimelinePinEntry':
 						gotPinned = True
 						tweetId = int(instruction['entry']['entryId'][6:]) if instruction['entry']['entryId'].startswith('tweet-') else None
-						yield self._graphql_timeline_tweet_item_result_to_tweet(instruction['entry']['content']['itemContent']['tweet_results']['result'], tweetId = tweetId)
-			yield from self._graphql_timeline_instructions_to_tweets(instructions)
+						yield self._graphql_timeline_tweet_item_result_to_tweet(instruction['entry']['content']['itemContent']['tweet_results']['result'], tweetId = tweetId, pinned = True)
+			yield from self._graphql_timeline_instructions_to_tweets(instructions, pinned = False)
 
 
 class TwitterHashtagScraper(TwitterSearchScraper):
