@@ -71,15 +71,21 @@ def _json_dataclass_to_dict(obj):
 				if k.startswith('_'):
 					continue
 				out[k] = _json_dataclass_to_dict(getattr(obj, k))
-		return out
 	elif isinstance(obj, (tuple, list)):
 		return type(obj)(_json_dataclass_to_dict(x) for x in obj)
 	elif isinstance(obj, dict):
-		return {_json_dataclass_to_dict(k): _json_dataclass_to_dict(v) for k, v in obj.items()}
+		out = {_json_dataclass_to_dict(k): _json_dataclass_to_dict(v) for k, v in obj.items()}
 	elif isinstance(obj, set):
 		return {_json_dataclass_to_dict(v) for v in obj}
 	else:
 		return copy.deepcopy(obj)
+	# Transform IntWithGranularity
+	for key, value in list(out.items()): # Modifying the dict below, so make a copy first
+		if isinstance(value, IntWithGranularity):
+			out[key] = int(value)
+			assert f'{key}.granularity' not in out, f'Granularity collision on {key}.granularity'
+			out[f'{key}.granularity'] = value.granularity
+	return out
 
 
 @dataclasses.dataclass
@@ -92,11 +98,6 @@ class _JSONDataclass:
 		with warnings.catch_warnings():
 			warnings.filterwarnings(action = 'ignore', category = DeprecatedFeatureWarning)
 			out = _json_dataclass_to_dict(self)
-		for key, value in list(out.items()): # Modifying the dict below, so make a copy first
-			if isinstance(value, IntWithGranularity):
-				out[key] = int(value)
-				assert f'{key}.granularity' not in out, f'Granularity collision on {key}.granularity'
-				out[f'{key}.granularity'] = value.granularity
 		return json.dumps(out, default = _json_serialise_datetime)
 
 
