@@ -168,6 +168,10 @@ class ScraperException(Exception):
 	pass
 
 
+class EntityUnavailable(ScraperException):
+	'''The target entity of the scrape is unavailable, possibly because it does not exist or was suspended.'''
+
+
 class Scraper:
 	'''An abstract base class for a scraper.'''
 

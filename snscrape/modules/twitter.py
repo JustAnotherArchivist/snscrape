@@ -1752,11 +1752,9 @@ class TwitterUserScraper(TwitterSearchScraper):
 		}
 		obj = self._get_api_data(endpoint, _TwitterAPIType.GRAPHQL, params = {'variables': variables, 'features': features}, instructionsPath = ['data', 'user'])
 		if not obj['data'] or 'result' not in obj['data']['user']:
-			_logger.warning('Empty response')
-			return None
+			raise snscrape.base.ScraperError('Empty response')
 		if obj['data']['user']['result']['__typename'] == 'UserUnavailable':
-			_logger.warning('User unavailable')
-			return None
+			raise snscrape.base.EntityUnavailable('User unavailable')
 		user = obj['data']['user']['result']
 		rawDescription = user['legacy']['description']
 		renderedDescription = self._render_text_with_urls(rawDescription, user['legacy']['entities']['description']['urls'])
@@ -1881,8 +1879,7 @@ class TwitterProfileScraper(TwitterUserScraper):
 		gotPinned = False
 		for obj in self._iter_api_data('https://twitter.com/i/api/graphql/fn9oRltM1N4thkh5CVusPg/UserTweetsAndReplies', _TwitterAPIType.GRAPHQL, params, paginationParams, instructionsPath = ['data', 'user', 'result', 'timeline_v2', 'timeline', 'instructions']):
 			if obj['data']['user']['result']['__typename'] == 'UserUnavailable':
-				_logger.warning('User unavailable')
-				break
+				raise snscrape.base.EntityUnavailable('User unavailable')
 			instructions = obj['data']['user']['result']['timeline_v2']['timeline']['instructions']
 			if not gotPinned:
 				for instruction in instructions:
@@ -2080,11 +2077,9 @@ class TwitterCommunityScraper(_TwitterAPIScraper):
 		}
 		obj = self._get_api_data('https://twitter.com/i/api/graphql/bC3Saf4niY6YuzJWV2oUGg/CommunitiesFetchOneQuery', _TwitterAPIType.GRAPHQL, params = params, instructionsPath = ['data', 'communityResults'])
 		if not obj['data'] or 'result' not in obj['data']['communityResults']:
-			_logger.warning('Empty response')
-			return None
+			raise snscrape.base.ScraperException('Empty response')
 		if obj['data']['communityResults']['result']['__typename'] == 'CommunityUnavailable':
-			_logger.warning('Community unavailable')
-			return None
+			raise snscrape.base.EntityUnavailable('Community unavailable')
 		community = obj['data']['communityResults']['result']
 		optKwargs = {}
 		if 'description' in community:
@@ -2142,8 +2137,7 @@ class TwitterCommunityScraper(_TwitterAPIScraper):
 
 		for obj in self._iter_api_data('https://twitter.com/i/api/graphql/9nnDM-yum8Te--T2REfgkg/CommunityTweetsTimeline', _TwitterAPIType.GRAPHQL, params, paginationParams, instructionsPath = ['data', 'communityResults', 'result', 'community_timeline', 'timeline', 'instructions']):
 			if obj['data']['communityResults']['result']['__typename'] == 'CommunityUnavailable':
-				_logger.warning('Community unavailable')
-				break
+				raise snscrape.base.EntityUnavailable('Community unavailable')
 			yield from self._graphql_timeline_instructions_to_tweets(obj['data']['communityResults']['result']['community_timeline']['timeline']['instructions'])
 
 	@classmethod
