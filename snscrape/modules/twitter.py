@@ -1029,15 +1029,10 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			if 'result' not in o:
 				_logger.warning(f'Empty user ref object in card on tweet {tweetId}')
 				continue
-			o = o['result']
-			if o['__typename'] == 'UserUnavailable':
+			user = self._graphql_user_results_to_user(o)
+			if isinstance(user, UserRef):
 				_logger.warning(f'Unavailable user in card on tweet {tweetId}')
 				continue
-			userId = int(o['rest_id'])
-			if 'legacy' in o:
-				user = self._user_to_user(o['legacy'], id_ = userId)
-			else:
-				user = UserRef(id = userId)
 			if userId in userRefs:
 				if userRefs[userId] != user:
 					_logger.warning(f'Duplicate user {userId} with differing data in card on tweet {tweetId}')
@@ -1480,8 +1475,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			out.append(text[url['indices'][1] : nextUrl['indices'][0] if nextUrl is not None else None])
 		return ''.join(out)
 
-	def _user_to_user(self, user, id_ = None):
-		kwargs = {}
+	def _user_to_user(self, user, id_ = None, **kwargs):
 		kwargs['username'] = user['screen_name']
 		kwargs['id'] = id_ if id_ else user['id'] if 'id' in user else int(user['id_str'])
 		kwargs['displayname'] = user['name']
@@ -1513,8 +1507,8 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			kwargs['link'] = TextLink(text = entity.get('display_url'), url = entity.get('expanded_url', user['url']), tcourl = user['url'], indices = tuple(entity['indices']))
 		kwargs['profileImageUrl'] = user['profile_image_url_https']
 		kwargs['profileBannerUrl'] = user.get('profile_banner_url')
-		if 'ext' in user and 'highlightedLabel' in user['ext'] and (label := user['ext']['highlightedLabel']['r']['ok'].get('label')):
-			kwargs['label'] = self._user_label_to_user_label(label)
+		if 'label' not in kwargs and (labelO := user.get('affiliates_highlighted_label', {}).get('label')):
+			kwargs['label'] = self._user_label_to_user_label(labelO)
 		return User(**kwargs)
 
 	def _user_label_to_user_label(self, label):
@@ -1551,7 +1545,10 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 	def _graphql_user_results_to_user(self, results, userId = None):
 		if 'result' not in results or results['result']['__typename'] == 'UserUnavailable':
 			return self._graphql_user_results_to_user_ref(results, userId)
-		return self._user_to_user(results['result']['legacy'], id_ = userId if userId is not None else int(results['result']['rest_id']))
+		kwargs = {}
+		if (labelO := results['result']['affiliates_highlighted_label'].get('label')):
+			kwargs['label'] = self._user_label_to_user_label(labelO)
+		return self._user_to_user(results['result']['legacy'], id_ = userId if userId is not None else int(results['result']['rest_id']), **kwargs)
 
 	@classmethod
 	def _cli_construct(cls, argparseArgs, *args, **kwargs):
@@ -1689,47 +1686,7 @@ class TwitterUserScraper(TwitterSearchScraper):
 			raise snscrape.base.ScraperError('Empty response')
 		if obj['data']['user']['result']['__typename'] == 'UserUnavailable':
 			raise snscrape.base.EntityUnavailable('User unavailable')
-		user = obj['data']['user']['result']
-		rawDescription = user['legacy']['description']
-		renderedDescription = self._render_text_with_urls(rawDescription, user['legacy']['entities']['description']['urls'])
-		link = None
-		if user['legacy'].get('url'):
-			entity = user['legacy']['entities'].get('url', {}).get('urls', [None])[0]
-			if not entity or entity['url'] != user['legacy']['url']:
-				_logger.warning(f'Link inconsistency on user')
-			if not entity:
-				entity = {'indices': (0, len(user['legacy']['url']))}
-			link = TextLink(text = entity.get('display_url'), url = entity.get('expanded_url', user['legacy']['url']), tcourl = user['legacy']['url'], indices = tuple(entity['indices']))
-		label = None
-		if (labelO := user['affiliates_highlighted_label'].get('label')):
-			label = self._user_label_to_user_label(labelO)
-		return User(
-			username = user['legacy']['screen_name'],
-			id = int(user['rest_id']),
-			displayname = user['legacy']['name'],
-			rawDescription = rawDescription,
-			renderedDescription = renderedDescription,
-			descriptionLinks = [TextLink(
-			                      text = x.get('display_url'),
-			                      url = x['expanded_url'],
-			                      tcourl = x['url'],
-			                      indices = tuple(x['indices']),
-			                    ) for x in user['legacy']['entities']['description']['urls']],
-			verified = user['legacy']['verified'],
-			created = email.utils.parsedate_to_datetime(user['legacy']['created_at']),
-			followersCount = user['legacy']['followers_count'],
-			friendsCount = user['legacy']['friends_count'],
-			statusesCount = user['legacy']['statuses_count'],
-			favouritesCount = user['legacy']['favourites_count'],
-			listedCount = user['legacy']['listed_count'],
-			mediaCount = user['legacy']['media_count'],
-			location = user['legacy']['location'],
-			protected = user['legacy'].get('protected'),
-			link = link,
-			profileImageUrl = user['legacy']['profile_image_url_https'],
-			profileBannerUrl = user['legacy'].get('profile_banner_url'),
-			label = label,
-		  )
+		return self._graphql_user_results_to_user(obj['data']['user'])
 
 	def get_items(self):
 		if self._isUserId:
