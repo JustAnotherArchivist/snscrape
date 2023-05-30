@@ -244,6 +244,7 @@ def parse_args():
 	group = parser.add_mutually_exclusive_group(required = False)
 	group.add_argument('-f', '--format', dest = 'format', type = parse_format, default = None, help = 'Output format')
 	group.add_argument('--jsonl', dest = 'jsonl', action = 'store_true', default = False, help = 'Output JSONL')
+	group.add_argument('--jsonl-for-buggy-int-parser', dest = 'jsonlForBuggyIntParser', action = 'store_true', default = False, help = 'Output JSONL and insert extra string fields into objects for integers exceeding double precision limits')
 	parser.add_argument('--with-entity', dest = 'withEntity', action = 'store_true', default = False, help = 'Include the entity (e.g. user, channel) as the first output item')
 	parser.add_argument('--since', type = parse_datetime_arg, metavar = 'DATETIME', help = 'Only return results newer than DATETIME')
 	parser.add_argument('--progress', action = 'store_true', default = False, help = 'Report progress on stderr')
@@ -264,6 +265,8 @@ def parse_args():
 
 	if not args.withEntity and args.maxResults == 0:
 		parser.error('--max-results 0 is only valid when used with --with-entity')
+	if args.jsonlForBuggyIntParser:
+		args.jsonl = True
 
 	return args
 
@@ -311,7 +314,7 @@ def main():
 		try:
 			if args.withEntity and (entity := scraper.entity):
 				if args.jsonl:
-					print(entity.json())
+					print(entity.json(forBuggyIntParser = args.jsonlForBuggyIntParser))
 				else:
 					print(entity)
 			if args.maxResults == 0:
@@ -322,7 +325,7 @@ def main():
 					logger.info(f'Exiting due to reaching older results than {args.since}')
 					break
 				if args.jsonl:
-					print(item.json())
+					print(item.json(forBuggyIntParser = args.jsonlForBuggyIntParser))
 				elif args.format is not None:
 					print(args.format.format(item))
 				else:

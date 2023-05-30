@@ -55,7 +55,7 @@ def _json_serialise_datetime(obj):
 	raise TypeError(f'Object of type {type(obj)} is not JSON serializable')
 
 
-def _json_dataclass_to_dict(obj):
+def _json_dataclass_to_dict(obj, forBuggyIntParser = False):
 	if isinstance(obj, _JSONDataclass) or dataclasses.is_dataclass(obj):
 		out = {}
 		out['_type'] = f'{type(obj).__module__}.{type(obj).__name__}'
@@ -63,28 +63,31 @@ def _json_dataclass_to_dict(obj):
 			assert field.name != '_type'
 			if field.name.startswith('_'):
 				continue
-			out[field.name] = _json_dataclass_to_dict(getattr(obj, field.name))
+			out[field.name] = _json_dataclass_to_dict(getattr(obj, field.name), forBuggyIntParser = forBuggyIntParser)
 		# Add properties
 		for k in dir(obj):
 			if isinstance(getattr(type(obj), k, None), (property, _DeprecatedProperty)):
 				assert k != '_type'
 				if k.startswith('_'):
 					continue
-				out[k] = _json_dataclass_to_dict(getattr(obj, k))
+				out[k] = _json_dataclass_to_dict(getattr(obj, k), forBuggyIntParser = forBuggyIntParser)
 	elif isinstance(obj, (tuple, list)):
-		return type(obj)(_json_dataclass_to_dict(x) for x in obj)
+		return type(obj)(_json_dataclass_to_dict(x, forBuggyIntParser = forBuggyIntParser) for x in obj)
 	elif isinstance(obj, dict):
-		out = {_json_dataclass_to_dict(k): _json_dataclass_to_dict(v) for k, v in obj.items()}
+		out = {_json_dataclass_to_dict(k, forBuggyIntParser = forBuggyIntParser): _json_dataclass_to_dict(v, forBuggyIntParser = forBuggyIntParser) for k, v in obj.items()}
 	elif isinstance(obj, set):
-		return {_json_dataclass_to_dict(v) for v in obj}
+		return {_json_dataclass_to_dict(v, forBuggyIntParser = forBuggyIntParser) for v in obj}
 	else:
 		return copy.deepcopy(obj)
-	# Transform IntWithGranularity
+	# Transform IntWithGranularity and handle buggy int parser output
 	for key, value in list(out.items()): # Modifying the dict below, so make a copy first
 		if isinstance(value, IntWithGranularity):
 			out[key] = int(value)
 			assert f'{key}.granularity' not in out, f'Granularity collision on {key}.granularity'
 			out[f'{key}.granularity'] = value.granularity
+		elif forBuggyIntParser and isinstance(value, int) and abs(value) > 2**53:
+			assert f'{key}.str' not in out, f'Buggy int collision on {key}.str'
+			out[f'{key}.str'] = str(value)
 	return out
 
 
@@ -92,12 +95,17 @@ def _json_dataclass_to_dict(obj):
 class _JSONDataclass:
 	'''A base class for dataclasses for conversion to JSON'''
 
-	def json(self):
-		'''Convert the object to a JSON string'''
+	def json(self, forBuggyIntParser = False):
+		'''
+		Convert the object to a JSON string
+
+		If forBuggyIntParser is True, emit JSON for parsers that can't correctly decode integers exceeding the limits of double-precision IEEE 754 floating point numbers.
+		Specifically, each field x containing an integer with a magnitude above 2**53 results in an additional field x.str with the value as a string.
+		'''
 
 		with warnings.catch_warnings():
 			warnings.filterwarnings(action = 'ignore', category = DeprecatedFeatureWarning)
-			out = _json_dataclass_to_dict(self)
+			out = _json_dataclass_to_dict(self, forBuggyIntParser = forBuggyIntParser)
 		return json.dumps(out, default = _json_serialise_datetime)
 
 
