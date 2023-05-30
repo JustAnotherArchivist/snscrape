@@ -1084,11 +1084,11 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			if isinstance(user, UserRef):
 				_logger.warning(f'Unavailable user in card on tweet {tweetId}')
 				continue
-			if userId in userRefs:
-				if userRefs[userId] != user:
-					_logger.warning(f'Duplicate user {userId} with differing data in card on tweet {tweetId}')
+			if user.id in userRefs:
+				if userRefs[user.id] != user:
+					_logger.warning(f'Duplicate user {user.id} with differing data in card on tweet {tweetId}')
 				continue
-			userRefs[userId] = user
+			userRefs[user.id] = user
 
 		messyBindingValues = ((x['key'], x['value']) for x in card['legacy']['binding_values'])
 		for key, value in messyBindingValues:
