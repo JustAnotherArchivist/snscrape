@@ -533,6 +533,8 @@ class User(snscrape.base.Item):
 	profileImageUrl: typing.Optional[str] = None
 	profileBannerUrl: typing.Optional[str] = None
 	label: typing.Optional['UserLabel'] = None
+	blue: typing.Optional[bool] = None
+	blueType: typing.Optional[str] = None
 
 	descriptionUrls = snscrape.base._DeprecatedProperty('descriptionUrls', lambda self: self.descriptionLinks, 'descriptionLinks')
 	linkUrl = snscrape.base._DeprecatedProperty('linkUrl', lambda self: self.link.url if self.link else None, 'link.url')
@@ -1558,6 +1560,10 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 		kwargs['profileBannerUrl'] = user.get('profile_banner_url')
 		if 'label' not in kwargs and (labelO := user.get('affiliates_highlighted_label', {}).get('label')):
 			kwargs['label'] = self._user_label_to_user_label(labelO)
+		if 'blue' not in kwargs:
+			kwargs['blue'] = user.get('is_blue_verified')
+		if 'blueType' not in kwargs:
+			kwargs['blueType'] = user.get('verified_type')
 		return User(**kwargs)
 
 	def _user_label_to_user_label(self, label):
@@ -1595,6 +1601,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 		if 'result' not in results or results['result']['__typename'] == 'UserUnavailable':
 			return self._graphql_user_results_to_user_ref(results, userId)
 		kwargs = {}
+		kwargs['blue'] = results['result']['is_blue_verified']
 		if (labelO := results['result']['affiliates_highlighted_label'].get('label')):
 			kwargs['label'] = self._user_label_to_user_label(labelO)
 		return self._user_to_user(results['result']['legacy'], id_ = userId if userId is not None else int(results['result']['rest_id']), **kwargs)
