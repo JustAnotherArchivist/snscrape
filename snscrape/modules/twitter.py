@@ -792,14 +792,12 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 		# Logic for dual scrolling: direction is set to top, but if the bottom cursor is found, bottomCursorAndStop is set accordingly.
 		# Once the top pagination is exhausted, the bottomCursorAndStop is used and reset to None; it isn't set anymore after because the first entry condition will always be true for the bottom cursor.
 
+		assert apiType is _TwitterAPIType.GRAPHQL
 		if cursor is None:
 			reqParams = params
 		else:
 			reqParams = copy.deepcopy(paginationParams)
-			if apiType is _TwitterAPIType.V2:
-				reqParams['cursor'] = cursor
-			else:
-				reqParams['variables']['cursor'] = cursor
+			reqParams['variables']['cursor'] = cursor
 		bottomCursorAndStop = None
 		if direction is _ScrollDirection.TOP or direction is _ScrollDirection.BOTH:
 			dir = 'top'
@@ -817,12 +815,9 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			newCursor = None
 			promptCursor = None
 			newBottomCursorAndStop = None
-			if apiType is _TwitterAPIType.V2:
-				instructions = obj['timeline']['instructions']
-			elif apiType is _TwitterAPIType.GRAPHQL:
-				instructions = obj
-				for k in instructionsPath:
-					instructions = instructions[k]
+			instructions = obj
+			for k in instructionsPath:
+				instructions = instructions[k]
 			entryCount = 0
 			for instruction in instructions:
 				if 'addEntries' in instruction:
@@ -839,14 +834,10 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 				for entry in entries:
 					if not (entry['entryId'].startswith('sq-cursor-') or entry['entryId'].startswith('cursor-')):
 						continue
-					if apiType is _TwitterAPIType.V2:
-						entryCursor = entry['content']['operation']['cursor']['value']
-						entryCursorStop = entry['content']['operation']['cursor'].get('stopOnEmptyResponse', None)
-					elif apiType is _TwitterAPIType.GRAPHQL:
-						cursorContent = entry['content']
-						while cursorContent.get('itemType') == 'TimelineTimelineItem' or cursorContent.get('entryType') == 'TimelineTimelineItem':
-							cursorContent = cursorContent['itemContent']
-						entryCursor, entryCursorStop = cursorContent['value'], cursorContent.get('stopOnEmptyResponse', None)
+					cursorContent = entry['content']
+					while cursorContent.get('itemType') == 'TimelineTimelineItem' or cursorContent.get('entryType') == 'TimelineTimelineItem':
+						cursorContent = cursorContent['itemContent']
+					entryCursor, entryCursorStop = cursorContent['value'], cursorContent.get('stopOnEmptyResponse', None)
 					if entry['entryId'] == f'sq-cursor-{dir}' or entry['entryId'].startswith(f'cursor-{dir}-'):
 						newCursor = entryCursor
 						if entryCursorStop is not None:
@@ -885,40 +876,10 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 				emptyResponsesOnCursor = 0
 			cursor = newCursor
 			reqParams = copy.deepcopy(paginationParams)
-			if apiType is _TwitterAPIType.V2:
-				reqParams['cursor'] = cursor
-			else:
-				reqParams['variables']['cursor'] = cursor
+			reqParams['variables']['cursor'] = cursor
 
 	def _count_tweets_and_users(self, entries):
 		return sum(entry['entryId'].startswith('sq-I-t-') or entry['entryId'].startswith('tweet-') or entry['entryId'].startswith('user-') for entry in entries)
-
-	def _v2_timeline_instructions_to_tweets_or_users(self, obj):
-		# No data format test, just a hard and loud crash if anything's wrong :-)
-		for instruction in obj['timeline']['instructions']:
-			if 'addEntries' in instruction:
-				entries = instruction['addEntries']['entries']
-			elif 'replaceEntry' in instruction:
-				entries = [instruction['replaceEntry']['entry']]
-			else:
-				continue
-			for entry in entries:
-				if entry['entryId'].startswith('sq-I-t-') or entry['entryId'].startswith('tweet-'):
-					yield from self._v2_instruction_tweet_entry_to_tweet(entry['entryId'], entry['content'], obj)
-				elif entry['entryId'].startswith('user-'):
-					yield self._user_to_user(obj['globalObjects']['users'][entry['content']['item']['content']['user']['id']])
-
-	def _v2_instruction_tweet_entry_to_tweet(self, entryId, entry, obj):
-		if 'tweet' in entry['item']['content']:
-			if 'promotedMetadata' in entry['item']['content']['tweet']: # Promoted tweet aka ads
-				return
-			if entry['item']['content']['tweet']['id'] not in obj['globalObjects']['tweets']:
-				_logger.warning(f'Skipping tweet {entry["item"]["content"]["tweet"]["id"]} which is not in globalObjects')
-				return
-			tweet = obj['globalObjects']['tweets'][entry['item']['content']['tweet']['id']]
-		else:
-			raise snscrape.base.ScraperException(f'Unable to handle entry {entryId!r}')
-		yield self._tweet_to_tweet(tweet, obj)
 
 	def _get_tweet_id(self, tweet):
 		return tweet['id'] if 'id' in tweet else int(tweet['id_str'])
@@ -1064,35 +1025,26 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 		bindingValues = {}
 
 		userRefs = {}
-		if apiType is _TwitterAPIType.V2:
-			for o in card.get('users', {}).values():
-				userId = o['id']
-				assert userId not in userRefs
-				userRefs[userId] = self._user_to_user(o)
-		elif apiType is _TwitterAPIType.GRAPHQL:
-			for o in card['legacy'].get('user_refs_results', []):
-				if 'result' not in o:
-					_logger.warning(f'Empty user ref object in card on tweet {tweetId}')
-					continue
-				o = o['result']
-				if o['__typename'] == 'UserUnavailable':
-					_logger.warning(f'Unavailable user in card on tweet {tweetId}')
-					continue
-				userId = int(o['rest_id'])
-				if 'legacy' in o:
-					user = self._user_to_user(o['legacy'], id_ = userId)
-				else:
-					user = UserRef(id = userId)
-				if userId in userRefs:
-					if userRefs[userId] != user:
-						_logger.warning(f'Duplicate user {userId} with differing data in card on tweet {tweetId}')
-					continue
-				userRefs[userId] = user
+		for o in card['legacy'].get('user_refs_results', []):
+			if 'result' not in o:
+				_logger.warning(f'Empty user ref object in card on tweet {tweetId}')
+				continue
+			o = o['result']
+			if o['__typename'] == 'UserUnavailable':
+				_logger.warning(f'Unavailable user in card on tweet {tweetId}')
+				continue
+			userId = int(o['rest_id'])
+			if 'legacy' in o:
+				user = self._user_to_user(o['legacy'], id_ = userId)
+			else:
+				user = UserRef(id = userId)
+			if userId in userRefs:
+				if userRefs[userId] != user:
+					_logger.warning(f'Duplicate user {userId} with differing data in card on tweet {tweetId}')
+				continue
+			userRefs[userId] = user
 
-		if apiType is _TwitterAPIType.V2:
-			messyBindingValues = card['binding_values'].items()
-		elif apiType is _TwitterAPIType.GRAPHQL:
-			messyBindingValues = ((x['key'], x['value']) for x in card['legacy']['binding_values'])
+		messyBindingValues = ((x['key'], x['value']) for x in card['legacy']['binding_values'])
 		for key, value in messyBindingValues:
 			if 'type' not in value:
 				# Silently ignore creator/site entries since they frequently appear like this.
@@ -1118,10 +1070,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			else:
 				_logger.warning(f'Unsupported card value type on {key!r} on tweet {tweetId}: {value["type"]!r}')
 
-		if apiType is _TwitterAPIType.V2:
-			cardName = card['name']
-		elif apiType is _TwitterAPIType.GRAPHQL:
-			cardName = card['legacy']['name']
+		cardName = card['legacy']['name']
 
 		if cardName in ('summary', 'summary_large_image', 'app', 'direct_store_link_app'):
 			keyMap = {
@@ -1420,21 +1369,6 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			imageUrl = vibe['imgUrl'],
 			imageDescription = vibe['imgDescription'],
 		)
-
-	def _tweet_to_tweet(self, tweet, obj):
-		user = self._user_to_user(obj['globalObjects']['users'][tweet['user_id_str']])
-		kwargs = {}
-		if 'retweeted_status_id_str' in tweet:
-			kwargs['retweetedTweet'] = self._tweet_to_tweet(obj['globalObjects']['tweets'][tweet['retweeted_status_id_str']], obj)
-		if 'quoted_status_id_str' in tweet and tweet['quoted_status_id_str'] in obj['globalObjects']['tweets']:
-			kwargs['quotedTweet'] = self._tweet_to_tweet(obj['globalObjects']['tweets'][tweet['quoted_status_id_str']], obj)
-		if 'card' in tweet:
-			kwargs['card'] = self._make_card(tweet['card'], _TwitterAPIType.V2, self._get_tweet_id(tweet))
-		if 'ext_views' in tweet and 'count' in tweet['ext_views']:
-			kwargs['viewCount'] = int(tweet['ext_views']['count'])
-		if 'vibe' in tweet.get('ext', {}):
-			kwargs['vibe'] = self._make_vibe(tweet['ext']['vibe']['r']['ok'])
-		return self._make_tweet(tweet, user, **kwargs)
 
 	def _make_tombstone(self, tweetId, info):
 		if tweetId is None:
