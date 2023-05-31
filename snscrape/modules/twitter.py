@@ -1081,7 +1081,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 				_logger.warning(f'Empty user ref object in card on tweet {tweetId}')
 				continue
 			user = self._graphql_user_results_to_user(o)
-			if isinstance(user, UserRef):
+			if isinstance(user, UserRef) or user is None:
 				_logger.warning(f'Unavailable user in card on tweet {tweetId}')
 				continue
 			if user.id in userRefs:
