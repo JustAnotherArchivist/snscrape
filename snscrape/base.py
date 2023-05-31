@@ -11,6 +11,7 @@ import logging
 import random
 import requests
 import requests.adapters
+import snscrape.version
 import urllib3.connection
 import time
 import warnings
@@ -106,6 +107,8 @@ class _JSONDataclass:
 		with warnings.catch_warnings():
 			warnings.filterwarnings(action = 'ignore', category = DeprecatedFeatureWarning)
 			out = _json_dataclass_to_dict(self, forBuggyIntParser = forBuggyIntParser)
+		assert '_snscrape' not in out, 'Metadata collision on _snscrape'
+		out['_snscrape'] = snscrape.version.__version__
 		return json.dumps(out, default = _json_serialise_datetime)
 
 
