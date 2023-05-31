@@ -152,7 +152,7 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 		soup = bs4.BeautifulSoup(r.text, 'lxml')
 		membersDiv = soup.find('div', class_ = 'tgme_page_extra')
 		if membersDiv.text.endswith(' subscribers'):
-			kwargs['members'] = int(membersDiv.text[:-8].replace(' ', ''))
+			kwargs['members'] = int(membersDiv.text[:-12].replace(' ', ''))
 		kwargs['photo'] = soup.find('img', class_ = 'tgme_page_photo_image').attrs['src']
 
 		r, soup = self._initial_page()
