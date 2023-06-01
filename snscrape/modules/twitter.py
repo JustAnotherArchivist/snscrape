@@ -1493,7 +1493,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 						_logger.warning('Got unrecognised timeline tweet item(s)')
 				elif entry['entryId'].startswith('homeConversation-'):
 					if entry['content']['entryType'] == 'TimelineTimelineModule':
-						for item in entry['content']['items']:
+						for item in reversed(entry['content']['items']):
 							if not item['entryId'].startswith('homeConversation-') or '-tweet-' not in item['entryId']:
 								raise snscrape.base.ScraperException(f'Unexpected home conversation entry ID: {item["entryId"]!r}')
 							tweetId = int(item['entryId'].split('-tweet-', 1)[1])
