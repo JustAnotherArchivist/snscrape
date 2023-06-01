@@ -1491,11 +1491,11 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 						yield self._graphql_timeline_tweet_item_result_to_tweet(entry['content']['itemContent']['tweet_results']['result'], tweetId = tweetId, **kwargs)
 					else:
 						_logger.warning('Got unrecognised timeline tweet item(s)')
-				elif entry['entryId'].startswith('homeConversation-'):
+				elif entry['entryId'].startswith(('homeConversation-', 'profile-conversation-')):
 					if entry['content']['entryType'] == 'TimelineTimelineModule':
 						for item in reversed(entry['content']['items']):
-							if not item['entryId'].startswith('homeConversation-') or '-tweet-' not in item['entryId']:
-								raise snscrape.base.ScraperException(f'Unexpected home conversation entry ID: {item["entryId"]!r}')
+							if not item['entryId'].startswith(entry['entryId'].split('ion-', 1)[0] + 'ion-') or '-tweet-' not in item['entryId']:
+								raise snscrape.base.ScraperException(f'Unexpected conversation entry ID: {item["entryId"]!r}')
 							tweetId = int(item['entryId'].split('-tweet-', 1)[1])
 							if item['item']['itemContent']['itemType'] == 'TimelineTweet':
 								if 'result' in item['item']['itemContent']['tweet_results']:
@@ -1834,7 +1834,11 @@ class TwitterProfileScraper(TwitterUserScraper):
 						gotPinned = True
 						tweetId = int(instruction['entry']['entryId'][6:]) if instruction['entry']['entryId'].startswith('tweet-') else None
 						yield self._graphql_timeline_tweet_item_result_to_tweet(instruction['entry']['content']['itemContent']['tweet_results']['result'], tweetId = tweetId, pinned = True)
-			yield from self._graphql_timeline_instructions_to_tweets(instructions, pinned = False)
+			# Includes tweets by other users on conversations, don't return those
+			for tweet in self._graphql_timeline_instructions_to_tweets(instructions, pinned = False):
+				if tweet.user.id != userId:
+					continue
+				yield tweet
 
 
 class TwitterHashtagScraper(TwitterSearchScraper):
