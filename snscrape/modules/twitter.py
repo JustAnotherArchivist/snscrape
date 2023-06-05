@@ -1739,7 +1739,7 @@ class TwitterUserScraper(TwitterSearchScraper):
 		}
 		obj = self._get_api_data(endpoint, _TwitterAPIType.GRAPHQL, params = {'variables': variables, 'features': features}, instructionsPath = ['data', 'user'])
 		if not obj['data'] or 'result' not in obj['data']['user']:
-			raise snscrape.base.ScraperError('Empty response')
+			raise snscrape.base.EntityUnavailable('Empty response')
 		if obj['data']['user']['result']['__typename'] == 'UserUnavailable':
 			raise snscrape.base.EntityUnavailable('User unavailable')
 		return self._graphql_user_results_to_user(obj['data']['user'])
