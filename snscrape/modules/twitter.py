@@ -746,7 +746,7 @@ class _TwitterAPIType(enum.Enum):
 
 
 class _TwitterAPIScraper(snscrape.base.Scraper):
-	def __init__(self, baseUrl, *, guestTokenManager = None, maxEmptyPages = 0, **kwargs):
+	def __init__(self, baseUrl, *, guestTokenManager = None, maxEmptyPages = 0, maxRetries = 10, **kwargs):
 		super().__init__(**kwargs)
 		self._baseUrl = baseUrl
 		if guestTokenManager is None:
@@ -756,6 +756,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			guestTokenManager = _globalGuestTokenManager
 		self._guestTokenManager = guestTokenManager
 		self._maxEmptyPages = maxEmptyPages
+		self._maxRetries = maxRetries
 		self._apiHeaders = {
 			'Authorization': _API_AUTHORIZATION_HEADER,
 			'Referer': self._baseUrl,
@@ -817,21 +818,28 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 		self._ensure_guest_token()
 		if apiType is _TwitterAPIType.GRAPHQL:
 			params = urllib.parse.urlencode({k: json.dumps(v, separators = (',', ':')) for k, v in params.items()}, quote_via = urllib.parse.quote)
-		r = self._get(endpoint, params = params, headers = self._apiHeaders, responseOkCallback = self._check_api_response)
-		try:
-			obj = r.json()
-		except json.JSONDecodeError as e:
-			raise snscrape.base.ScraperException('Received invalid JSON from Twitter') from e
-		if apiType is _TwitterAPIType.GRAPHQL and 'errors' in obj:
-			msg = 'Twitter responded with an error: ' + ', '.join(f'{e["name"]}: {e["message"]}' for e in obj['errors'])
-			instructions = obj
-			for k in instructionsPath:
-				instructions = instructions.get(k, {})
-			if instructions:
-				_logger.warning(msg)
-			else:
-				raise snscrape.base.ScraperException(msg)
-		return obj
+		commonFlakyErrors = {"TimeoutError", "InternalServerError"}
+		for _ in range(self._maxRetries):
+			r = self._get(endpoint, params = params, headers = self._apiHeaders, responseOkCallback = self._check_api_response)
+			try:
+				obj = r.json()
+			except json.JSONDecodeError as e:
+				raise snscrape.base.ScraperException('Received invalid JSON from Twitter') from e
+			if apiType is _TwitterAPIType.GRAPHQL and 'errors' in obj:
+				errorNames = {e["name"] for e in obj['errors']}
+				if errorNames & commonFlakyErrors:
+					_logger.warning(f'Retrying to fetch page, caught flaky errors from Twitter: ' + ', '.join(errorNames & commonFlakyErrors))
+					continue
+				msg = 'Twitter responded with an error: ' + ', '.join(f'{e["name"]}: {e["message"]}' for e in obj['errors'])
+				instructions = obj
+				for k in instructionsPath:
+					instructions = instructions.get(k, {})
+				if instructions:
+					_logger.warning(msg)
+				else:
+					raise snscrape.base.ScraperException(msg)
+			return obj
+		raise snscrape.base.ScraperException(f"Exceeded {self._maxRetries} retries, giving up")
 
 	def _iter_api_data(self, endpoint, apiType, params, paginationParams = None, cursor = None, direction = _ScrollDirection.BOTTOM, instructionsPath = None):
 		# Iterate over endpoint with params/paginationParams, optionally starting from a cursor
