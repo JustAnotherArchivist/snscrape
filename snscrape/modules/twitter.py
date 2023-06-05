@@ -1776,6 +1776,10 @@ class TwitterUserScraper(TwitterSearchScraper):
 class TwitterProfileScraper(TwitterUserScraper):
 	name = 'twitter-profile'
 
+	def __init__(self, user, maxDupeCount = 50, **kwargs):
+		super().__init__(user, **kwargs)
+		self._maxDupeCount = maxDupeCount
+
 	def get_items(self):
 		if not self._isUserId:
 			if self.entity is None:
@@ -1822,7 +1826,21 @@ class TwitterProfileScraper(TwitterUserScraper):
 
 		params = {'variables': variables, 'features': features}
 		paginationParams = {'variables': paginationVariables, 'features': features}
+		seenTweetIds = set()
+		tweetDupeCount = 0
+		for tweet in self._iter_tweets(userId, params, paginationParams):
+			# Prevent cycles, and prevent duplicate tweets being sent in the stream.
+			if tweet.id in seenTweetIds:
+				tweetDupeCount += 1
+				if tweetDupeCount >= self._maxDupeCount:
+					_logger.warning(f"Stopping stream as suspected cycle hit, found {self._maxDupeCount} duplicate tweet entries")
+					break
+				continue
 
+			seenTweetIds.add(tweet.id)
+			yield tweet
+
+	def _iter_tweets(self, userId, params, paginationParams):
 		gotPinned = False
 		for obj in self._iter_api_data('https://twitter.com/i/api/graphql/fn9oRltM1N4thkh5CVusPg/UserTweetsAndReplies', _TwitterAPIType.GRAPHQL, params, paginationParams, instructionsPath = ['data', 'user', 'result', 'timeline_v2', 'timeline', 'instructions']):
 			if obj['data']['user']['result']['__typename'] == 'UserUnavailable':
