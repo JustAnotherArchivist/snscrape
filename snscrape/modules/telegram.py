@@ -7,6 +7,7 @@ import datetime
 import logging
 import re
 import snscrape.base
+import snscrape.utils
 import typing
 import urllib.parse
 
@@ -196,7 +197,7 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 
 	@classmethod
 	def _cli_setup_parser(cls, subparser):
-		subparser.add_argument('channel', type = snscrape.base.nonempty_string('channel'), help = 'A channel name')
+		subparser.add_argument('channel', type = snscrape.utils.nonempty_string_arg('channel'), help = 'A channel name')
 
 	@classmethod
 	def _cli_from_args(cls, args):

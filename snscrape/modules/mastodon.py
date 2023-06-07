@@ -8,6 +8,7 @@ import enum
 import json
 import logging
 import snscrape.base
+import snscrape.utils
 import time
 import typing
 import urllib.parse
@@ -289,7 +290,7 @@ class MastodonProfileScraper(_MastodonCommonScraper):
 
 	@classmethod
 	def _cli_setup_parser(cls, subparser):
-		subparser.add_argument('account', type = snscrape.base.nonempty_string('account'), help = 'A Mastodon account. This can be either a URL to the profile page or a string of the form @account@instance.example.org')
+		subparser.add_argument('account', type = snscrape.utils.nonempty_string_arg('account'), help = 'A Mastodon account. This can be either a URL to the profile page or a string of the form @account@instance.example.org')
 
 	@classmethod
 	def _cli_from_args(cls, args):
@@ -333,7 +334,7 @@ class MastodonTootScraper(_MastodonCommonScraper):
 	@classmethod
 	def _cli_setup_parser(cls, subparser):
 		subparser.add_argument('--thread', action = 'store_true', help = 'Collect thread around the toot referenced by the URL')
-		subparser.add_argument('url', type = snscrape.base.nonempty_string('url'), help = 'A URL for a toot')
+		subparser.add_argument('url', type = snscrape.utils.nonempty_string_arg('url'), help = 'A URL for a toot')
 
 	@classmethod
 	def _cli_from_args(cls, args):

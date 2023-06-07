@@ -1,4 +1,4 @@
-__all__ = ['DeprecatedFeatureWarning', 'IntWithGranularity', 'Item', 'Scraper', 'ScraperException']
+__all__ = ['DeprecatedFeatureWarning', 'Item', 'IntWithGranularity', 'ScraperException', 'EntityUnavailable', 'Scraper']
 
 
 import abc
@@ -11,6 +11,7 @@ import logging
 import random
 import requests
 import requests.adapters
+import snscrape.utils
 import snscrape.version
 import urllib3.connection
 import time
@@ -18,17 +19,6 @@ import warnings
 
 
 _logger = logging.getLogger(__name__)
-
-
-def _module_deprecation_helper(all, **names):
-	def __getattr__(name):
-		if name in names:
-			warnings.warn(f'{name} is deprecated, use {names[name].__name__} instead', DeprecatedFeatureWarning, stacklevel = 2)
-			return names[name]
-		raise AttributeError(f'module {__name__!r} has no attribute {name!r}')
-	def __dir__():
-		return sorted(all + list(names.keys()))
-	return __getattr__, __dir__
 
 
 class DeprecatedFeatureWarning(FutureWarning):
@@ -297,14 +287,4 @@ class Scraper:
 		return cls(*args, **kwargs, retries = argparseArgs.retries)
 
 
-def nonempty_string(name):
-	def f(s):
-		s = s.strip()
-		if s:
-			return s
-		raise ValueError('must not be an empty string')
-	f.__name__ = name
-	return f
-
-
-__getattr__, __dir__ = _module_deprecation_helper(__all__, Entity = Item)
+__getattr__, __dir__ = snscrape.utils.module_deprecation_helper(__all__, Entity = Item)

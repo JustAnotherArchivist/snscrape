@@ -1701,7 +1701,7 @@ class TwitterSearchScraper(_TwitterAPIScraper):
 		group.add_argument('--top', action = 'store_true', default = False, help = 'Search top tweets instead of live/chronological')
 		group.add_argument('--user', action = 'store_true', default = False, help = 'Search users instead of tweets')
 		subparser.add_argument('--max-empty-pages', dest = 'maxEmptyPages', metavar = 'N', type = int, default = 20, help = 'Stop after N empty pages from Twitter; set to 0 to disable')
-		subparser.add_argument('query', type = snscrape.base.nonempty_string('query'), help = 'A Twitter search string')
+		subparser.add_argument('query', type = snscrape.utils.nonempty_string_arg('query'), help = 'A Twitter search string')
 
 	@classmethod
 	def _cli_from_args(cls, args):
@@ -1739,7 +1739,7 @@ class TwitterUserScraper(TwitterSearchScraper):
 		}
 		obj = self._get_api_data(endpoint, _TwitterAPIType.GRAPHQL, params = {'variables': variables, 'features': features}, instructionsPath = ['data', 'user'])
 		if not obj['data'] or 'result' not in obj['data']['user']:
-			raise snscrape.base.ScraperError('Empty response')
+			raise snscrape.base.ScraperException('Empty response')
 		if obj['data']['user']['result']['__typename'] == 'UserUnavailable':
 			raise snscrape.base.EntityUnavailable('User unavailable')
 		return self._graphql_user_results_to_user(obj['data']['user'])
@@ -1843,7 +1843,7 @@ class TwitterProfileScraper(TwitterUserScraper):
 				return
 			previousPagesTweetIds.add(pageTweetIds)
 			for tweet in tweets:
-				if tweet.user.id != userId:
+				if getattr(getattr(tweet, 'user', None), 'id', userId) != userId:
 					continue
 				yield tweet
 
@@ -1857,7 +1857,7 @@ class TwitterHashtagScraper(TwitterSearchScraper):
 
 	@classmethod
 	def _cli_setup_parser(cls, subparser):
-		subparser.add_argument('hashtag', type = snscrape.base.nonempty_string('hashtag'), help = 'A Twitter hashtag (without #)')
+		subparser.add_argument('hashtag', type = snscrape.utils.nonempty_string_arg('hashtag'), help = 'A Twitter hashtag (without #)')
 
 	@classmethod
 	def _cli_from_args(cls, args):
@@ -1873,7 +1873,7 @@ class TwitterCashtagScraper(TwitterSearchScraper):
 
 	@classmethod
 	def _cli_setup_parser(cls, subparser):
-		subparser.add_argument('cashtag', type = snscrape.base.nonempty_string('cashtag'), help = 'A Twitter cashtag (without $)')
+		subparser.add_argument('cashtag', type = snscrape.utils.nonempty_string_arg('cashtag'), help = 'A Twitter cashtag (without $)')
 
 	@classmethod
 	def _cli_from_args(cls, args):
@@ -2003,7 +2003,7 @@ class TwitterListPostsScraper(TwitterSearchScraper):
 
 	@classmethod
 	def _cli_setup_parser(cls, subparser):
-		subparser.add_argument('list', type = snscrape.base.nonempty_string('list'), help = 'A Twitter list ID or a string of the form "username/listname" (replace spaces with dashes)')
+		subparser.add_argument('list', type = snscrape.utils.nonempty_string_arg('list'), help = 'A Twitter list ID or a string of the form "username/listname" (replace spaces with dashes)')
 
 	@classmethod
 	def _cli_from_args(cls, args):
@@ -2157,4 +2157,4 @@ class TwitterTrendsScraper(_TwitterAPIScraper):
 					yield Trend(name = trend['name'], metaDescription = trend['trendMetadata'].get('metaDescription'), domainContext = trend['trendMetadata']['domainContext'])
 
 
-__getattr__, __dir__ = snscrape.base._module_deprecation_helper(__all__, DescriptionURL = TextLink)
+__getattr__, __dir__ = snscrape.utils.module_deprecation_helper(__all__, DescriptionURL = TextLink)

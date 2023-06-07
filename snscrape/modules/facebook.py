@@ -8,6 +8,7 @@ import json
 import logging
 import re
 import snscrape.base
+import snscrape.utils
 import typing
 import urllib.parse
 
@@ -206,7 +207,7 @@ class _FacebookUserAndCommunityScraper(_FacebookCommonScraper):
 
 	@classmethod
 	def _cli_setup_parser(cls, subparser):
-		subparser.add_argument('username', type = snscrape.base.nonempty_string('username'), help = 'A Facebook username or user ID')
+		subparser.add_argument('username', type = snscrape.utils.nonempty_string_arg('username'), help = 'A Facebook username or user ID')
 
 	@classmethod
 	def _cli_from_args(cls, args):
@@ -357,7 +358,7 @@ class FacebookGroupScraper(_FacebookCommonScraper):
 
 	@classmethod
 	def _cli_setup_parser(cls, subparser):
-		subparser.add_argument('group', type = snscrape.base.nonempty_string('group'), help = 'A group name or ID')
+		subparser.add_argument('group', type = snscrape.utils.nonempty_string_arg('group'), help = 'A group name or ID')
 
 	@classmethod
 	def _cli_from_args(cls, args):

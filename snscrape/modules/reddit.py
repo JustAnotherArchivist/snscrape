@@ -6,6 +6,7 @@ import datetime
 import logging
 import re
 import snscrape.base
+import snscrape.utils
 import snscrape.version
 import string
 import time
@@ -224,7 +225,7 @@ class _RedditPushshiftSearchScraper(_RedditPushshiftScraper):
 		subparser.add_argument('--before', metavar = 'TIMESTAMP', type = int, help = 'Fetch results before a Unix timestamp')
 		subparser.add_argument('--after', metavar = 'TIMESTAMP', type = int, help = 'Fetch results after a Unix timestamp')
 		name = cls.name.split('-', 1)[1]
-		subparser.add_argument(name, type = snscrape.base.nonempty_string(name))
+		subparser.add_argument(name, type = snscrape.utils.nonempty_string_arg(name))
 
 	@classmethod
 	def _cli_from_args(cls, args):
@@ -272,7 +273,7 @@ class RedditSubmissionScraper(_RedditPushshiftScraper):
 
 	@classmethod
 	def _cli_setup_parser(cls, subparser):
-		subparser.add_argument('submissionId', type = snscrape.base.nonempty_string('submissionId'))
+		subparser.add_argument('submissionId', type = snscrape.utils.nonempty_string_arg('submissionId'))
 
 	@classmethod
 	def _cli_from_args(cls, args):
