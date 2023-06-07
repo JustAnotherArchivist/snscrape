@@ -1776,10 +1776,6 @@ class TwitterUserScraper(TwitterSearchScraper):
 class TwitterProfileScraper(TwitterUserScraper):
 	name = 'twitter-profile'
 
-	def __init__(self, user, maxDupeCount = 50, **kwargs):
-		super().__init__(user, **kwargs)
-		self._maxDupeCount = maxDupeCount
-
 	def get_items(self):
 		if not self._isUserId:
 			if self.entity is None:
@@ -1826,22 +1822,9 @@ class TwitterProfileScraper(TwitterUserScraper):
 
 		params = {'variables': variables, 'features': features}
 		paginationParams = {'variables': paginationVariables, 'features': features}
-		seenTweetIds = set()
-		tweetDupeCount = 0
-		for tweet in self._iter_tweets(userId, params, paginationParams):
-			# Prevent cycles, and prevent duplicate tweets being sent in the stream.
-			if tweet.id in seenTweetIds:
-				tweetDupeCount += 1
-				if tweetDupeCount >= self._maxDupeCount:
-					_logger.warning(f"Stopping stream as suspected cycle hit, found {self._maxDupeCount} duplicate tweet entries")
-					break
-				continue
 
-			seenTweetIds.add(tweet.id)
-			yield tweet
-
-	def _iter_tweets(self, userId, params, paginationParams):
 		gotPinned = False
+		previousPagesTweetIds = set()
 		for obj in self._iter_api_data('https://twitter.com/i/api/graphql/fn9oRltM1N4thkh5CVusPg/UserTweetsAndReplies', _TwitterAPIType.GRAPHQL, params, paginationParams, instructionsPath = ['data', 'user', 'result', 'timeline_v2', 'timeline', 'instructions']):
 			if obj['data']['user']['result']['__typename'] == 'UserUnavailable':
 				raise snscrape.base.EntityUnavailable('User unavailable')
@@ -1853,7 +1836,13 @@ class TwitterProfileScraper(TwitterUserScraper):
 						tweetId = int(instruction['entry']['entryId'][6:]) if instruction['entry']['entryId'].startswith('tweet-') else None
 						yield self._graphql_timeline_tweet_item_result_to_tweet(instruction['entry']['content']['itemContent']['tweet_results']['result'], tweetId = tweetId, pinned = True)
 			# Includes tweets by other users on conversations, don't return those
-			for tweet in self._graphql_timeline_instructions_to_tweets(instructions, pinned = False):
+			tweets = list(self._graphql_timeline_instructions_to_tweets(instructions, pinned = False))
+			pageTweetIds = frozenset({tweet.id for tweet in tweets})
+			if len(pageTweetIds) > 0 and pageTweetIds in previousPagesTweetIds:
+				_logger.warning("Found duplicate page of tweets, stopping as assumed cycle found in Twitters pagination")
+				return
+			previousPagesTweetIds.add(pageTweetIds)
+			for tweet in tweets:
 				if tweet.user.id != userId:
 					continue
 				yield tweet
