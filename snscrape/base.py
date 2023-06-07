@@ -1,4 +1,4 @@
-__all__ = ['DeprecatedFeatureWarning', 'EntityUnavailable', 'IntWithGranularity', 'Item', 'Scraper', 'ScraperException']
+__all__ = ['DeprecatedFeatureWarning', 'Item', 'IntWithGranularity', 'ScraperException', 'EntityUnavailable', 'Scraper']
 
 
 import abc
