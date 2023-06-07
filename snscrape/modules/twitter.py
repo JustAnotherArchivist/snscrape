@@ -72,6 +72,7 @@ import datetime
 import email.utils
 import enum
 import filelock
+import functools
 import itertools
 import json
 import random
@@ -798,7 +799,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 		del self._session.cookies['gt']
 		del self._apiHeaders['x-guest-token']
 
-	def _check_api_response(self, r):
+	def _check_api_response(self, r, apiType, instructionsPath):
 		if r.status_code in (403, 404, 429):
 			if r.status_code == 429 and r.headers.get('x-rate-limit-remaining', '') == '0' and 'x-rate-limit-reset' in r.headers:
 				blockUntil = min(int(r.headers['x-rate-limit-reset']), int(time.time()) + 900)
@@ -811,27 +812,31 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			return False, 'content type is not JSON'
 		if r.status_code != 200:
 			return False, f'non-200 status code ({r.status_code})'
-		return True, None
-
-	def _get_api_data(self, endpoint, apiType, params, instructionsPath = None):
-		self._ensure_guest_token()
-		if apiType is _TwitterAPIType.GRAPHQL:
-			params = urllib.parse.urlencode({k: json.dumps(v, separators = (',', ':')) for k, v in params.items()}, quote_via = urllib.parse.quote)
-		r = self._get(endpoint, params = params, headers = self._apiHeaders, responseOkCallback = self._check_api_response)
 		try:
 			obj = r.json()
 		except json.JSONDecodeError as e:
-			raise snscrape.base.ScraperException('Received invalid JSON from Twitter') from e
+			return False, f'received invalid JSON from Twitter ({e})'
+		# Pass the already-parsed object outwards so it doesn't need to be decoded twice.
+		r._snscrapeObj = obj
 		if apiType is _TwitterAPIType.GRAPHQL and 'errors' in obj:
 			msg = 'Twitter responded with an error: ' + ', '.join(f'{e["name"]}: {e["message"]}' for e in obj['errors'])
 			instructions = obj
 			for k in instructionsPath:
 				instructions = instructions.get(k, {})
 			if instructions:
-				_logger.warning(msg)
+				# Emit a warning if there are instructions since it could indicate incomplete data
+				_logger.warn(msg)
+				return True, None
 			else:
-				raise snscrape.base.ScraperException(msg)
-		return obj
+				return False, msg
+		return True, None
+
+	def _get_api_data(self, endpoint, apiType, params, instructionsPath = None):
+		self._ensure_guest_token()
+		if apiType is _TwitterAPIType.GRAPHQL:
+			params = urllib.parse.urlencode({k: json.dumps(v, separators = (',', ':')) for k, v in params.items()}, quote_via = urllib.parse.quote)
+		r = self._get(endpoint, params = params, headers = self._apiHeaders, responseOkCallback = functools.partial(self._check_api_response, apiType = apiType, instructionsPath = instructionsPath))
+		return r._snscrapeObj
 
 	def _iter_api_data(self, endpoint, apiType, params, paginationParams = None, cursor = None, direction = _ScrollDirection.BOTTOM, instructionsPath = None):
 		# Iterate over endpoint with params/paginationParams, optionally starting from a cursor
