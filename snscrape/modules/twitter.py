@@ -1836,7 +1836,7 @@ class TwitterProfileScraper(TwitterUserScraper):
 						yield self._graphql_timeline_tweet_item_result_to_tweet(instruction['entry']['content']['itemContent']['tweet_results']['result'], tweetId = tweetId, pinned = True)
 			# Includes tweets by other users on conversations, don't return those
 			for tweet in self._graphql_timeline_instructions_to_tweets(instructions, pinned = False):
-				if isinstance(tweet, TweetRef) or isinstance(tweet, Tombstone) or tweet.user.id != userId:
+				if not (isinstance(tweet, TweetRef) or isinstance(tweet, Tombstone)) and tweet.user.id != userId:
 					continue
 				yield tweet
 
