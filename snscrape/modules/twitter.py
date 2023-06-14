@@ -42,6 +42,7 @@ __all__ = [
 	'UnifiedCardSwipeableLayoutSlide',
 	'UnifiedCardCollectionLayoutSlide',
 	'Vibe',
+	'EditState',
 	'TweetRef',
 	'Tombstone',
 	'User',
@@ -130,6 +131,7 @@ class Tweet(snscrape.base.Item):
 	vibe: typing.Optional['Vibe'] = None
 	bookmarkCount: typing.Optional[int] = None
 	pinned: typing.Optional[bool] = None
+	editState: typing.Optional['EditState'] = None
 
 	username = snscrape.base._DeprecatedProperty('username', lambda self: getattr(self.user, 'username', None), 'user.username')
 	outlinks = snscrape.base._DeprecatedProperty('outlinks', lambda self: [x.url for x in self.links] if self.links else [], 'links (url attribute)')
@@ -486,6 +488,13 @@ class Vibe:
 	text: str
 	imageUrl: str
 	imageDescription: str
+
+
+@dataclasses.dataclass
+class EditState:
+	editTweetIds: typing.List[int]
+	editableUntilDate: datetime.datetime
+	editsRemaining: int
 
 
 @dataclasses.dataclass
@@ -1423,6 +1432,15 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			imageDescription = vibe['imgDescription'],
 		)
 
+	def _make_edit_state(self, editControl):
+		if 'edit_control_initial' in editControl:
+			return self._make_edit_state(editControl['edit_control_initial'])
+		return EditState(
+			editTweetIds = [int(x) for x in editControl['edit_tweet_ids']],
+			editableUntilDate = datetime.datetime.fromtimestamp(int(editControl['editable_until_msecs']) / 1000, tz = datetime.timezone.utc),
+			editsRemaining = int(editControl['edits_remaining']),
+		)
+
 	def _make_tombstone(self, tweetId, info):
 		if tweetId is None:
 			raise snscrape.base.ScraperException('Cannot create tombstone without tweet ID')
@@ -1482,6 +1500,8 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			kwargs['viewCount'] = int(result['views']['count'])
 		if 'vibe' in result:
 			kwargs['vibe'] = self._make_vibe(result['vibe'])
+		if 'edit_control' in result:
+			kwargs['editState'] = self._make_edit_state(result['edit_control'])
 		return self._make_tweet(tweet, user, **kwargs)
 
 	def _graphql_timeline_instructions_to_tweets(self, instructions, includeConversationThreads = False, **kwargs):
