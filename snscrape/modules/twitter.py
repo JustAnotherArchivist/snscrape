@@ -1987,10 +1987,14 @@ class TwitterTweetScraper(_TwitterAPIScraper):
 						yield self._graphql_timeline_tweet_item_result_to_tweet(entry['content']['itemContent']['tweet_results']['result'], tweetId = self._tweetId)
 						break
 		elif self._mode is TwitterTweetScraperMode.SCROLL:
+			hasModeratedReplies = False
 			for obj in self._iter_api_data(url, _TwitterAPIType.GRAPHQL, params, paginationParams, direction = _ScrollDirection.BOTH, instructionsPath = instructionsPath):
 				if not obj['data']:
 					continue
 				yield from self._graphql_timeline_instructions_to_tweets(obj['data']['threaded_conversation_with_injections_v2']['instructions'], includeConversationThreads = True)
+				hasModeratedReplies = hasModeratedReplies or self._has_moderated_replies(obj, self._tweetId)
+			if hasModeratedReplies:
+				yield from self._get_moderated_replies(self._tweetId)
 		elif self._mode is TwitterTweetScraperMode.RECURSE:
 			seenTweets = set()
 			queue = collections.deque()
@@ -2001,6 +2005,7 @@ class TwitterTweetScraper(_TwitterAPIScraper):
 				thisPagParams['variables']['focalTweetId'] = str(tweetId)
 				thisParams = copy.deepcopy(thisPagParams)
 				del thisPagParams['variables']['cursor'], thisPagParams['variables']['referrer']
+				hasModeratedReplies = False
 				for obj in self._iter_api_data(url, _TwitterAPIType.GRAPHQL, thisParams, thisPagParams, direction = _ScrollDirection.BOTH, instructionsPath = instructionsPath):
 					if not obj['data']:
 						continue
@@ -2010,6 +2015,60 @@ class TwitterTweetScraper(_TwitterAPIScraper):
 							seenTweets.add(tweet.id)
 							if tweet.id != self._tweetId:  # Already queued at the beginning
 								queue.append(tweet.id)
+					hasModeratedReplies = hasModeratedReplies or self._has_moderated_replies(obj, tweetId)
+				if hasModeratedReplies:
+					for tweet in self._get_moderated_replies(tweetId):
+						if tweet.id not in seenTweets:
+							yield tweet
+							seenTweets.add(tweet.id)
+							queue.append(tweet.id)
+
+	def _has_moderated_replies(self, obj, tweetId):
+		for instruction in obj['data']['threaded_conversation_with_injections_v2']['instructions']:
+			if instruction['type'] != 'TimelineAddEntries':
+				continue
+			for entry in instruction['entries']:
+				if entry['entryId'] == f'tweet-{tweetId}' and entry['content']['entryType'] == 'TimelineTimelineItem' and entry['content']['itemContent']['itemType'] == 'TimelineTweet':
+					return entry['content']['itemContent'].get('hasModeratedReplies', False)
+		return False
+
+	def _get_moderated_replies(self, tweetId):
+		paginationVariables = {
+			'rootTweetId': str(tweetId),
+			'count': 20,
+			'cursor': None,
+			'includePromotedContent': False,
+		}
+		variables = paginationVariables.copy()
+		del variables['cursor']
+		features = {
+			'rweb_lists_timeline_redesign_enabled': True,
+			'responsive_web_graphql_exclude_directive_enabled': True,
+			'verified_phone_label_enabled': False,
+			'creator_subscriptions_tweet_preview_api_enabled': True,
+			'responsive_web_graphql_timeline_navigation_enabled': True,
+			'responsive_web_graphql_skip_user_profile_image_extensions_enabled': False,
+			'tweetypie_unmention_optimization_enabled': True,
+			'responsive_web_edit_tweet_api_enabled': True,
+			'graphql_is_translatable_rweb_tweet_is_translatable_enabled': True,
+			'view_counts_everywhere_api_enabled': True,
+			'longform_notetweets_consumption_enabled': True,
+			'tweet_awards_web_tipping_enabled': False,
+			'freedom_of_speech_not_reach_fetch_enabled': True,
+			'standardized_nudges_misinfo': True,
+			'tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled': False,
+			'longform_notetweets_rich_text_read_enabled': True,
+			'longform_notetweets_inline_media_enabled': False,
+			'responsive_web_enhance_cards_enabled': False,
+		}
+
+		params = {'variables': variables, 'features': features}
+		paginationParams = {'variables': paginationVariables, 'features': features}
+		url = 'https://twitter.com/i/api/graphql/pOVQRe-x12WZeawviP7zxw/ModeratedTimeline'
+		instructionsPath = ['data', 'tweet', 'result', 'timeline_response', 'timeline', 'instructions']
+
+		for obj in self._iter_api_data(url, _TwitterAPIType.GRAPHQL, params, paginationParams, direction = _ScrollDirection.BOTH, instructionsPath = instructionsPath):
+			yield from self._graphql_timeline_instructions_to_tweets(obj['data']['tweet']['result']['timeline_response']['timeline']['instructions'], includeConversationThreads = True)
 
 	@classmethod
 	def _cli_setup_parser(cls, subparser):
