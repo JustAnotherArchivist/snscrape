@@ -1832,6 +1832,8 @@ class TwitterProfileScraper(TwitterUserScraper):
 
 		gotPinned = False
 		for obj in self._iter_api_data('https://twitter.com/i/api/graphql/fn9oRltM1N4thkh5CVusPg/UserTweetsAndReplies', _TwitterAPIType.GRAPHQL, params, paginationParams, instructionsPath = ['data', 'user', 'result', 'timeline_v2', 'timeline', 'instructions']):
+			if not obj['data'] or 'result' not in obj['data']['user']:
+				raise snscrape.base.ScraperException('Empty response')
 			if obj['data']['user']['result']['__typename'] == 'UserUnavailable':
 				raise snscrape.base.EntityUnavailable('User unavailable')
 			instructions = obj['data']['user']['result']['timeline_v2']['timeline']['instructions']
