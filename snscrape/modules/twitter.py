@@ -943,10 +943,12 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 	def _make_tweet(self, tweet, user, retweetedTweet = None, quotedTweet = None, card = None, noteTweet = None, **kwargs):
 		tweetId = self._get_tweet_id(tweet)
 		kwargs['id'] = tweetId
-		if noteTweet:
+		if noteTweet and 'text' in noteTweet:
 			kwargs['rawContent'] = noteTweet['text']
 			entities = noteTweet['entity_set']
 		else:
+			if noteTweet:
+				_logger.warning(f'Twitter returned an empty note tweet in tweet {tweetId}; text and entities might be incomplete')
 			kwargs['rawContent'] = tweet['full_text']
 			entities = tweet['entities']
 		links = entities.get('urls')
