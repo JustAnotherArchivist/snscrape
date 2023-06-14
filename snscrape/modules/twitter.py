@@ -1835,13 +1835,13 @@ class TwitterProfileScraper(TwitterUserScraper):
 						gotPinned = True
 						tweetId = int(instruction['entry']['entryId'][6:]) if instruction['entry']['entryId'].startswith('tweet-') else None
 						yield self._graphql_timeline_tweet_item_result_to_tweet(instruction['entry']['content']['itemContent']['tweet_results']['result'], tweetId = tweetId, pinned = True)
-			# Includes tweets by other users on conversations, don't return those
 			tweets = list(self._graphql_timeline_instructions_to_tweets(instructions, pinned = False))
-			pageTweetIds = frozenset({tweet.id for tweet in tweets})
+			pageTweetIds = frozenset(tweet.id for tweet in tweets)
 			if len(pageTweetIds) > 0 and pageTweetIds in previousPagesTweetIds:
-				_logger.warning("Found duplicate page of tweets, stopping as assumed cycle found in Twitters pagination")
-				return
+				_logger.warning("Found duplicate page of tweets, stopping as assumed cycle found in Twitter's pagination")
+				break
 			previousPagesTweetIds.add(pageTweetIds)
+			# Includes tweets by other users on conversations, don't return those
 			for tweet in tweets:
 				if getattr(getattr(tweet, 'user', None), 'id', userId) != userId:
 					continue
