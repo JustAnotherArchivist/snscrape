@@ -49,6 +49,7 @@ __all__ = [
 	'User',
 	'UserLabel',
 	'UserRef',
+	'ProfileImageShape',
 	'Community',
 	'Trend',
 	'GuestTokenManager',
@@ -564,6 +565,7 @@ class User(snscrape.base.Item):
 	label: typing.Optional['UserLabel'] = None
 	blue: typing.Optional[bool] = None
 	blueType: typing.Optional[str] = None
+	profileImageShape: typing.Optional['ProfileImageShape'] = None
 
 	descriptionUrls = snscrape.base._DeprecatedProperty('descriptionUrls', lambda self: self.descriptionLinks, 'descriptionLinks')
 	linkUrl = snscrape.base._DeprecatedProperty('linkUrl', lambda self: self.link.url if self.link else None, 'link.url')
@@ -594,6 +596,23 @@ class UserRef:
 
 	def __str__(self):
 		return f'https://twitter.com/i/user/{self.id}'
+
+
+class ProfileImageShape(enum.Enum):
+	CIRCLE = 'circle'
+	HEXAGON = 'hexagon'
+	SQUARE = 'square'
+
+	@classmethod
+	def _from_twitter_string(cls, s):
+		if s == 'Circle':
+			return cls.CIRCLE
+		elif s == 'Hexagon':
+			return cls.HEXAGON
+		elif s == 'Square':
+			return cls.SQUARE
+		_logger.warning(f'Unknown profile picture shape {s!r}')
+		return None
 
 
 @dataclasses.dataclass
@@ -1651,6 +1670,8 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 		kwargs['blue'] = results['result']['is_blue_verified']
 		if (labelO := results['result']['affiliates_highlighted_label'].get('label')):
 			kwargs['label'] = self._user_label_to_user_label(labelO)
+		if 'profile_image_shape' in results['result']:
+			kwargs['profileImageShape'] = ProfileImageShape._from_twitter_string(results['result']['profile_image_shape'])
 		return self._user_to_user(results['result']['legacy'], id_ = userId if userId is not None else int(results['result']['rest_id']), **kwargs)
 
 	@classmethod
