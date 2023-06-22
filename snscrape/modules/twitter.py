@@ -43,6 +43,7 @@ __all__ = [
 	'UnifiedCardCollectionLayoutSlide',
 	'Vibe',
 	'EditState',
+	'ConversationControlPolicy',
 	'TweetRef',
 	'Tombstone',
 	'User',
@@ -132,6 +133,7 @@ class Tweet(snscrape.base.Item):
 	bookmarkCount: typing.Optional[int] = None
 	pinned: typing.Optional[bool] = None
 	editState: typing.Optional['EditState'] = None
+	conversationControlPolicy: typing.Optional['ConversationControlPolicy'] = None
 
 	username = snscrape.base._DeprecatedProperty('username', lambda self: getattr(self.user, 'username', None), 'user.username')
 	outlinks = snscrape.base._DeprecatedProperty('outlinks', lambda self: [x.url for x in self.links] if self.links else [], 'links (url attribute)')
@@ -495,6 +497,23 @@ class EditState:
 	editTweetIds: typing.List[int]
 	editableUntilDate: datetime.datetime
 	editsRemaining: int
+
+
+class ConversationControlPolicy(enum.Enum):
+	EVERYONE = 'everyone'
+	MENTIONED = 'mentioned'
+	FOLLOWERS = 'followers'
+
+	@classmethod
+	def _from_policy(cls, policy):
+		if policy is None:
+			return cls.EVERYONE
+		elif policy == 'ByInvitation':
+			return cls.MENTIONED
+		elif policy == 'Community':
+			return cls.FOLLOWERS
+		_logger.warning(f'Unknown conversation control policy {policy!r}')
+		return None
 
 
 @dataclasses.dataclass
@@ -1045,6 +1064,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 					_logger.warning(f'Could not translate t.co card URL on tweet {tweetId}')
 		if 'bookmark_count' in tweet:
 			kwargs['bookmarkCount'] = tweet['bookmark_count']
+		kwargs['conversationControlPolicy'] = ConversationControlPolicy._from_policy(tweet.get('conversation_control', {'policy': None})['policy'])
 		return Tweet(**kwargs)
 
 	def _make_medium(self, medium, tweetId):

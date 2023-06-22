@@ -5,6 +5,7 @@ import abc
 import copy
 import dataclasses
 import datetime
+import enum
 import functools
 import json
 import logging
@@ -38,11 +39,13 @@ class _DeprecatedProperty:
 		return self.repl(obj)
 
 
-def _json_serialise_datetime(obj):
-	'''A JSON serialiser that converts datetime.datetime and datetime.date objects to ISO-8601 strings.'''
+def _json_serialise_datetime_enum(obj):
+	'''A JSON serialiser that converts datetime.datetime and datetime.date objects to ISO-8601 strings and enum.Enum objects to their values.'''
 
 	if isinstance(obj, (datetime.datetime, datetime.date)):
 		return obj.isoformat()
+	if isinstance(obj, enum.Enum):
+		return obj.value
 	raise TypeError(f'Object of type {type(obj)} is not JSON serializable')
 
 
@@ -99,7 +102,7 @@ class _JSONDataclass:
 			out = _json_dataclass_to_dict(self, forBuggyIntParser = forBuggyIntParser)
 		assert '_snscrape' not in out, 'Metadata collision on _snscrape'
 		out['_snscrape'] = snscrape.version.__version__
-		return json.dumps(out, default = _json_serialise_datetime)
+		return json.dumps(out, default = _json_serialise_datetime_enum)
 
 
 @dataclasses.dataclass
