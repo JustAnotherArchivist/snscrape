@@ -64,6 +64,7 @@ __all__ = [
 	'TwitterListPostsScraper',
 	'TwitterCommunityScraper',
 	'TwitterTrendsScraper',
+	'TwitterUsersScraper',
 ]
 
 
@@ -2284,6 +2285,37 @@ class TwitterTrendsScraper(_TwitterAPIScraper):
 				for item in entry['content']['timelineModule']['items']:
 					trend = item['item']['content']['trend']
 					yield Trend(name = trend['name'], metaDescription = trend['trendMetadata'].get('metaDescription'), domainContext = trend['trendMetadata']['domainContext'])
+
+
+class TwitterUsersScraper(_TwitterAPIScraper):
+	name = 'twitter-users'
+
+	def __init__(self, userIds, **kwargs):
+		self._userIds = userIds
+		super().__init__(f'https://twitter.com/i/user/{self._userIds[0]}', **kwargs)
+
+	def get_items(self):
+		variables = {'userIds': [str(x) for x in self._userIds]}
+		features = {
+			'responsive_web_graphql_exclude_directive_enabled': True,
+			'verified_phone_label_enabled': False,
+			'responsive_web_graphql_skip_user_profile_image_extensions_enabled': False,
+			'responsive_web_graphql_timeline_navigation_enabled': True,
+		}
+		obj = self._get_api_data('https://twitter.com/i/api/graphql/GD4q8bBE2i6cqWw2iT74Gg/UsersByRestIds', _TwitterAPIType.GRAPHQL, params = {'variables': variables, 'features': features}, instructionsPath = ['data', 'users'])
+		for i, u in enumerate(obj['data']['users']):
+			if not u:
+				_logger.warning(f'Skipping empty response object at position {i}')
+				continue
+			yield self._graphql_user_results_to_user(u)
+
+	@classmethod
+	def _cli_setup_parser(cls, subparser):
+		subparser.add_argument('userId', type = int, nargs = '+', help = 'A numeric user ID')
+
+	@classmethod
+	def _cli_from_args(cls, args):
+		return cls._cli_construct(args, args.userId)
 
 
 __getattr__, __dir__ = snscrape.utils.module_deprecation_helper(__all__, DescriptionURL = TextLink)
