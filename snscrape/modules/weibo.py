@@ -29,6 +29,8 @@ class Post(snscrape.base.Item):
 	video: typing.Optional[str]
 	link: typing.Optional[str]
 	repostedPost: typing.Optional['Post']
+	source: str
+	pageInfo: typing.Optional[typing.Tuple[str]]
 
 	def __str__(self):
 		return self.url
@@ -45,6 +47,14 @@ class User(snscrape.base.Item):
 	followersCount: int
 	followCount: int
 	avatar: str
+	gender: str
+	mbtype: int
+	mbrank: int
+	urank: int
+	svip: int
+	organizationAccount: bool
+	badges: typing.Optional[dict]
+	verifiedType: int
 
 	def __str__(self):
 		return f'https://m.weibo.cn/u/{self.uid}'
@@ -82,7 +92,7 @@ class WeiboUserScraper(snscrape.base.Scraper):
 		return True, None
 
 	def _mblog_to_item(self, mblog):
-		if mblog.get('page_info', {}).get('type') not in (None, 'video', 'webpage'):
+		if mblog.get('page_info', {}).get('type') not in (None, 'video', 'webpage', 'place', 'search_topic', 'topic'): 
 			_logger.warning(f'Skipping unknown page info {mblog["page_info"]["type"]!r} on status {mblog["id"]}')
 		return Post(
 			url = f'https://m.weibo.cn/status/{mblog["bid"]}',
@@ -98,6 +108,20 @@ class WeiboUserScraper(snscrape.base.Scraper):
 			video = urls.get('mp4_720p_mp4') or urls.get('mp4_hd_mp4') or urls['mp4_ld_mp4'] if 'page_info' in mblog and mblog['page_info']['type'] == 'video' and (urls := mblog['page_info']['urls']) else None,
 			link = mblog['page_info']['page_url'] if 'page_info' in mblog and mblog['page_info']['type'] == 'webpage' else None,
 			repostedPost = self._mblog_to_item(mblog['retweeted_status']) if 'retweeted_status' in mblog else None,
+			source=mblog['source'], 
+			pageInfo=({
+				'type': mblog['page_info']['type'],
+				'page_title': mblog['page_info']['page_title'],
+				'content': [
+					mblog['page_info']['content1'],
+					mblog['page_info']['content2'] if 'content2' in mblog['page_info'] else None],
+				'page_url': mblog['page_info']['page_url'],
+				'page_pic_url': mblog['page_info']['page_pic']['url'],
+				'media': mblog['page_info']['media_info'] if 'media_info' in mblog['page_info'] else None,
+				'media_play_count': mblog['page_info']['play_count'] if 'play_count' in mblog['page_info'] else None,
+				'media_title': mblog['page_info']['title'] if 'title' in mblog['page_info'].keys() else None,
+
+			}) if 'page_info' in mblog else None,
 		  )
 
 	def get_items(self):
@@ -132,6 +156,14 @@ class WeiboUserScraper(snscrape.base.Scraper):
 			followersCount = userInfo['followers_count'],
 			followCount = userInfo['follow_count'],
 			avatar = userInfo['avatar_hd'],
+			gender=userInfo['gender'],
+			mbtype=userInfo['mbtype'],
+			mbrank=userInfo['mbrank'],
+			urank=userInfo['urank'],
+			svip=userInfo['svip'],
+			badges=userInfo['badge'],
+			organizationAccount=userInfo['close_blue_v'],
+			verifiedType=userInfo['verified_type'],
 		  )
 
 	def _get_entity(self):
