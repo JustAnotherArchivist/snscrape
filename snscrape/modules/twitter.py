@@ -1081,7 +1081,12 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 						card.url = u.url
 						break
 				else:
-					_logger.warning(f'Could not translate t.co card URL on tweet {tweetId}')
+					try:
+						u = self._head(card.url)
+						assert u.status_code >= 300 and u.status_code < 400
+						card.url = u.headers["location"]
+					except:
+						_logger.warning(f'Could not translate t.co card URL on tweet {tweetId}')
 		if 'bookmark_count' in tweet:
 			kwargs['bookmarkCount'] = tweet['bookmark_count']
 		kwargs['conversationControlPolicy'] = ConversationControlPolicy._from_policy(tweet.get('conversation_control', {'policy': None})['policy'])
