@@ -274,6 +274,9 @@ class Scraper:
 	def _get(self, *args, **kwargs):
 		return self._request('GET', *args, **kwargs)
 
+	def _head(self, *args, **kwargs):
+		return requests.head(*args, allow_redirects=False, timeout=10)
+
 	def _post(self, *args, **kwargs):
 		return self._request('POST', *args, **kwargs)
 
