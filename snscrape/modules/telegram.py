@@ -92,7 +92,7 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 			url = rawUrl.replace('//t.me/', '//t.me/s/')
 			date = datetime.datetime.strptime(dateDiv.find('time', datetime = True)['datetime'].replace('-', '', 2).replace(':', ''), '%Y%m%dT%H%M%S%z')
 			if (message := post.find('div', class_ = 'tgme_widget_message_text')):
-				content = message.text
+				content = self.get_post_text(message)
 				outlinks = []
 				for link in post.find_all('a'):
 					if any(x in link.parent.attrs.get('class', []) for x in ('tgme_widget_message_user', 'tgme_widget_message_author')):
@@ -143,6 +143,14 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 			if r.status_code != 200:
 				raise snscrape.base.ScraperException(f'Got status code {r.status_code}')
 			soup = bs4.BeautifulSoup(r.text, 'lxml')
+
+    @staticmethod
+    def get_post_text(post) -> str:
+        result = []
+        # Using the features of the BS4 module itself
+        for s in post.stripped_strings:
+            result.append(s)
+        return '\n'.join(result)
 
 	def _get_entity(self):
 		kwargs = {}
