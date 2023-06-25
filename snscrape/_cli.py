@@ -246,7 +246,7 @@ def parse_args():
 	group.add_argument('--jsonl', dest = 'jsonl', action = 'store_true', default = False, help = 'Output JSONL')
 	group.add_argument('--jsonl-for-buggy-int-parser', dest = 'jsonlForBuggyIntParser', action = 'store_true', default = False, help = 'Output JSONL and insert extra string fields into objects for integers exceeding double precision limits')
 	parser.add_argument('--with-entity', dest = 'withEntity', action = 'store_true', default = False, help = 'Include the entity (e.g. user, channel) as the first output item')
-	parser.add_argument('--since', type = parse_datetime_arg, metavar = 'DATETIME', help = 'Only return results newer than DATETIME')
+	parser.add_argument('--since', type = parse_datetime_arg, metavar = 'DATETIME', help = 'Only return results newer than DATETIME. Format: %Y-%m-%d %H:%M:%S %z, %Y-%m-%d %H:%M:%S, %Y-%m-%d %z, %Y-%m-%d')
 	parser.add_argument('--progress', action = 'store_true', default = False, help = 'Report progress on stderr')
 
 	subparsers = parser.add_subparsers(dest = 'scraper', metavar = 'SCRAPER', title = 'scrapers', required = True)
