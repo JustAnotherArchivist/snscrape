@@ -28,6 +28,7 @@ class InstagramPost(snscrape.base.Item):
 	commentsDisabled: bool
 	isVideo: bool
 	videoUrl: typing.Optional[str]
+	id: str
 
 	def __str__(self):
 		return self.url
@@ -74,6 +75,7 @@ class _InstagramCommonScraper(snscrape.base.Scraper):
 				commentsDisabled=node['node']['comments_disabled'],
 				isVideo=node['node']['is_video'],
 				videoUrl=node['node']['video_url'] if 'video_url' in node['node'] else None,
+				id=node['node']['id'],
 			)
 
 	def _initial_page(self):
@@ -324,4 +326,5 @@ class InstagramLocationScraper(_InstagramCommonScraper):
 					commentsDisabled=False,
 					isVideo=True if 'video_versions' in media['media'] else False,
 					videoUrl=media['media']['video_versions'][0]['url'] if 'video_versions' in media['media'] else None,
+					id=media['media']['id'],
 				)
