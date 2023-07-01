@@ -55,7 +55,7 @@ class _InstagramCommonScraper(snscrape.base.Scraper):
 		super().__init__(**kwargs)
 		self._headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
 		self._initialPage = None
-		self._api_url = None
+		self._apiUrl = None
 
 	def _response_to_items(self, response):
 		for node in response[self._edgeXToMedia]['edges']:
@@ -64,18 +64,18 @@ class _InstagramCommonScraper(snscrape.base.Scraper):
 			url = f'https://www.instagram.com/p/{code}/'
 
 			yield InstagramPost(
-				url=url,
-				date=datetime.datetime.fromtimestamp(node['node']['taken_at_timestamp'], datetime.timezone.utc),
-				content=node['node']['edge_media_to_caption']['edges'][0]['node']['text'] if len(node['node']['edge_media_to_caption']['edges']) else None,
-				thumbnailUrl=node['node']['thumbnail_src'],
-				displayUrl=node['node']['display_url'],
-				username=username,
-				likes=node['node']['edge_media_preview_like']['count'],
-				comments=node['node']['edge_media_to_comment']['count'],
-				commentsDisabled=node['node']['comments_disabled'],
-				isVideo=node['node']['is_video'],
-				videoUrl=node['node']['video_url'] if 'video_url' in node['node'] else None,
-				id=node['node']['id'],
+				url = url,
+				date = datetime.datetime.fromtimestamp(node['node']['taken_at_timestamp'], datetime.timezone.utc),
+				content = node['node']['edge_media_to_caption']['edges'][0]['node']['text'] if len(node['node']['edge_media_to_caption']['edges']) else None,
+				thumbnailUrl = node['node']['thumbnail_src'],
+				displayUrl = node['node']['display_url'],
+				username = username,
+				likes = node['node']['edge_media_preview_like']['count'],
+				comments = node['node']['edge_media_to_comment']['count'],
+				commentsDisabled = node['node']['comments_disabled'],
+				isVideo = node['node']['is_video'],
+				videoUrl = node['node']['video_url'] if 'video_url' in node['node'] else None,
+				id = node['node']['id'],
 			)
 
 	def _initial_page(self):
@@ -87,9 +87,9 @@ class _InstagramCommonScraper(snscrape.base.Scraper):
 			elif r.url.startswith('https://www.instagram.com/accounts/login/'):
 				raise snscrape.base.ScraperException('Redirected to login page')
 			r = self._get(
-				self._api_url,
-				headers=self._headers,
-				responseOkCallback=self._check_json_callback
+				self._apiUrl,
+				headers = self._headers,
+				responseOkCallback = self._check_json_callback
 			)
 			self._initialPage = r
 
@@ -171,7 +171,7 @@ class InstagramUserScraper(_InstagramCommonScraper):
 		self._pageIDKey = 'id'
 		self._queryHash = 'f2405b236d85e8296cf30347c9f08c2a'
 		self._variablesFormat = '{{"id":"{pageID}","first":50,"after":"{endCursor}"}}'
-		self._api_url = f'https://www.instagram.com/api/v1/users/web_profile_info/?username={username}'
+		self._apiUrl = f'https://www.instagram.com/api/v1/users/web_profile_info/?username={username}'
 
 	def _get_entity(self):
 		r = self._initial_page()
@@ -227,7 +227,7 @@ class InstagramHashtagScraper(_InstagramCommonScraper):
 		self._pageIDKey = 'name'
 		self._queryHash = 'f92f56d47dc7a55b606908374b43a314'
 		self._variablesFormat = '{{"tag_name":"{pageID}","first":50,"after":"{endCursor}"}}'
-		self._api_url = f'https://www.instagram.com/api/v1/tags/logged_out_web_info/?tag_name={hashtag.lower()}'
+		self._apiUrl = f'https://www.instagram.com/api/v1/tags/logged_out_web_info/?tag_name={hashtag.lower()}'
 
 	@classmethod
 	def _cli_setup_parser(cls, subparser):
@@ -250,7 +250,7 @@ class InstagramLocationScraper(_InstagramCommonScraper):
 		self._pageIDKey = 'next_page'
 		self._queryHash = '1b84447a4d8b6d6d0426fefb34514485'
 		self._variablesFormat = '{{"id":"{pageID}","first":50,"after":"{endCursor}"}}'
-		self._api_url = f"https://www.instagram.com/api/v1/locations/web_info/?location_id={locationId}"
+		self._apiUrl = f"https://www.instagram.com/api/v1/locations/web_info/?location_id={locationId}"
 		self._locationId = locationId
 
 	@classmethod
@@ -281,16 +281,16 @@ class InstagramLocationScraper(_InstagramCommonScraper):
 				url = f'https://www.instagram.com/p/{code}/'
 
 				yield InstagramPost(
-					url=url,
-					date=datetime.datetime.fromtimestamp(media['media']['taken_at'], datetime.timezone.utc),
-					content=media['media']['caption']['text'] if media['media']['caption'] else None,
-					thumbnailUrl=media['media']['image_versions2']['candidates'][-1]['url'],
-					displayUrl=media['media']['image_versions2']['candidates'][0]['url'],
-					username=username,
-					likes=media['media']['like_count'],
-					comments=media['media']['comment_count'],
-					commentsDisabled=False,
-					isVideo=True if 'video_versions' in media['media'] else False,
-					videoUrl=media['media']['video_versions'][0]['url'] if 'video_versions' in media['media'] else None,
-					id=media['media']['id'],
+					url = url,
+					date = datetime.datetime.fromtimestamp(media['media']['taken_at'], datetime.timezone.utc),
+					content = media['media']['caption']['text'] if media['media']['caption'] else None,
+					thumbnailUrl = media['media']['image_versions2']['candidates'][-1]['url'],
+					displayUrl = media['media']['image_versions2']['candidates'][0]['url'],
+					username = username,
+					likes = media['media']['like_count'],
+					comments = media['media']['comment_count'],
+					commentsDisabled = False,
+					isVideo = True if 'video_versions' in media['media'] else False,
+					videoUrl = media['media']['video_versions'][0]['url'] if 'video_versions' in media['media'] else None,
+					id = media['media']['id'],
 				)
