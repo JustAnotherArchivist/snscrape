@@ -270,42 +270,8 @@ class InstagramLocationScraper(_InstagramCommonScraper):
 		if len(response['native_location_data'][self._responseContainer]['sections']) == 0:
 			_logger.info('Page has no posts')
 			return
-		# pageID = response['native_location_data'][self._responseContainer][self._pageIDKey]
 		yield from self._response_to_items(response['native_location_data'][self._responseContainer])
-
 		# querying for more data returns the login page, so 1 set of images is all we get
-		# if not response['native_location_data'][self._responseContainer]['more_available']:
-		# 	return
-		# endCursor = response['native_location_data'][self._responseContainer]['next_max_id']
-		# headers = self._headers.copy()
-		# headers['X-Requested-With'] = 'XMLHttpRequest'
-		# # headers['X-Instagram-Ajax'] = 'XMLHttpRequest'
-		# while True:
-		# 	_logger.info(f'Retrieving endCursor = {endCursor!r}')
-		# 	data = {
-		# 		'surface': 'grid',
-		# 		'tab': 'recent',
-		# 		'max_id': endCursor,
-		# 		'next_media_ids': [],
-		# 		'page': pageID
-		# 	}
-		# 	r = self._post(
-		# 		f'https://www.instagram.com/api/v1/locations/{self._locationId}/sections/',
-		# 		headers=headers,
-		# 		data=data,
-		# 		responseOkCallback=self._check_json_callback
-		# 	)
-		#
-		# 	if r.status_code != 200:
-		# 		raise snscrape.base.ScraperException(f'Got status code {r.status_code}')
-		#
-		# 	response = r._snscrape_json_obj
-		# 	if not response['data']['location']:
-		# 		return
-		# 	yield from self._response_to_items(response['native_location_data'][self._responseContainer])
-		# 	if not response['native_location_data'][self._responseContainer]['more_available']:
-		# 		return
-		# 	endCursor = response['native_location_data'][self._responseContainer]['next_max_id']
 
 	def _response_to_items(self, response):
 		for node in response['sections']:
