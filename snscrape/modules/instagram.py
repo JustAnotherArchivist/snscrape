@@ -249,6 +249,7 @@ class InstagramLocationScraper(_InstagramCommonScraper):
 		self._queryHash = '1b84447a4d8b6d6d0426fefb34514485'
 		self._variablesFormat = '{{"id":"{pageID}","first":50,"after":"{endCursor}"}}'
 		self._api_url = f"https://www.instagram.com/api/v1/locations/web_info/?location_id={locationId}"
+		self._locationId = locationId
 
 	@classmethod
 	def _cli_setup_parser(cls, subparser):
@@ -267,16 +268,31 @@ class InstagramLocationScraper(_InstagramCommonScraper):
 		if len(response['native_location_data'][self._responseContainer]['sections']) == 0:
 			_logger.info('Page has no posts')
 			return
-		pageID = response['native_location_data'][self._responseContainer][self._pageIDKey]
+		# pageID = response['native_location_data'][self._responseContainer][self._pageIDKey]
 		yield from self._response_to_items(response['native_location_data'][self._responseContainer])
-		if not response['native_location_data'][self._responseContainer]['more_available']:
-			return
+
+		# querying for more data returns the login page, so 1 set of images is all we get
+		# if not response['native_location_data'][self._responseContainer]['more_available']:
+		# 	return
 		# endCursor = response['native_location_data'][self._responseContainer]['next_max_id']
 		# headers = self._headers.copy()
+		# headers['X-Requested-With'] = 'XMLHttpRequest'
+		# # headers['X-Instagram-Ajax'] = 'XMLHttpRequest'
 		# while True:
 		# 	_logger.info(f'Retrieving endCursor = {endCursor!r}')
-		# 	variables = self._variablesFormat.format(**locals())
-		# 	r = self._get(f'https://www.instagram.com/graphql/query/?query_hash={self._queryHash}&variables={variables}', headers = headers, responseOkCallback = self._check_json_callback)
+		# 	data = {
+		# 		'surface': 'grid',
+		# 		'tab': 'recent',
+		# 		'max_id': endCursor,
+		# 		'next_media_ids': [],
+		# 		'page': pageID
+		# 	}
+		# 	r = self._post(
+		# 		f'https://www.instagram.com/api/v1/locations/{self._locationId}/sections/',
+		# 		headers=headers,
+		# 		data=data,
+		# 		responseOkCallback=self._check_json_callback
+		# 	)
 		#
 		# 	if r.status_code != 200:
 		# 		raise snscrape.base.ScraperException(f'Got status code {r.status_code}')
