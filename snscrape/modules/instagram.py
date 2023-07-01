@@ -271,24 +271,23 @@ class InstagramLocationScraper(_InstagramCommonScraper):
 		yield from self._response_to_items(response['native_location_data'][self._responseContainer])
 		if not response['native_location_data'][self._responseContainer]['more_available']:
 			return
-		endCursor = response['native_location_data'][self._responseContainer]['next_max_id']
-
-		headers = self._headers.copy()
-		while True:
-			_logger.info(f'Retrieving endCursor = {endCursor!r}')
-			variables = self._variablesFormat.format(**locals())
-			r = self._get(f'https://www.instagram.com/graphql/query/?query_hash={self._queryHash}&variables={variables}', headers = headers, responseOkCallback = self._check_json_callback)
-
-			if r.status_code != 200:
-				raise snscrape.base.ScraperException(f'Got status code {r.status_code}')
-
-			response = r._snscrape_json_obj
-			if not response['native_location_data'][self._responseContainer]:
-				return
-			yield from self._response_to_items(response['native_location_data'][self._responseContainer])
-			if not response['native_location_data'][self._responseContainer]['more_available']:
-				return
-			endCursor = response['native_location_data'][self._responseContainer]['next_max_id']
+		# endCursor = response['native_location_data'][self._responseContainer]['next_max_id']
+		# headers = self._headers.copy()
+		# while True:
+		# 	_logger.info(f'Retrieving endCursor = {endCursor!r}')
+		# 	variables = self._variablesFormat.format(**locals())
+		# 	r = self._get(f'https://www.instagram.com/graphql/query/?query_hash={self._queryHash}&variables={variables}', headers = headers, responseOkCallback = self._check_json_callback)
+		#
+		# 	if r.status_code != 200:
+		# 		raise snscrape.base.ScraperException(f'Got status code {r.status_code}')
+		#
+		# 	response = r._snscrape_json_obj
+		# 	if not response['data']['location']:
+		# 		return
+		# 	yield from self._response_to_items(response['native_location_data'][self._responseContainer])
+		# 	if not response['native_location_data'][self._responseContainer]['more_available']:
+		# 		return
+		# 	endCursor = response['native_location_data'][self._responseContainer]['next_max_id']
 
 	def _response_to_items(self, response):
 		for node in response['sections']:
@@ -299,7 +298,7 @@ class InstagramLocationScraper(_InstagramCommonScraper):
 
 				yield InstagramPost(
 					url=url,
-					date=None,  # datetime.datetime.fromtimestamp(media['media']['device_timestamp'], datetime.timezone.utc),
+					date=datetime.datetime.fromtimestamp(media['media']['taken_at'], datetime.timezone.utc),
 					content=media['media']['caption']['text'] if media['media']['caption'] else None,
 					thumbnailUrl=media['media']['image_versions2']['candidates'][-1]['url'],
 					displayUrl=media['media']['image_versions2']['candidates'][0]['url'],
