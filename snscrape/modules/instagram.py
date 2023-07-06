@@ -1,4 +1,14 @@
-__all__ = ['InstagramPost', 'User', 'InstagramUserScraper', 'InstagramHashtagScraper', 'InstagramLocationScraper']
+__all__ = [
+	'InstagramPost',
+	'User',
+	'Medium',
+	'Photo',
+	'VideoVariant',
+	'Video',
+	'InstagramUserScraper',
+	'InstagramHashtagScraper',
+	'InstagramLocationScraper'
+]
 
 
 import dataclasses
@@ -15,20 +25,49 @@ import typing
 _logger = logging.getLogger(__name__)
 
 
+class Medium:
+	pass
+
+
+@dataclasses.dataclass
+class Photo(Medium):
+	thumbnailUrl: str
+	fullUrl: str
+	altText: typing.Optional[str] = None
+
+
+@dataclasses.dataclass
+class VideoVariant:
+	url: str
+	width: int
+	height: int
+	contentType: typing.Optional[str] = None
+
+
+@dataclasses.dataclass
+class Video(Medium):
+	thumbnailUrl: str
+	variants: typing.List[VideoVariant]
+	duration: typing.Optional[float] = None
+	views: typing.Optional[int] = None
+	altText: typing.Optional[str] = None
+
+
 @dataclasses.dataclass
 class InstagramPost(snscrape.base.Item):
 	url: str
 	date: datetime.datetime
 	content: typing.Optional[str]
-	thumbnailUrl: str
-	displayUrl: str
 	username: typing.Optional[str]
 	likes: int
 	comments: int
 	commentsDisabled: bool
 	isVideo: bool
-	videoUrl: typing.Optional[str]
+	medium: typing.Union['Photo', 'Video']
 	id: str
+
+	thumbnailUrl = snscrape.base._DeprecatedProperty('thumbnailUrl', lambda self: self.medium.thumbnailUrl, 'medium.thumbnailUrl')
+	displayUrl = snscrape.base._DeprecatedProperty('displayUrl', lambda self: None if self.isVideo else self.medium.fullUrl, 'medium.fullUrl')
 
 	def __str__(self):
 		return self.url
@@ -63,18 +102,22 @@ class _InstagramCommonScraper(snscrape.base.Scraper):
 			username = node['node']['owner']['username'] if 'username' in node['node']['owner'] else None
 			url = f'https://www.instagram.com/p/{code}/'
 
+			medium = Photo(node['node']['thumbnail_src'], node['node']['display_url'])
+			if node['node']['is_video']:
+				variants = [
+					VideoVariant(url = node['node']['video_url'], width = node['node']['dimensions']['width'], height = node['node']['dimensions']['height'])
+				]
+				medium = Video(thumbnailUrl = node['node']['thumbnail_src'], variants = variants, duration = int(node['node']['video_duration']) if 'video_duration' in node['node'] else None, views = node['node']['video_view_count'])
 			yield InstagramPost(
 				url = url,
 				date = datetime.datetime.fromtimestamp(node['node']['taken_at_timestamp'], datetime.timezone.utc),
 				content = node['node']['edge_media_to_caption']['edges'][0]['node']['text'] if len(node['node']['edge_media_to_caption']['edges']) else None,
-				thumbnailUrl = node['node']['thumbnail_src'],
-				displayUrl = node['node']['display_url'],
 				username = username,
 				likes = node['node']['edge_media_preview_like']['count'],
 				comments = node['node']['edge_media_to_comment']['count'],
 				commentsDisabled = node['node']['comments_disabled'],
 				isVideo = node['node']['is_video'],
-				videoUrl = node['node']['video_url'] if 'video_url' in node['node'] else None,
+				medium = medium,
 				id = node['node']['id'],
 			)
 
@@ -280,17 +323,23 @@ class InstagramLocationScraper(_InstagramCommonScraper):
 				username = media['media']['user']['username'] if 'username' in media['media']['user'] else None
 				url = f'https://www.instagram.com/p/{code}/'
 
+				medium = Photo(media['media']['image_versions2']['candidates'][-1]['url'], media['media']['image_versions2']['candidates'][0]['url'])
+				if 'video_versions' in media['media']:
+					variants = []
+					for version in media['media']['video_versions']:
+						variants.append(VideoVariant(url = version['url'], width = version['width'], height = version['height']))
+
+					medium = Video(thumbnailUrl = media['media']['image_versions2']['candidates'][-1]['url'], variants = variants, duration = int(media['media']['video_duration']) if 'video_duration' in media['media'] else None, views = media['media']['play_count'] if 'play_count' in media['media'] else None)
+
 				yield InstagramPost(
 					url = url,
 					date = datetime.datetime.fromtimestamp(media['media']['taken_at'], datetime.timezone.utc),
 					content = media['media']['caption']['text'] if media['media']['caption'] else None,
-					thumbnailUrl = media['media']['image_versions2']['candidates'][-1]['url'],
-					displayUrl = media['media']['image_versions2']['candidates'][0]['url'],
 					username = username,
 					likes = media['media']['like_count'],
 					comments = media['media']['comment_count'],
 					commentsDisabled = False,
 					isVideo = True if 'video_versions' in media['media'] else False,
-					videoUrl = media['media']['video_versions'][0]['url'] if 'video_versions' in media['media'] else None,
+					medium = medium,
 					id = media['media']['id'],
 				)
