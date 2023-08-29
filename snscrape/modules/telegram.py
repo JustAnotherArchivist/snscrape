@@ -14,7 +14,7 @@ import urllib.parse
 
 _logger = logging.getLogger(__name__)
 _SINGLE_MEDIA_LINK_PATTERN = re.compile(r'^https://t\.me/[^/]+/\d+\?single$')
-
+_TELEGRAM_IMG_RE = re.compile(r"background-image:url\(\'(.*?)\'\)")
 
 @dataclasses.dataclass
 class LinkPreview:
@@ -31,6 +31,9 @@ class TelegramPost(snscrape.base.Item):
 	date: datetime.datetime
 	content: str
 	outlinks: list
+	photos: list
+	videoThumbs: list
+	views: str
 	linkPreview: typing.Optional[LinkPreview] = None
 
 	outlinksss = snscrape.base._DeprecatedProperty('outlinksss', lambda self: ' '.join(self.outlinks), 'outlinks')
@@ -91,6 +94,7 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 				_logger.warning(f'Possibly incorrect URL: {rawUrl!r}')
 			url = rawUrl.replace('//t.me/', '//t.me/s/')
 			date = datetime.datetime.strptime(dateDiv.find('time', datetime = True)['datetime'].replace('-', '', 2).replace(':', ''), '%Y%m%dT%H%M%S%z')
+			views = post.find("span", {"class": "tgme_widget_message_views"}).text
 			if (message := post.find('div', class_ = 'tgme_widget_message_text')):
 				content = message.text
 				outlinks = []
@@ -107,6 +111,29 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 					href = urllib.parse.urljoin(pageUrl, link['href'])
 					if href not in outlinks:
 						outlinks.append(href)
+
+				photos = []
+				photosHtml = post.select(
+					"a[class='tgme_widget_message_photo_wrap grouped_media_wrap blured js-message_photo']"
+				)
+
+				if photosHtml:
+					for photo in photosHtml:
+						photos.append(_TELEGRAM_IMG_RE.search(photo.get("style")).group(1))
+				else:
+					photosBlock = post.select_one("a[class*='tgme_widget_message_photo_wrap']")
+					if photosBlock:
+						photos.append(_TELEGRAM_IMG_RE.search(photosBlock.get("style")).group(1))
+
+				VideoThumbsHtml = post.select(
+					"i[class='tgme_widget_message_video_thumb']"
+				)
+
+				videoThumbs = []
+				if VideoThumbsHtml:
+					for thumb in VideoThumbsHtml:
+						videoThumbs.append(_TELEGRAM_IMG_RE.search(thumb.get("style")).group(1))
+
 			else:
 				content = None
 				outlinks = []
@@ -126,7 +153,7 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 					else:
 						_logger.warning(f'Could not process link preview image on {url}')
 				linkPreview = LinkPreview(**kwargs)
-			yield TelegramPost(url = url, date = date, content = content, outlinks = outlinks, linkPreview = linkPreview)
+			yield TelegramPost(url = url, date = date, content = content, outlinks = outlinks, linkPreview = linkPreview, photos = photos, videoThumbs = videoThumbs, views=views)
 
 	def get_items(self):
 		r, soup = self._initial_page()
