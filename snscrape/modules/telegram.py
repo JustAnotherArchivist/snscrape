@@ -29,6 +29,7 @@ class LinkPreview:
 class TelegramPost(snscrape.base.Item):
 	url: str
 	date: datetime.datetime
+	viewCount: int
 	content: str
 	outlinks: list
 	linkPreview: typing.Optional[LinkPreview] = None
@@ -85,12 +86,28 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 			if onlyUsername:
 				yield post['data-post'].split('/')[0]
 				return
-			dateDiv = post.find('div', class_ = 'tgme_widget_message_footer').find('a', class_ = 'tgme_widget_message_date')
+			footerDiv = post.find('div', class_ = 'tgme_widget_message_footer')
+			dateDiv = footerDiv.find('a', class_ = 'tgme_widget_message_date')
 			rawUrl = dateDiv['href']
 			if not rawUrl.startswith('https://t.me/') or sum(x == '/' for x in rawUrl) != 4 or rawUrl.rsplit('/', 1)[1].strip('0123456789') != '':
 				_logger.warning(f'Possibly incorrect URL: {rawUrl!r}')
 			url = rawUrl.replace('//t.me/', '//t.me/s/')
 			date = datetime.datetime.strptime(dateDiv.find('time', datetime = True)['datetime'].replace('-', '', 2).replace(':', ''), '%Y%m%dT%H%M%S%z')
+			viewDiv = footerDiv.find('span', class_ = 'tgme_widget_message_views')
+			viewText = viewDiv.text
+			viewPostfix = viewText[-1].lower()
+			if viewPostfix.isdigit():
+				viewCount = int(float(viewText))
+			else:
+				viewFactor = {
+					'k': 1000,
+					'm': 1000 * 1000,
+					'g': 1000 * 1000 * 1000,
+				}.get(viewPostfix)
+				if viewFactor:
+					viewCount = int(float(viewText[:-1])) * viewFactor
+				else:
+					raise snscrape.base.ScraperException(f'Got unknown postfix from views text: "{viewText}"')
 			if (message := post.find('div', class_ = 'tgme_widget_message_text')):
 				content = message.text
 				outlinks = []
@@ -126,7 +143,7 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 					else:
 						_logger.warning(f'Could not process link preview image on {url}')
 				linkPreview = LinkPreview(**kwargs)
-			yield TelegramPost(url = url, date = date, content = content, outlinks = outlinks, linkPreview = linkPreview)
+			yield TelegramPost(url = url, date = date, viewCount = viewCount, content = content, outlinks = outlinks, linkPreview = linkPreview)
 
 	def get_items(self):
 		r, soup = self._initial_page()
